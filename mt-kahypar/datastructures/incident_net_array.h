@@ -44,6 +44,8 @@
 #include "mt-kahypar/parallel/parallel_prefix_sum.h"
 #include "mt-kahypar/utils/range.h"
 
+#include "mt-kahypar/datastructures/dynamic_hypergraph.h" // to calculate weighted_degrees
+
 namespace mt_kahypar {
 namespace ds {
 
@@ -124,6 +126,7 @@ class IncidentNetArray {
       tail(u),
       size(0),
       degree(0),
+      weighted_degree(0),
       current_version(0),
       is_head(true) { }
 
@@ -143,6 +146,9 @@ class IncidentNetArray {
     HypernodeID size;
     // ! Degree of the vertex
     HypernodeID degree;
+    // ! Weighted degree of the vertex (calculated only if _hypergraph_ref for the
+    // ! incident net array is not nullptr)
+    HyperedgeWeight weighted_degree;
     // ! Current version of the incident net list
     HypernodeID current_version;
     // ! True, if the vertex is the head of a incident net list
@@ -156,14 +162,17 @@ class IncidentNetArray {
     _num_hypernodes(0),
     _size_in_bytes(0),
     _index_array(),
-    _incident_net_array(nullptr) { }
+    _incident_net_array(nullptr),
+    _hypergraph_ptr(nullptr) { }
 
   IncidentNetArray(const HypernodeID num_hypernodes,
-                   const HyperedgeVector& edge_vector) :
+                   const HyperedgeVector& edge_vector,
+                   DynamicHypergraph* hypergraph_ref = nullptr) :
     _num_hypernodes(num_hypernodes),
     _size_in_bytes(0),
     _index_array(),
-    _incident_net_array(nullptr)  {
+    _incident_net_array(nullptr),
+    _hypergraph_ptr(hypergraph_ref) {
     construct(edge_vector);
   }
 
@@ -171,6 +180,20 @@ class IncidentNetArray {
   HypernodeID nodeDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return header(u)->degree;
+  }
+
+  // ! Weighted degree of the vertex
+  HyperedgeWeight nodeWeightedDegree(const HypernodeID u) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    return header(u)->weighted_degree;
+  }
+
+  // ! Decrease weighted degree of the vertex (for updating weighted degrees)
+  void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    // header(u)->weighted_degree -= w;
+    Header* headerU = reinterpret_cast<Header*>(_incident_net_array.get() + _index_array[u]);
+    headerU->weighted_degree -= w;
   }
 
   // ! Returns a range to loop over the incident nets of hypernode u.
@@ -224,14 +247,16 @@ class IncidentNetArray {
 
   // ! Removes all incidents nets of u flagged in hes_to_remove.
   void removeIncidentNets(const HypernodeID u,
-                          const kahypar::ds::FastResetFlagArray<>& hes_to_remove);
+                          const kahypar::ds::FastResetFlagArray<>& hes_to_remove,
+                          bool update_weighted_degrees = true);
 
   // ! Restores all previously removed incident nets
   // ! Note, function must be called in reverse order of calls to
   // ! removeIncidentNets(...) and all uncontraction that happens
   // ! between two consecutive calls to removeIncidentNets(...) must
   // ! be processed.
-  void restoreIncidentNets(const HypernodeID u);
+  void restoreIncidentNets(const HypernodeID u,
+                          bool update_weighted_degrees = true);
 
   IncidentNetArray copy(parallel_tag_t) const;
 
@@ -287,7 +312,8 @@ class IncidentNetArray {
   // ! be processed.
   void restoreIncidentNets(const HypernodeID u,
                            const CaseOneFunc& case_one_func,
-                           const CaseTwoFunc& case_two_func);
+                           const CaseTwoFunc& case_two_func,
+                           bool update_weighted_degrees = true);
 
   void append(const HypernodeID u, const HypernodeID v);
 
@@ -303,6 +329,7 @@ class IncidentNetArray {
   size_t _size_in_bytes;
   Array<size_t> _index_array;
   parallel::tbb_unique_ptr<char> _incident_net_array;
+  DynamicHypergraph* _hypergraph_ptr; // to calculate weighted_degrees
 };
 
 }  // namespace ds

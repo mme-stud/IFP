@@ -419,6 +419,7 @@ class DynamicHypergraph {
     _num_pins(0),
     _total_degree(0),
     _total_weight(0),
+    _total_volume(0),
     _version(0),
     _contraction_index(0),
     _hypernodes(),
@@ -447,6 +448,7 @@ class DynamicHypergraph {
     _num_pins(other._num_pins),
     _total_degree(other._total_degree),
     _total_weight(other._total_weight),
+    _total_volume(0), // other._total_volume is copied in body
     _version(other._version),
     _contraction_index(0),
     _hypernodes(std::move(other._hypernodes)),
@@ -462,6 +464,7 @@ class DynamicHypergraph {
     _removable_single_pin_and_parallel_nets(std::move(other._removable_single_pin_and_parallel_nets)),
     _fixed_vertices(std::move(other._fixed_vertices)) {
     _fixed_vertices.setHypergraph(this);
+    _total_volume.store(other._total_volume);
   }
 
   DynamicHypergraph & operator= (DynamicHypergraph&& other) {
@@ -474,6 +477,7 @@ class DynamicHypergraph {
     _num_pins = other._num_pins;
     _total_degree = other._total_degree;
     _total_weight = other._total_weight;
+    _total_volume.store(other._total_volume);
     _version = other._version;
     _contraction_index.store(other._contraction_index.load());
     _hypernodes = std::move(other._hypernodes);
@@ -542,12 +546,23 @@ class DynamicHypergraph {
   HypernodeWeight totalWeight() const {
     return _total_weight;
   }
+  
+  // ! Total volume of hypergraph
+  HypernodeWeight totalVolume() const {
+    return _total_volume;
+  }
 
   // ! Recomputes the total weight of the hypergraph (parallel)
   void updateTotalWeight(parallel_tag_t);
 
   // ! Recomputes the total weight of the hypergraph (sequential)
   void updateTotalWeight();
+
+  // ! Recomputes the total volume of the hypergraph (parallel)
+  void updateTotalVolume(parallel_tag_t);
+
+  // ! Recomputes the total volume of the hypergraph (sequential)
+  void updateTotalVolume();
 
   // ####################### Iterators #######################
 
@@ -634,6 +649,18 @@ class DynamicHypergraph {
   HyperedgeID nodeDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return _incident_nets.nodeDegree(u);
+  }
+
+  // ! Weighted degree of a hypernode
+  HyperedgeID nodeWeightedDegree(const HypernodeID u) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    return _incident_nets.nodeWeightedDegree(u);
+  }
+
+  // ! Decrease weighted degree of a hypernode
+  void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    _incident_nets.decreaseNodeWeightedDegree(u, w);
   }
 
   // ! Returns, whether a hypernode is enabled or not
@@ -864,6 +891,7 @@ class DynamicHypergraph {
     ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
     kahypar::ds::FastResetFlagArray<>& he_to_remove = _he_bitset.local();
     he_to_remove.set(he, true);
+    _total_volume -= edgeWeight(he) * edgeSize(he);
     for ( const HypernodeID& pin : pins(he) ) {
       _incident_nets.removeIncidentNets(pin, he_to_remove);
     }
@@ -885,6 +913,7 @@ class DynamicHypergraph {
     const size_t incidence_array_end = hyperedge(he).firstInvalidEntry();
     kahypar::ds::FastResetFlagArray<>& he_to_remove = _he_bitset.local();
     he_to_remove.set(he, true);
+    _total_volume -= edgeWeight(he) * edgeSize(he);
     tbb::parallel_for(incidence_array_start, incidence_array_end, [&](const size_t pos) {
       const HypernodeID pin = _incidence_array[pos];
       _incident_nets.removeIncidentNets(pin, he_to_remove);
@@ -904,6 +933,7 @@ class DynamicHypergraph {
       const HypernodeID pin = _incidence_array[pos];
       _incident_nets.restoreIncidentNets(pin);
     });
+    _total_volume += edgeWeight(he) * edgeSize(he);
   }
 
   /**
@@ -1128,6 +1158,8 @@ class DynamicHypergraph {
   HypernodeID _total_degree;
   // ! Total weight of hypergraph
   HypernodeWeight _total_weight;
+  // ! Total volume of hypergraph
+  std::atomic<HypernodeWeight> _total_volume;
   // ! Version of the hypergraph, each time we remove a single-pin and parallel nets,
   // ! we create a new version
   size_t _version;

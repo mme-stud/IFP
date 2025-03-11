@@ -58,7 +58,8 @@ TEST_F(ADynamicHypergraph, HasCorrectStats) {
   ASSERT_EQ(4,  hypergraph.initialNumEdges());
   ASSERT_EQ(12, hypergraph.initialNumPins());
   ASSERT_EQ(12, hypergraph.initialTotalVertexDegree());
-  ASSERT_EQ(7,  hypergraph.totalWeight());
+  ASSERT_EQ(7,  hypergraph.totalWeight()); // each node: weight = 1 by default
+  ASSERT_EQ(12,  hypergraph.totalVolume()); // each edge: weight = 1 by default
   ASSERT_EQ(4,  hypergraph.maxEdgeSize());
 }
 
@@ -187,6 +188,8 @@ TEST_F(ADynamicHypergraph, ModifiesEdgeWeight) {
   hypergraph.setEdgeWeight(2, 2);
   ASSERT_EQ(2, hypergraph.edgeWeight(0));
   ASSERT_EQ(2, hypergraph.edgeWeight(2));
+  hypergraph.updateTotalVolume(parallel_tag_t());
+  ASSERT_EQ(17, hypergraph.totalVolume()); // 12 + (2 + 3) = 17
 }
 
 TEST_F(ADynamicHypergraph, VerifiesEdgeSizes) {
@@ -262,6 +265,7 @@ TEST_F(ADynamicHypergraph, ComparesStatsIfCopiedParallel) {
   ASSERT_EQ(hypergraph.initialNumPins(), copy_hg.initialNumPins());
   ASSERT_EQ(hypergraph.initialTotalVertexDegree(), copy_hg.initialTotalVertexDegree());
   ASSERT_EQ(hypergraph.totalWeight(), copy_hg.totalWeight());
+  ASSERT_EQ(hypergraph.totalVolume(), copy_hg.totalVolume());
   ASSERT_EQ(hypergraph.maxEdgeSize(), copy_hg.maxEdgeSize());
 }
 
@@ -272,6 +276,7 @@ TEST_F(ADynamicHypergraph, ComparesStatsIfCopiedSequential) {
   ASSERT_EQ(hypergraph.initialNumPins(), copy_hg.initialNumPins());
   ASSERT_EQ(hypergraph.initialTotalVertexDegree(), copy_hg.initialTotalVertexDegree());
   ASSERT_EQ(hypergraph.totalWeight(), copy_hg.totalWeight());
+  ASSERT_EQ(hypergraph.totalVolume(), copy_hg.totalVolume());
   ASSERT_EQ(hypergraph.maxEdgeSize(), copy_hg.maxEdgeSize());
 }
 

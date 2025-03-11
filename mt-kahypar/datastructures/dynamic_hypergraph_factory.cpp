@@ -133,11 +133,14 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
     });
   }, [&] {
     // Construct incident net array
-    hypergraph._incident_nets = IncidentNetArray(num_hypernodes, edge_vector);
+    hypergraph._incident_nets = IncidentNetArray(num_hypernodes, edge_vector, &hypergraph);
   });
 
   // Compute total weight of hypergraph
   hypergraph.updateTotalWeight(parallel_tag_t());
+  
+  // Compute total volume of hypergraph
+  hypergraph.updateTotalVolume(parallel_tag_t());
   return hypergraph;
 }
 

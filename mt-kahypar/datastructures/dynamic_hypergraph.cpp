@@ -66,6 +66,32 @@ void DynamicHypergraph::updateTotalWeight() {
   _total_weight += _removed_degree_zero_hn_weight;
 }
 
+// ! Recomputes the total volume of the hypergraph (parallel)
+void DynamicHypergraph::updateTotalVolume(parallel_tag_t) {
+  _total_volume = tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(ID(0), _num_hyperedges), 0,
+    [this](const tbb::blocked_range<HyperedgeID>& range, HyperedgeWeight init) {
+      HypernodeWeight volume = init;
+      for (HyperedgeID he = range.begin(); he < range.end(); ++he) {
+        if ( edgeIsEnabled(he) ) {
+          volume += this->_hyperedges[he].weight() * this->_hyperedges[he].size();
+          // TODO: Why not "edgeWeight(he) * edgeSize(he);" ?
+        }
+      }
+      return volume;
+    }, std::plus<HyperedgeWeight>());
+}
+
+// ! Recomputes the total volume of the hypergraph (sequential)
+void DynamicHypergraph::updateTotalVolume() {
+  _total_volume = 0;
+  for ( const HyperedgeID& he : edges() ) {
+    if ( edgeIsEnabled(he) ) {
+      _total_volume += edgeWeight(he) * edgeSize(he);
+    }
+  }
+  // _total_weight += _removed_degree_zero_hn_weight;
+}
+
 /**!
  * Registers a contraction in the hypergraph whereas vertex u is the representative
  * of the contraction and v its contraction partner. Several threads can call this function
@@ -144,6 +170,8 @@ void DynamicHypergraph::uncontract(const Batch& batch,
     const Memento& memento = batch[i];
     ASSERT(!hypernode(memento.u).isDisabled(), "Hypernode" << memento.u << "is disabled");
     ASSERT(hypernode(memento.v).isDisabled(), "Hypernode" << memento.v << "is not invalid");
+    // Update total volume: part 1 (it can change due to overlapping he's)
+    _total_volume -= nodeWeightedDegree(memento.u);
 
     // Restore incident net list of u and v
     const HypernodeID batch_index = hypernode(batch[0].v).batchIndex();
@@ -179,6 +207,9 @@ void DynamicHypergraph::uncontract(const Batch& batch,
     hypernode(memento.v).enable();
     hypernode(memento.u).setWeight(hypernode(memento.u).weight() - hypernode(memento.v).weight());
     releaseHypernode(memento.u);
+    
+    // Update total volume: part 2 (it changes due to overlapping he's)
+    _total_volume += nodeWeightedDegree(memento.u) + nodeWeightedDegree(memento.v);
 
     // Revert contraction in fixed vertex support
     if ( hasFixedVertices() ) {
@@ -270,6 +301,12 @@ parallel::scalable_vector<DynamicHypergraph::ParallelHyperedge> DynamicHypergrap
       hyperedge_hash_map.insert(footprint,
         ContractedHyperedgeInformation { he, footprint, edge_size, true });
     } else {
+      // update total volume (removed single-pin net)
+      _total_volume -= edgeWeight(he);
+      // manually update weighted degree of the single pin
+      const HypernodeID u = _incidence_array[hyperedge(he).firstEntry()];
+      decreaseNodeWeightedDegree(u, edgeWeight(he));
+
       hyperedge(he).disable();
       _removable_single_pin_and_parallel_nets.set(he, true);
       tmp_removed_hyperedges.stream(ParallelHyperedge { he, kInvalidHyperedge });
@@ -344,7 +381,10 @@ parallel::scalable_vector<DynamicHypergraph::ParallelHyperedge> DynamicHypergrap
 
   // Remove single-pin and parallel nets from incident net vector of vertices
   doParallelForAllNodes([&](const HypernodeID& u) {
-    _incident_nets.removeIncidentNets(u, _removable_single_pin_and_parallel_nets);
+    // weights of parallel nets are added to the representative hyperedge 
+    // => no update of weighted degrees for parallel he needed
+    // => (manual update for single-pin he done) update_weighted_degrees = false
+    _incident_nets.removeIncidentNets(u, _removable_single_pin_and_parallel_nets, false);
   });
 
   parallel::scalable_vector<ParallelHyperedge> removed_hyperedges = tmp_removed_hyperedges.copy_parallel();
@@ -373,11 +413,21 @@ void DynamicHypergraph::restoreSinglePinAndParallelNets(const parallel::scalable
       acquireHyperedge(rep);
       rep_he.setWeight(rep_he.weight() - hyperedge(he).weight());
       releaseHyperedge(rep);
+    } else { // single-pin net (is never parallel?)
+      ASSERT(edgeSize(he) == 1, "Hyperedge" << he << "should be a single-pin net");
+      // update total volume (removed single-pin net)
+      _total_volume += edgeWeight(he);
+      // manually update weighted degree of the single pin
+      const HypernodeID u = _incidence_array[hyperedge(he).firstEntry()];
+      decreaseNodeWeightedDegree(u, -edgeWeight(he));
     }
   });
 
   doParallelForAllNodes([&](const HypernodeID u) {
-    _incident_nets.restoreIncidentNets(u);
+    // no update of weighted degrees for parallel nets needed (!)
+    // weighted degree is updated malually for sindle-pin nets 
+    // => update_weighted_degrees = false
+    _incident_nets.restoreIncidentNets(u, false);
   });
   --_version;
 }
@@ -395,6 +445,7 @@ DynamicHypergraph DynamicHypergraph::copy(parallel_tag_t) const {
   hypergraph._num_pins = _num_pins;
   hypergraph._total_degree = _total_degree;
   hypergraph._total_weight = _total_weight;
+  hypergraph._total_volume.store(_total_volume);
   hypergraph._version = _version;
   hypergraph._contraction_index.store(_contraction_index.load());
 
@@ -454,6 +505,7 @@ DynamicHypergraph DynamicHypergraph::copy() const {
   hypergraph._num_pins = _num_pins;
   hypergraph._total_degree = _total_degree;
   hypergraph._total_weight = _total_weight;
+  hypergraph._total_volume.store(_total_volume);
   hypergraph._version = _version;
   hypergraph._contraction_index.store(_contraction_index.load());
 
@@ -596,7 +648,7 @@ DynamicHypergraph::ContractionResult DynamicHypergraph::contract(const Hypernode
       // Try to acquire ownership of hyperedge. In case of success, we perform the
       // contraction and otherwise, we remember the hyperedge and try later again.
       if ( tryAcquireHyperedge(he) ) {
-        contractHyperedge(u, v, he, shared_incident_nets_u_and_v);
+        contractHyperedge(u, v, he, shared_incident_nets_u_and_v); // updates _total_volume
         releaseHyperedge(he);
       } else {
         failed_hyperedge_contractions.push_back(he);
@@ -606,7 +658,7 @@ DynamicHypergraph::ContractionResult DynamicHypergraph::contract(const Hypernode
     // Perform contraction on which we failed to acquire ownership on the first try
     for ( const HyperedgeID& he : failed_hyperedge_contractions ) {
       acquireHyperedge(he);
-      contractHyperedge(u, v, he, shared_incident_nets_u_and_v);
+      contractHyperedge(u, v, he, shared_incident_nets_u_and_v); // updates _total_volume
       releaseHyperedge(he);
     }
 
@@ -674,6 +726,7 @@ void DynamicHypergraph::contractHyperedge(const HypernodeID u,
     e.hash() -= kahypar::math::hash(v);
     e.decrementSize();
     shared_incident_nets_u_and_v.set(he, true);
+    _total_volume -= edgeWeight(he);
   } else {
     DBG << V(he) << ": Case 2";
     // Case 2:
