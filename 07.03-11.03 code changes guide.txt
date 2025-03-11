@@ -1,0 +1,172 @@
+07.03-11.03: Guide to my code changes.
+Potential problems:
+	- uncontraction in relative contraction order?: reversed -> should be ok
+	- implemented only for dynamic hypergraph: for other (graphs... -> lib_generic_impls.h)? -> TODO for static
+	- removeIncidentNets(...): changes head of IncidentNetArray -> not thread safe? (was so before -> ok)
+	- enable(he), disable(he) - only in remove single / parallel? Otherwise should weighted deg be updated?
+		(deg is not updated -> should be ok)
+	- meaning of node weights?  -> arbitrary, default: 1 at start => no implications should be done
+	- setNodePart, changeNodePart: should be thread safe? 
+		-> TODO later (?)locks for edges on change pin_count/etc ?..
+	- freeInternalData() [partitioned_hg.h]: should I clear part_volumes, part_cut_weights? 
+		(part_weights not cleared => no) 
+	- what is tbb::static_partitioner()? Is it needed for initializePartCutWeights() in partitioned_hd?
+		-> mode of part algo that we use
+
+TODO: change sync_update to contain info for calculating concuctance gain (1-st and 2-nd max cond cuts; total val; ...)
+      Problem: conductance gain depends on both whole parts, not just the edge
+
+Next steps:
+	- implement _total_volume, weighted degrees + "their" functions in static_hypergraph.h/.cpp
+	- write tests (better somewhere in-between)
+	- implement pq for all conductances (pairs <Vi_vol, Vi_cut_weight>)
+!!!		-> Problem: conductance depends on total_vol 
+		=> heap will not be correct after changes in total_val :(
+???			(= contract, uncontract, remove single-pin?)
+		-> Naive: rebuild heap after changes in total_val?
+???		-> implement increase_total_val and refactor to do smth on changes on total_val..?
+	- follow the guide to implement a custom objective function
+		-> adjust sync_update (see TODO above)
+	- debug (potentially many times :( )
+	...
+	- outlook: implement new Partitioning Configurations
+
+Part 1: needed information
+For hypergraph:
+	+ total volume
+	+ weighted degrees of 
+-> in static_hypergraph
+For partitioned hypergraph:
+	+ access to total volume, weighted degrees
+	+ number of pins of e in Vi
+	+ volume of Vi
+	+ cut weight of Vi
+
+Part 1.1: dynamic hypergraph 
+		(total volume, weighted degrees)
+??? Also implement for other (heper-)graphs (not only dynamic hg?)
+-> lib_generic_impls.h
+
+Total Volume:
+dynamic_hypergraph.h:
+	+ _total_volume - std::atomic<HyperedgeWeight> due to changes (analog to _contraction_index)
+	analogously to _total_weight, totalWeight
+	removeEdge(he), removeLargeEdge(he): update _total_volume
+	restoreLargeEdge(he): update _total_volume
+???	(0) Why no update for _total_weight on enable(), disable(), setNodeWeight() ... ???
+!!!	-> I do no updates for _total_weight (analogously)
+dynamic_hypergraph.cpp:
+	+ updateTotalVolume()
+	analogously to updateTotalWeight: !!! but edges instead of nodes !!! 
+	+ copy: _total_volume (alaog to _total_weight)
+	restoreSinglePinAndParallelNets(..): update _total_volume for single-pin nets
+!!!		parallel => weights are added 
+!!!			=> no update of _total_volume (and weighted_degrees) needed
+	removeSinglePinAndParallelHyperedges(): update _total_volume
+	uncontract(..): update _total_volume
+!!!		-> Important: (non)shared he
+		(weighted_degree is handled by incident_net_array -> ok)
+		TODO
+	contract(v, ..) -> contract(u, v, ..)
+!!!		-> contractHyperedge(u, v, he): update _total_volume
+			(shared he-s are removed from incident_nets of v)
+-> adjust dynamic_hypergraph_factory.cpp:
+	construct(...): compute total volume
+-> adjust dynamic_hypergraph_test.cc:
+	[hypergraph: from hypergraph_fixture.h]
+	HasCorrectStats, ModifiesEdgeWeight, ComparesStatsIfCopiedParallel, ComparesStatsIfCopiedSequential
+
+
+Weighted Degrees (!!!):
+???	(??? dynamic_adjacency_array.cpp - for vectors ???)
+-> dynamic_hypergraph.h:
+	+ nodeWeightedDegree(u) analog to nodeDegree()
+!!!	+ decreaseNodeWeightedDegree(u, w): for dealing with single-pin he (remove, restore)
+-> incident_net_array.h:
+!!!	+ #include .../dynamic_hypergraph.h
+!!!	+ _hypergraph_ptr (to compute weighted degree, !!! no support for set/change Weight, can be nullptr)
+	-> changes in 2 constructors + usages of constructors to include _hg_ptr 
+		dynamic_hypergraph_factory.cpp: in construct(...)
+		incident_net_array.cpp: in 2 copy(...)-s
+	+ nodeWeightedDegree(u)
+!!!	+ decreaseNodeWeightedDegree(u, w): for dealing with single-pin he (remove, restore)
+	in Header analog to IncidentNetArray::Header::degree
+-> incident_net_array.cpp
+	contract(u, v, ...): add weighted_degree
+	uncontract(u, v, ...): subtract weighted_degree  
+	removeIncidentNets(u, ...): subtract weighted_degree  
+!!!		+ bool update_weighted_degrees = true option for correct remove parallel / single-pin he)
+	restoreIncidentNets(u, ...): add weighted_degree
+!!!		+ bool update_weighted_degrees = true option for correct remove parallel / single-pin he)
+	construct(...): calculate weighted_degree analog to degree (.local() etc)
+!!!		for degree is used ThreadLocalCounter 
+				= tbb::enumerable_thread_specific< parallel::scalable_vector< size_t >
+		-> for wDeg use tbb::enumerable_thread_specific< parallel::scalable_vector<HyperedgeWeight> >
+	[analog to IncidentNetArray::Header::degree]
+
+
+Part 1.2: partitioned hypergraph 
+		(access to hgInfo, number of pins, volumes, cut weights)
+Access to hgInfo:
+-> partitioned_hypergraph.h:
+	+ totalVolume() analog to totalWeight()
+	+ nodeWeighteddegree(u) analog to nodeDegree(u)
+
+Number of pins: 
+-> partitioned_hypergpaph.h: pinCountInPart(he, id) -> OK
+
+Volumes:
+-> partitioned_hypergpaph.h
+	+ _part_volumes: (vec<CAtomic>!!!)
+	constructors, resetData() - trivially adjusted analogously to _part_weights
+	+ decrementVolumeOfBlock(p, w), incrementVolumeOfBlock(p, w)
+		analog to incrementPinCountOfBlock(e, p)
+	+ recomputePartVolumes() analog to recomputePartWeights()
+	+ applyPartVolumeUpdates(p_v_deltas): for initializeBlockVolumes
+		analog to applyPartWeightUpdates(p_w_deltas)
+	+ initializeBlockVolumes() - analog initializeBlockWeights()
+!!!		uses nodeWeightedDegree() -> smth might be wrong with enable(he) :(
+	-> initializePartition(): calls initializeBlockVolumes() parallel to weight, pin count
+!!!	setEdgeWeight(e, w), enableHyperedge, disableHyperedge - not touched for now
+	uncontract(batch, ...) update _part_volumes (analog to _total_volume)
+	restoreLargeEdge(he): update _part_volumes analog to ets_pin_count_in_part (.local()...)
+	restoreSinglePinAndParallelNets(..): update _part_volumes for each single-pin net
+!!!		-> no need for "thead-safe" behavior: atomic
+	setOnlyNodePart(u, p): not touched (sets **only** partId)
+	setNodePart(u, p): [used only to set the first partId of a node]
+		update _part_volume[p] += nodeWeightedDegree(u)
+	changeNodePart(u, from, to, ...): update _part_volumes for from and to
+???	freeInternalData() : used by destructor for external memory usages (connectivity...) 
+		=> nothing changed
+
+
+Cut weight of Vi:
+-> partitioned_hypergpaph.h
+	+ _part_cut_weights
+	constructors, resetData() - trivially adjusted analogously to _part_weights
+	+ decrementCutWeightOfBlock(p, w), incrementCutWeightOfBlock(p, w)
+		analog to incrementPinCountOfBlock(e, p)
+???		potentially reimplement later in ~pin_count.h?
+	+ recomputePartCutWeights() analog to recomputePartWeights() for testing
+	+ applyPartCutWeightUpdates(p_c_w_deltas): for initializeBlockCutWeights
+		analog to applyPartWeightUpdates(p_w_deltas)
+	+ initializeBlockCutWeights() - analog initializeBlockWeights()
+###		uses connectivity() -> only after initializePinCountInPart() !!!
+??? 		what is tbb::static_partitioner()
+	-> initializePartition() calls initializeBlockCutWeights() after all other
+!!!	setEdgeWeight(e, w), enableHyperedge, disableHyperedge - not touched for now
+	restoreLargeEdge(he): update _part_cut_weights, if he - cutting edge
+	setOnlyNodePart(u, p): not touched (sets **only** partId)
+	setNodePart(u, p): [used only to set the first partId of a node]
+		update <> for incident he-s
+		-> if he - new cutting edge (connectivity: 1 -> 2): 
+			for both 2 part
+		-> if p - new part for cutting edge he (con.: x -> x + 1 | x != 1):
+			only for part p 
+### 		=> now uses connectivity info, set, should be run sequentially!!!
+	changeNodePart(u, from, to, ...) uses updatePinCountOfHyperedge(he,from,to,sync_update,..)
+	-> updatePinCountOfHyperedge(he, from, to, sync_update, ..):
+		uses _pin_count_update_ownership[he] lock to ensure thread-safety!
+		-> update _part_cut_weights for from and to
+???	freeInternalData() : used by destructor for external memory usages (connectivity...) 
+		=> nothing changed
