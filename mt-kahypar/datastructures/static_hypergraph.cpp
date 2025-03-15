@@ -380,6 +380,8 @@ namespace mt_kahypar::ds {
       tbb::parallel_scan(tbb::blocked_range<size_t>(size_t(0), size_t(_num_hyperedges)), he_mapping);
     }, [&] {
       hypergraph._hypernodes.resize(num_hypernodes);
+    }, [&] {
+      hypergraph._weighted_degrees.resize(num_hypernodes, 0);
     });
 
     const HyperedgeID num_hyperedges = he_mapping.total_sum();
@@ -429,6 +431,7 @@ namespace mt_kahypar::ds {
                       tmp_incidence_array.data() + tmp_incidence_array_start,
                       sizeof(HypernodeID) * edge_size);
           he.setFirstEntry(incidence_array_start);
+          hypergraph._total_volume += edge_size * he.weight();
         }
       });
       hypergraph._max_edge_size = local_max_edge_size.combine(
@@ -440,6 +443,7 @@ namespace mt_kahypar::ds {
     auto setup_hypernodes = [&] {
       // Remap hyperedge ids in temporary incident nets to hyperedge ids of the
       // coarse hypergraph and remove singple-pin/parallel hyperedges.
+      // (new!) At the same time compute weighted degree of each coarsened vertex
       tbb::parallel_for(ID(0), num_hypernodes, [&](const HypernodeID& id) {
         const size_t incident_nets_start =  tmp_hypernodes[id].firstEntry();
         size_t incident_nets_end = tmp_hypernodes[id].firstInvalidEntry();
@@ -447,6 +451,7 @@ namespace mt_kahypar::ds {
           const HyperedgeID he = tmp_incident_nets[pos];
           if ( he_mapping.value(he) > 0 /* hyperedge is valid */ ) {
             tmp_incident_nets[pos] = he_mapping[he];
+            hypergraph._weighted_degrees[id] += hypergraph._hyperedges[he_mapping[he]].weight();
           } else {
             std::swap(tmp_incident_nets[pos--], tmp_incident_nets[--incident_nets_end]);
           }
@@ -512,6 +517,7 @@ namespace mt_kahypar::ds {
     hypergraph._num_pins = _num_pins;
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
+    hypergraph._total_volume = _total_volume;
 
     tbb::parallel_invoke([&] {
       hypergraph._hypernodes.resize(_hypernodes.size());
@@ -529,6 +535,10 @@ namespace mt_kahypar::ds {
       hypergraph._incidence_array.resize(_incidence_array.size());
       memcpy(hypergraph._incidence_array.data(), _incidence_array.data(),
              sizeof(HypernodeID) * _incidence_array.size());
+    }, [&] {
+      hypergraph._weighted_degrees.resize(_weighted_degrees.size());
+      memcpy(hypergraph._weighted_degrees.data(), _weighted_degrees.data(),
+             sizeof(HyperedgeWeight) * _weighted_degrees.size());
     }, [&] {
       hypergraph._community_ids = _community_ids;
     }, [&] {
@@ -549,6 +559,7 @@ namespace mt_kahypar::ds {
     hypergraph._num_pins = _num_pins;
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
+    hypergraph._total_volume = _total_volume;
 
     hypergraph._hypernodes.resize(_hypernodes.size());
     memcpy(hypergraph._hypernodes.data(), _hypernodes.data(),
@@ -563,6 +574,9 @@ namespace mt_kahypar::ds {
     hypergraph._incidence_array.resize(_incidence_array.size());
     memcpy(hypergraph._incidence_array.data(), _incidence_array.data(),
            sizeof(HypernodeID) * _incidence_array.size());
+    hypergraph._weighted_degrees.resize(_weighted_degrees.size());
+    memcpy(hypergraph._weighted_degrees.data(), _weighted_degrees.data(),
+           sizeof(HyperedgeWeight) * _weighted_degrees.size());
 
     hypergraph._community_ids = _community_ids;
     hypergraph.addFixedVertexSupport(_fixed_vertices.copy());
@@ -576,6 +590,7 @@ namespace mt_kahypar::ds {
     parent->addChild("Incident Nets", sizeof(HyperedgeID) * _incident_nets.size());
     parent->addChild("Hyperedges", sizeof(Hyperedge) * _hyperedges.size());
     parent->addChild("Incidence Array", sizeof(HypernodeID) * _incidence_array.size());
+    parent->addChild("Weighted Degrees", sizeof(HyperedgeWeight) * _weighted_degrees.size());
     parent->addChild("Communities", sizeof(PartitionID) * _community_ids.capacity());
     if ( hasFixedVertices() ) {
       parent->addChild("Fixed Vertex Support", _fixed_vertices.size_in_bytes());
@@ -593,6 +608,20 @@ namespace mt_kahypar::ds {
                                              }
                                            }
                                            return weight;
+                                         }, std::plus<>());
+  }
+
+  // ! Computes the total volume of the hypergraph
+  void StaticHypergraph::computeAndSetTotalVolume(parallel_tag_t) {
+    _total_volume = tbb::parallel_reduce(tbb::blocked_range<HypernodeID>(ID(0), _num_hypernodes), 0,
+                                         [this](const tbb::blocked_range<HypernodeID>& range, HyperedgeWeight init) {
+                                           HyperedgeWeight volume = init;
+                                           for (HypernodeID hn = range.begin(); hn < range.end(); ++hn) {
+                                             if (nodeIsEnabled(hn)) {
+                                               volume += this->_weighted_degrees[hn];
+                                             }
+                                           }
+                                           return volume;
                                          }, std::plus<>());
   }
 

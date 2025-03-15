@@ -416,8 +416,10 @@ class StaticHypergraph {
     _num_pins(0),
     _total_degree(0),
     _total_weight(0),
+    _total_volume(0),
     _hypernodes(),
     _incident_nets(),
+    _weighted_degrees(),
     _hyperedges(),
     _incidence_array(),
     _community_ids(0),
@@ -437,8 +439,10 @@ class StaticHypergraph {
     _num_pins(other._num_pins),
     _total_degree(other._total_degree),
     _total_weight(other._total_weight),
+    _total_volume(other._total_volume),
     _hypernodes(std::move(other._hypernodes)),
     _incident_nets(std::move(other._incident_nets)),
+    _weighted_degrees(std::move(other._weighted_degrees)),
     _hyperedges(std::move(other._hyperedges)),
     _incidence_array(std::move(other._incidence_array)),
     _community_ids(std::move(other._community_ids)),
@@ -458,6 +462,7 @@ class StaticHypergraph {
     _num_pins = other._num_pins;
     _total_degree = other._total_degree;
     _total_weight = other._total_weight;
+    _total_volume = other._total_volume;
     _hypernodes = std::move(other._hypernodes);
     _incident_nets = std::move(other._incident_nets);
     _hyperedges = std::move(other._hyperedges);
@@ -525,8 +530,16 @@ class StaticHypergraph {
     return _total_weight;
   }
 
+  // ! Total volume of hypergraph
+  HyperedgeWeight totalVolume() const {
+    return _total_volume;
+  }
+
   // ! Computes the total node weight of the hypergraph
   void computeAndSetTotalNodeWeight(parallel_tag_t);
+
+  // ! Computes the total volume of the hypergraph
+  void computeAndSetTotalVolume(parallel_tag_t);
 
   // ####################### Iterators #######################
 
@@ -602,6 +615,19 @@ class StaticHypergraph {
     ASSERT(!hypernode(u).isDisabled(), "Hypernode" << u << "is disabled");
     return hypernode(u).size();
   }
+
+    // ! Weighted degree of a hypernode
+    HyperedgeID nodeWeightedDegree(const HypernodeID u) const {
+      ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+      return _weighted_degrees[u];
+    }
+  
+    // ! Decrease weighted degree of a hypernode
+    // ! (Not supported)
+    void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
+      throw UnsupportedOperationException(
+        "decreaseNodeWeightedDegree(u, w) is not supported in static hypergraph");
+    }
 
   // ! Returns, whether a hypernode is enabled or not
   bool nodeIsEnabled(const HypernodeID u) const {
@@ -780,7 +806,9 @@ class StaticHypergraph {
   */
   void removeEdge(const HyperedgeID he) {
     ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
+    _total_volume -= edgeWeight(he) * edgeSize(he);
     for ( const HypernodeID& pin : pins(he) ) {
+      _weighted_degrees[pin] -= edgeWeight(he);
       removeIncidentEdgeFromHypernode(he, pin);
     }
     ++_num_removed_hyperedges;
@@ -799,8 +827,10 @@ class StaticHypergraph {
     ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
     const size_t incidence_array_start = hyperedge(he).firstEntry();
     const size_t incidence_array_end = hyperedge(he).firstInvalidEntry();
+    _total_volume -= edgeWeight(he) * edgeSize(he);
     tbb::parallel_for(incidence_array_start, incidence_array_end, [&](const size_t pos) {
       const HypernodeID pin = _incidence_array[pos];
+      _weighted_degrees[pin] -= edgeWeight(he);
       removeIncidentEdgeFromHypernode(he, pin);
     });
     disableHyperedge(he);
@@ -814,8 +844,10 @@ class StaticHypergraph {
     enableHyperedge(he);
     const size_t incidence_array_start = hyperedge(he).firstEntry();
     const size_t incidence_array_end = hyperedge(he).firstInvalidEntry();
+    _total_volume += edgeWeight(he) * edgeSize(he);
     tbb::parallel_for(incidence_array_start, incidence_array_end, [&](const size_t pos) {
       const HypernodeID pin = _incidence_array[pos];
+      _weighted_degrees[pin] += edgeWeight(he);
       insertIncidentEdgeToHypernode(he, pin);
     });
   }
@@ -991,6 +1023,8 @@ class StaticHypergraph {
   HypernodeID _total_degree;
   // ! Total weight of hypergraph
   HypernodeWeight _total_weight;
+  // ! Total volume of hypergraph
+  HyperedgeWeight _total_volume;
 
   // ! Hypernodes
   Array<Hypernode> _hypernodes;
@@ -1000,6 +1034,8 @@ class StaticHypergraph {
   Array<Hyperedge> _hyperedges;
   // ! Incident nets of hypernodes
   IncidenceArray _incidence_array;
+  // ! Weighted degrees of hypernodes
+  Array<HyperedgeWeight> _weighted_degrees;
 
   // ! Communities
   ds::Clustering _community_ids;

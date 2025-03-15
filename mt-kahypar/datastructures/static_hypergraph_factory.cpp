@@ -47,11 +47,13 @@ namespace mt_kahypar::ds {
     hypergraph._num_hyperedges = num_hyperedges;
     hypergraph._hypernodes.resize(num_hypernodes + 1);
     hypergraph._hyperedges.resize(num_hyperedges + 1);
+    hypergraph._weighted_degrees.resize(num_hypernodes, 0);
 
     ASSERT(edge_vector.size() == num_hyperedges);
 
     // Compute number of pins per hyperedge and number
     // of incident nets per vertex
+    // (new!) Compute weighted degree of each vertex
     Counter num_pins_per_hyperedge(num_hyperedges, 0);
     ThreadLocalCounter local_incident_nets_per_vertex(num_hypernodes, 0);
     tbb::enumerable_thread_specific<size_t> local_max_edge_size(UL(0));
@@ -63,6 +65,8 @@ namespace mt_kahypar::ds {
       for ( const HypernodeID& pin : edge_vector[pos] ) {
         ASSERT(pin < num_hypernodes, V(pin) << V(num_hypernodes));
         ++num_incident_nets_per_vertex[pin];
+        // compute weighted degree (edge weight = 1, if no weights are given)
+        hypergraph._weighted_degrees[pin] += hyperedge_weight ? hyperedge_weight[pos] : 1;
       }
     });
     hypergraph._max_edge_size = local_max_edge_size.combine(
@@ -160,6 +164,7 @@ namespace mt_kahypar::ds {
     hypergraph._hyperedges.back() = StaticHypergraph::Hyperedge(hypergraph._incidence_array.size());
 
     hypergraph.computeAndSetTotalNodeWeight(parallel_tag_t());
+    hypergraph.computeAndSetTotalVolume(parallel_tag_t());
     return hypergraph;
   }
 
