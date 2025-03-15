@@ -167,12 +167,12 @@ class IncidentNetArray {
 
   IncidentNetArray(const HypernodeID num_hypernodes,
                    const HyperedgeVector& edge_vector,
-                   DynamicHypergraph* hypergraph_ref = nullptr) :
+                   DynamicHypergraph* hypergraph_ptr = nullptr) :
     _num_hypernodes(num_hypernodes),
     _size_in_bytes(0),
     _index_array(),
     _incident_net_array(nullptr),
-    _hypergraph_ptr(hypergraph_ref) {
+    _hypergraph_ptr(hypergraph_ptr) {
     construct(edge_vector);
   }
 
