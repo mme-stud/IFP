@@ -730,6 +730,18 @@ class PartitionedHypergraph {
     ASSERT(p != kInvalidPartition && p < _k);
     return _part_weights[p].load(std::memory_order_relaxed);
   }
+  
+  // ! Volume of a block
+  HyperedgeWeight partVolume(const PartitionID p) const {
+    ASSERT(p != kInvalidPartition && p < _k);
+    return _part_volumes[p].load(std::memory_order_relaxed);
+  }
+
+  // ! Cut weight of a block 
+  HypernodeWeight partCutWeight(const PartitionID p) const {
+    ASSERT(p != kInvalidPartition && p < _k);
+    return _part_cut_weights[p].load(std::memory_order_relaxed);
+  }
 
   // ! Returns, whether hypernode u is adjacent to a least one cut hyperedge.
   bool isBorderNode(const HypernodeID u) const {
