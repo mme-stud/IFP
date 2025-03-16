@@ -135,21 +135,6 @@ public:
     unlock(synchronized);
   }
 
-  // ! Get the conductance fraction of a partition
-  ConductanceFraction getFraction(const PartitionID p, bool syncronized = false) const {
-    lock(synchronized);
-    ConductanceFraction f = SuperPQ::getKey(p);
-    unlock(synchronized);
-    return f;
-  }
-  // ! Get the conductance of a partition
-  double_t getConductance(const PartitionID p, bool synchronized = false) const {
-    lock(synchronized);
-    ConductanceFraction f = SuperPQ::getKey(p);
-    unlock(synchronized);
-    return f.value();
-  }
-
   // ! Get the partition with the highest conductance
   PartitionID top(bool syncronized = false) const {
     lock(syncronized);
@@ -270,6 +255,23 @@ private:
   }
   double_t secondTopCondunctance(bool syncronized = false) const {
     ConductanceFraction f = secondTopFraction(synchronized);
+    return f.value();
+  }
+
+  // ! Get the conductance fraction of a partition
+  // (better use PartitionedHypergraph getPartCutWeight and getPartVolume)
+  ConductanceFraction getFraction(const PartitionID p, bool syncronized = false) const {
+    lock(synchronized);
+    ConductanceFraction f = SuperPQ::getKey(p);
+    unlock(synchronized);
+    return f;
+  }
+  // ! Get the conductance of a partition
+  // (better use PartitionedHypergraph getPartCutWeight and getPartVolume)
+  double_t getConductance(const PartitionID p, bool synchronized = false) const {
+    lock(synchronized);
+    ConductanceFraction f = SuperPQ::getKey(p);
+    unlock(synchronized);
     return f.value();
   }
 
