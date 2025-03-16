@@ -76,18 +76,22 @@ public:
     SuperPQ(0),
     _total_volume(-1),
     _size(0),
-    _complement_val_bits()
+    _complement_val_bits(),
+    _initialized(false)
     { }
   
   ConductancePriorityQueue(const ConductancePriorityQueue& other) :
     SuperPQ(other),
     _total_volume(other._total_volume),
     _size(other._size),
-    _complement_val_bits(other._complement_val_bits)
+    _complement_val_bits(other._complement_val_bits),
+    _initialized(other._initialized)
     { }
   
   // ! Initializes the priority queue with the partitions of the hypergraph
   void initialize(const PartitionedHypergraph& hg) {
+    ASSERT(!_initialized);
+    _initialized = true;
     _total_volume = hg.totalVolume();
     _size = hg.k();
     _complement_val_bits.resize(_size);
@@ -290,6 +294,7 @@ private:
   HyperedgeWeight _total_volume;
   PartitionID _size;
   vec<bool> _complement_val_bits;
+  bool _initialized;
 };
 
 
