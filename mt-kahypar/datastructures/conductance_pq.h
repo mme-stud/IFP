@@ -128,21 +128,50 @@ public:
     unlock(synchronized);
   }
 
-// ! Updates the priority queue after global changes in partition
-void globalUpdate(const PartitionedHypergraph& hg, bool synchronized = false) {
-  lock(synchronized);
-  ASSERT(_initialized && _size == hg.k());
-  _total_volume = hg.totalVolume();
-  tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
-    HyperedgeWeight cut_weight = hg.partCutWeight(p);
-    HyperedgeWeight volume = hg.partVolume(p);
-    _complement_val_bits[p] = (volume > _total_volume - volume);
-    ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
-    SuperPQ.heap[p].value = f;
-  });
-  buildHeap();
-  unlock(synchronized);
-}
+  // ! Updates the priority queue after global changes in partition
+  void globalUpdate(const PartitionedHypergraph& hg, bool synchronized = false) {
+    lock(synchronized);
+    ASSERT(_initialized && _size == hg.k());
+    _total_volume = hg.totalVolume();
+    tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
+      HyperedgeWeight cut_weight = hg.partCutWeight(p);
+      HyperedgeWeight volume = hg.partVolume(p);
+      _complement_val_bits[p] = (volume > _total_volume - volume);
+      ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
+      SuperPQ.heap[p].value = f;
+    });
+    buildHeap();
+    unlock(synchronized);
+  }
+
+  // ! Checks if the priority queue is correct with respect to the hypergraph
+  bool check(const PartitionedGraph& hg, bool synchronized = false) {
+    ASSERT(_initialized && _size == hg.k());
+    lock(synchronized);
+    bool correct = true;
+    if (_total_volume != hg.totalVolume()) {
+      correct = false;
+      LOG << "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << hg.totalVolume();
+    }
+    for (PartitionID p = 0; p < _size; ++p) {
+      ConductanceFraction f = SuperPQ::getKey(p);
+      HyperedgeWeight cut_weight = f.getNumerator();
+      HyperedgeWeight volume = f.getDenominator();
+      if (complement_val_bits[p]) {
+        volume = _total_volume - volume;
+      }
+      if (volume != hg.partVolume(p)) {
+        correct = false;
+        LOG << "Volume of partition in ConductancePriorityQueue" << p << "is" << volume << ", but should be" << hg.partVolume(p);
+      }
+      if (cut_weight != hg.partCutWeight(p)) {
+        correct = false;
+        LOG << "Cut weight of partition in ConductancePriorityQueue" << p << "is" << cut_weight << ", but should be" << hg.partCutWeight(p);
+      }
+    }
+    unlock(synchronized);
+    return correct;
+  }
 
   // ################# Priority Queue Operations #################
 
