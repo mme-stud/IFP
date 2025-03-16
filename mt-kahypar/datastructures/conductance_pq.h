@@ -68,9 +68,9 @@ using ConductanceFraction = Fraction<HyperedgeWeight>;
  */
 template <typename PartitionedHypergraph = Mandatory>
 class ConductancePriorityQueue : 
-      protected ExclusiveHandleHeap<MaxHeap<HypernodeID, ConductanceFraction>> {
+      protected ExclusiveHandleHeap<MaxHeap<PartitionID, ConductanceFraction>> {
 private:
-  using SuperPQ = ExclusiveHandleHeap<MaxHeap<HypernodeID, ConductanceFraction>>;
+  using SuperPQ = ExclusiveHandleHeap<MaxHeap<PartitionID, ConductanceFraction>>;
 public:
   ConductancePriorityQueue() :
     SuperPQ(0),
