@@ -109,6 +109,11 @@ public:
     buildHeap();
   }
 
+  // ! Returns true if the priority queue is initialized
+  bool initialized() const {
+    return _initialized;
+  }
+
   // ################# Priority Queue Operations #################
 
   // ! Adjusts the cut weight and the volume of a partition
