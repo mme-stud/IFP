@@ -90,7 +90,8 @@ public:
     { }
   
   // ! Initializes the priority queue with the partitions of the hypergraph
-  void initialize(const PartitionedHypergraph& hg) {
+  void initialize(const PartitionedHypergraph& hg, bool synchronized = false) {
+    lock(synchronized);
     ASSERT(!_initialized);
     _initialized = true;
     _total_volume = hg.totalVolume();
@@ -108,6 +109,7 @@ public:
       SuperPQ::positions[p] = p;
     });
     buildHeap();
+    unlock(synchronized);
   }
 
   // ! Returns true if the priority queue is initialized
@@ -116,12 +118,14 @@ public:
   }
 
   // ! Reset the priority queue to the uninitialized state
-  void reset() {
+  void reset(bool synchronized = false) {
+    lock(synchronized);
     SuperPQ::clear();
     _total_volume = -1;
     _size = 0;
     _complement_val_bits.clear();
     _initialized = false;
+    unlock(synchronized);
   }
 
   // ################# Priority Queue Operations #################
