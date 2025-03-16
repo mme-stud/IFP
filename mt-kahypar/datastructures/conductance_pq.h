@@ -70,10 +70,6 @@ template <typename PartitionedHypergraph = Mandatory>
 class ConductancePriorityQueue : 
       protected ExclusiveHandleHeap<MaxHeap<HypernodeID, ConductanceFraction>> {
 private:
-  using HypernodeID = typename HypernumHypernodesgraph::HypernodeID;
-  using HyperedgeID = typename Hypergraph::HyperedgeID;
-  using PartitionID = typename Hypergraph::PartitionID;
-  using HyperedgeWeight = typename Hypergraph::HyperedgeWeight;
   using SuperPQ = ExclusiveHandleHeap<MaxHeap<HypernodeID, ConductanceFraction>>;
 public:
   ConductancePriorityQueue() :
@@ -174,35 +170,18 @@ public:
     return f;
   }
 
-  // ! Get the conductance fraction of the partition with the highest conductance
-  ConductanceFraction topFraction(bool syncronized = false) const {
-    lock(syncronized);
-    ConductanceFraction f = SuperPQ::topKey();
-    unlock(syncronized);
-    return f;
-  }
-  // ! Get the conductance fraction of the partition with the second highest conductance
-  ConductanceFraction secondTopFraction(bool syncronized = false) const {
-    ASSERT(SuperPQ::size() > 1);
-    lock(syncronized);
-    ConductanceFraction f =  SuperPQ::heap[1].value;
-    // ConductancePriorityQueue is a MaxHeap => binary tree
-    if (SuperPQ::size() > 2) {
-      f = std::max(f, SuperPQ::heap[2].value);
+  // ! Get the top three partitions (unsorted)
+  // ! (Works only for a binary heap)
+  vec<PartitionID> topThree(bool synchronized = false) const {
+    lock(synchronized);
+    vec<PartitionID> topThree(3, kInvalidPartition);
+    for (size_t i = 0; i < 3 && i < _size; ++i) {
+      topThree[i] = SuperPQ::heap[i].id;
     }
-    unlock(syncronized);
-    return f;
+    unlock(synchronized);
+    return topThree;
   }
-
-  double_t topConductance(bool syncronized = false) const {
-    ConductanceFraction f = topFraction(synchronized);
-    return f.value();
-  }
-  double_t secondTopCondunctance(bool syncronized = false) const {
-    ConductanceFraction f = secondTopFraction(synchronized);
-    return f.value();
-  }
-
+  
   bool empty() const {
     bool e = SuperPQ::empty();
     return e;
@@ -263,6 +242,35 @@ private:
     SuperPQ::deleteTop();
     _size--;
     unlock(synchronized);
+  }
+
+  // ! Get the conductance fraction of the partition with the highest conductance
+  ConductanceFraction topFraction(bool syncronized = false) const {
+    lock(syncronized);
+    ConductanceFraction f = SuperPQ::topKey();
+    unlock(syncronized);
+    return f;
+  }
+  // ! Get the conductance fraction of the partition with the second highest conductance
+  ConductanceFraction secondTopFraction(bool syncronized = false) const {
+    ASSERT(SuperPQ::size() > 1);
+    lock(syncronized);
+    ConductanceFraction f =  SuperPQ::heap[1].value;
+    // ConductancePriorityQueue is a MaxHeap => binary tree
+    if (SuperPQ::size() > 2) {
+      f = std::max(f, SuperPQ::heap[2].value);
+    }
+    unlock(syncronized);
+    return f;
+  }
+
+  double_t topConductance(bool syncronized = false) const {
+    ConductanceFraction f = topFraction(synchronized);
+    return f.value();
+  }
+  double_t secondTopCondunctance(bool syncronized = false) const {
+    ConductanceFraction f = secondTopFraction(synchronized);
+    return f.value();
   }
 
   // ################# MUTEX OPERATIONS FOR CHANGING PQ #################
