@@ -62,9 +62,10 @@ using ConductanceFraction = Fraction<HyperedgeWeight>;
 
 
 /**
- * @brief Priority Queue for partitions based on their conductance
- * All write operations are synchronized
- * All read operations aren't synchronized per default (use the synchronized flag to synchronize)
+ * @brief Priority Queue for partitions based on their conductance.
+ * 
+ * All write operations are synchronized.
+ * All read operations aren't synchronized per default (use the synchronized flag to synchronize).
  */
 template <typename PartitionedHypergraph = Mandatory>
 class ConductancePriorityQueue : 
@@ -112,6 +113,15 @@ public:
   // ! Returns true if the priority queue is initialized
   bool initialized() const {
     return _initialized;
+  }
+
+  // ! Reset the priority queue to the uninitialized state
+  void reset() {
+    SuperPQ::clear();
+    _total_volume = -1;
+    _size = 0;
+    _complement_val_bits.clear();
+    _initialized = false;
   }
 
   // ################# Priority Queue Operations #################
@@ -220,15 +230,6 @@ private:
     unlock(synchronized);
   }
 
-  // ! not sure if this is useful
-  void clear(bool synchronized = true) {
-    lock(synchronized);
-    SuperPQ::clear();
-    _total_volume = -1;
-    _size = 0;
-    _complement_val_bits.clear();
-    unlock(synchronized);
-  }
 
   // ! not sure if this is useful
   void deleteTop(bool synchronized = true) {
