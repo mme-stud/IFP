@@ -128,6 +128,22 @@ public:
     unlock(synchronized);
   }
 
+// ! Updates the priority queue after global changes in partition
+void globalUpdate(const PartitionedHypergraph& hg, bool synchronized = false) {
+  lock(synchronized);
+  ASSERT(_initialized && _size == hg.k());
+  _total_volume = hg.totalVolume();
+  tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
+    HyperedgeWeight cut_weight = hg.partCutWeight(p);
+    HyperedgeWeight volume = hg.partVolume(p);
+    _complement_val_bits[p] = (volume > _total_volume - volume);
+    ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
+    SuperPQ.heap[p].value = f;
+  });
+  buildHeap();
+  unlock(synchronized);
+}
+
   // ################# Priority Queue Operations #################
 
   // ! Adjusts the cut weight and the volume of a partition
