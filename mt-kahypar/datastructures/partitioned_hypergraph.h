@@ -38,6 +38,7 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/connectivity_info.h"
 #include "mt-kahypar/datastructures/streaming_vector.h"
+#include "mt-kahypar/datastructures/conductance_pq.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/parallel/stl/thread_locals.h"
@@ -107,6 +108,7 @@ class PartitionedHypergraph {
     _k(k),
     _hg(&hypergraph),
     _target_graph(nullptr),
+    _conductance_pq(),
     _part_weights(k, CAtomic<HypernodeWeight>(0)),
     _part_volumes(k, CAtomic<HypernodeWeight>(0)),
     _part_cut_weights(k, CAtomic<HypernodeWeight>(0)),
@@ -126,6 +128,7 @@ class PartitionedHypergraph {
     _k(k),
     _hg(&hypergraph),
     _target_graph(nullptr),
+    _conductance_pq(),
     _part_weights(k, CAtomic<HypernodeWeight>(0)),
     _part_volumes(k, CAtomic<HypernodeWeight>(0)),
     _part_cut_weights(k, CAtomic<HypernodeWeight>(0)),
@@ -168,6 +171,10 @@ class PartitionedHypergraph {
       for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
     }, [&] {
       for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
+    }, [&] {
+      if (_conductance_pq.initialized()) {
+        _conductance_pq.reset();
+      }
     });
   }
 
@@ -250,6 +257,28 @@ class PartitionedHypergraph {
 
   const TargetGraph* targetGraph() const {
     return _target_graph;
+  }
+
+  // ##################### Conductance  ######################
+
+  // ! Returns the conductance of a block
+  double_t conductance(const PartitionID p) const {
+    ASSERT(p != kInvalidPartition && p < _k);
+    const HypernodeWeight cut_weight = partCutWeight(p);
+    const HypernodeWeight volume = partVolume(p);
+    if (volume == 0) {
+      return -1;
+    }
+    return static_cast<double_t>(cut_weight) / static_cast<double_t>(volume);
+  }
+
+  // ! Enables the conductance priority queue
+  void enableConductancePriorityQueue() {
+    _conductance_pq.initialize(*this);
+  }
+
+  bool hasConductancePriorityQueue() const {
+    return _conductance_pq.initialized();
   }
 
   // ####################### Iterators #######################
@@ -465,6 +494,13 @@ class PartitionedHypergraph {
       incrementVolumeOfBlock(part_id, nodeWeightedDegree(memento.u) + nodeWeightedDegree(memento.v));
     });
 
+    // update _conductance_pq if enabled  
+    // after this the gain cache should be updated (?)
+    // => ConductanceGainCache::initializes_gain_cache_entry_after_batch_uncontractions = true ?
+    if (hasConductancePriorityQueue()) {
+      _conductance_pq.globalUpdate(*this);
+    }
+
     if constexpr ( GainCache::initializes_gain_cache_entry_after_batch_uncontractions ) {
       tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
         const Memento& memento = batch[i];
@@ -521,6 +557,11 @@ class PartitionedHypergraph {
         }
       }
     }
+
+    // update _conductance_pq for changed partitions (if enabled)
+    if (hasConductancePriorityQueue()) {
+      _conductance_pq.globalUpdate(*this, he);
+    }
   }
 
   /**
@@ -530,6 +571,9 @@ class PartitionedHypergraph {
   template<typename GainCache>
   void restoreSinglePinAndParallelNets(const vec<typename Hypergraph::ParallelHyperedge>& hes_to_restore,
                                        GainCache& gain_cache) {
+    // needed decide if conductance_pq should be updated
+    HyperedgeWeight old_total_volume = totalVolume();
+
     // Restore hyperedges in hypergraph
     _hg->restoreSinglePinAndParallelNets(hes_to_restore);
 
@@ -581,6 +625,17 @@ class PartitionedHypergraph {
         }());
       }
     });
+
+    // update _conductance_pq (if enabled)
+    if (hasConductancePriorityQueue()) {
+      /*  Only if the total volume of the hypergraph has changed, 
+       * we need to update the conductance priority queue
+       * (<=> if at least one single-pin net was restored).
+       */
+      if (totalVolume() != old_total_volume) {
+        _conductance_pq.globalUpdate(*this);
+      }
+    }
   }
 
   // ####################### Partition Information #######################
@@ -664,6 +719,11 @@ class PartitionedHypergraph {
       // update _part_volumes
       decrementVolumeOfBlock(from, nodeWeightedDegree(u));
       incrementVolumeOfBlock(to, nodeWeightedDegree(u));
+      // update _conductance_pq if enabled
+      if (hasConductancePriorityQueue()) {
+        _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from));
+        _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to));
+      }
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
@@ -818,6 +878,9 @@ class PartitionedHypergraph {
   void resetPartition() {
     _part_ids.assign(_part_ids.size(), kInvalidPartition, false);
     for (auto& x : _part_weights) x.store(0, std::memory_order_relaxed);
+    for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
+    for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
+    _conductance_pq.reset();
 
     // Reset pin count in part and connectivity set
     _con_info.reset(false);
@@ -860,6 +923,14 @@ class PartitionedHypergraph {
         }
       }
     }
+  }
+
+  // ! Only for testing
+  bool checkConductancePQ() {
+    if (hasConductancePriorityQueue()) {
+      return _conductance_pq.check(*this);
+    }
+    return true;
   }
 
   // ! Only for testing
@@ -963,6 +1034,7 @@ class PartitionedHypergraph {
 
   // ####################### Memory Consumption #######################
 
+  // ! No info about the memory consumption of the conductance priority queue
   void memoryConsumption(utils::MemoryTreeNode* parent) const {
     ASSERT(parent);
 
@@ -1446,6 +1518,9 @@ class PartitionedHypergraph {
 
   // ! Target graph on which this hypergraph is mapped
   const TargetGraph* _target_graph;
+
+  // ! Conductance PQ (needs to be enabled)
+  ConductancePriorityQueue<Self> _conductance_pq;
 
   // ! Weight and information for all blocks.
   vec< CAtomic<HypernodeWeight> > _part_weights;
