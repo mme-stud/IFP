@@ -145,7 +145,7 @@ public:
   }
 
   // ! Checks if the priority queue is correct with respect to the hypergraph
-  bool check(const PartitionedGraph& hg, bool synchronized = false) {
+  bool check(const PartitionedHypergraph& hg, bool synchronized = false) {
     ASSERT(_initialized && _size == hg.k());
     lock(synchronized);
     bool correct = true;
