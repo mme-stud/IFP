@@ -69,9 +69,9 @@ using ConductanceFraction = Fraction<HyperedgeWeight>;
  */
 template <typename PartitionedHypergraph = Mandatory>
 class ConductancePriorityQueue : 
-      protected ExclusiveHandleHeap<MaxHeap<PartitionID, ConductanceFraction>> {
+      protected ExclusiveHandleHeap<MaxHeap<ConductanceFraction, PartitionID>> {
 private:
-  using SuperPQ = ExclusiveHandleHeap<MaxHeap<PartitionID, ConductanceFraction>>;
+  using SuperPQ = ExclusiveHandleHeap<MaxHeap<ConductanceFraction, PartitionID>>;
 public:
   ConductancePriorityQueue() :
     SuperPQ(0),
@@ -138,7 +138,7 @@ public:
       HyperedgeWeight volume = hg.partVolume(p);
       _complement_val_bits[p] = (volume > _total_volume - volume);
       ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
-      SuperPQ.heap[p].value = f;
+      SuperPQ::heap[p].key = f;
     });
     buildHeap();
     unlock(synchronized);
@@ -157,7 +157,7 @@ public:
       ConductanceFraction f = SuperPQ::getKey(p);
       HyperedgeWeight cut_weight = f.getNumerator();
       HyperedgeWeight volume = f.getDenominator();
-      if (complement_val_bits[p]) {
+      if (_complement_val_bits[p]) {
         volume = _total_volume - volume;
       }
       if (volume != hg.partVolume(p)) {
@@ -193,7 +193,7 @@ public:
     for (PartitionID p = 0; p < _size; ++p) {
       ConductanceFraction f = SuperPQ::getKey(p);
       HyperedgeWeight volume = f.getDenominator();
-      if (complement_val_bits[p]) {
+      if (_complement_val_bits[p]) {
         volume = _total_volume - volume;
       }
       f.setDenominator(std::min(volume, new_total_volume - volume));
@@ -204,22 +204,22 @@ public:
   }
 
   // ! Get the partition with the highest conductance
-  PartitionID top(bool syncronized = false) const {
-    lock(syncronized);
+  PartitionID top(bool synchronized = false) const {
+    lock(synchronized);
     PartitionID p = SuperPQ::top();
-    unlock(syncronized);
+    unlock(synchronized);
     return p;
   }
   // ! Get the partition with the second highest conductance
-  PartitionID secondTop(bool syncronized = false) const {
+  PartitionID secondTop(bool synchronized = false) const {
     ASSERT(SuperPQ::size() > 1);
-    lock(syncronized);
+    lock(synchronized);
     PartitionID f =  SuperPQ::heap[1].id;
     // ConductancePriorityQueue is a MaxHeap => binary tree
-    if (size() > 2 && SuperPQ::heap[1].value < SuperPQ::heap[2].value) {
+    if (size() > 2 && SuperPQ::heap[1].key < SuperPQ::heap[2].key) {
       f = SuperPQ::heap[2].id;
     }
-    unlock(syncronized);
+    unlock(synchronized);
     return f;
   }
 
@@ -241,8 +241,8 @@ public:
   }
 
   size_t size() const {
-    ASSERT(_k == SuperPQ::size());
-    return _k;
+    ASSERT(_size == SuperPQ::size());
+    return _size;
   }
 
 private:
@@ -250,7 +250,7 @@ private:
   // ! no built in lock
   void buildHeap() {
     ASSERT(_size == SuperPQ::size());
-    if SuperPQ::isHeap() return;
+    if (SuperPQ::isHeap()) return;
     for (PartitionID p = _size - 1; p >= 0; --p) {
       SuperPQ::siftDown(p);
     }
@@ -289,37 +289,37 @@ private:
   }
 
   // ! Get the conductance fraction of the partition with the highest conductance
-  ConductanceFraction topFraction(bool syncronized = false) const {
-    lock(syncronized);
+  ConductanceFraction topFraction(bool synchronized = false) const {
+    lock(synchronized);
     ConductanceFraction f = SuperPQ::topKey();
-    unlock(syncronized);
+    unlock(synchronized);
     return f;
   }
   // ! Get the conductance fraction of the partition with the second highest conductance
-  ConductanceFraction secondTopFraction(bool syncronized = false) const {
+  ConductanceFraction secondTopFraction(bool synchronized = false) const {
     ASSERT(SuperPQ::size() > 1);
-    lock(syncronized);
-    ConductanceFraction f =  SuperPQ::heap[1].value;
+    lock(synchronized);
+    ConductanceFraction f =  SuperPQ::heap[1].key;
     // ConductancePriorityQueue is a MaxHeap => binary tree
     if (SuperPQ::size() > 2) {
-      f = std::max(f, SuperPQ::heap[2].value);
+      f = std::max(f, SuperPQ::heap[2].key);
     }
-    unlock(syncronized);
+    unlock(synchronized);
     return f;
   }
 
-  double_t topConductance(bool syncronized = false) const {
+  double_t topConductance(bool synchronized = false) const {
     ConductanceFraction f = topFraction(synchronized);
     return f.value();
   }
-  double_t secondTopCondunctance(bool syncronized = false) const {
+  double_t secondTopCondunctance(bool synchronized = false) const {
     ConductanceFraction f = secondTopFraction(synchronized);
     return f.value();
   }
 
   // ! Get the conductance fraction of a partition
   // (better use PartitionedHypergraph getPartCutWeight and getPartVolume)
-  ConductanceFraction getFraction(const PartitionID p, bool syncronized = false) const {
+  ConductanceFraction getFraction(const PartitionID p, bool synchronized = false) const {
     lock(synchronized);
     ConductanceFraction f = SuperPQ::getKey(p);
     unlock(synchronized);
@@ -337,11 +337,11 @@ private:
   // ################# MUTEX OPERATIONS FOR CHANGING PQ #################
 
   void lock(bool synchronized) {
-    if synchronized _pq_lock.lock();
+    if (synchronized) _pq_lock.lock();
   }
 
   void unlock(bool synchronized) {
-    if synchronized _pq_lock.unlock();
+    if (synchronized) _pq_lock.unlock();
   }
 
   // ################# MEMBER VARIABLES #################
