@@ -334,6 +334,36 @@ public:
       this->setHandle(this->handles.data(), new_n);
     }
   }
+
+  // ################ MOVE, COPY, = OPERATORS ################
+  // needed for assigning / moving PartitionedHypergraph
+
+  ExclusiveHandleHeap& operator=(const ExclusiveHandleHeap& other) {
+    HandlesPBase::operator=(other);
+    HeapT::comp = other.comp;
+    HeapT::heap = other.heap;
+    HeapT::positions = this->handles.data();
+    HeapT::positions_size = this->handles.size();
+    return *this;
+  }
+  ExclusiveHandleHeap& operator=(ExclusiveHandleHeap&& other) {
+    HandlesPBase::operator=(other);
+    HeapT::comp = std::move(other.comp);
+    HeapT::heap = std::move(other.heap);
+    HeapT::positions = this->handles.data();
+    HeapT::positions_size = this->handles.size();
+    return *this;
+  }
+  
+  // move constructor
+  ExclusiveHandleHeap(ExclusiveHandleHeap&& other) : 
+    HandlesPBase(other),
+    HeapT(nullptr, 0) { 
+    HeapT::comp = std::move(other.comp);
+    HeapT::heap = std::move(other.heap);
+    HeapT::positions = this->handles.data();
+    HeapT::positions_size = this->handles.size();
+  }
 };
 
 template<typename KeyT, typename IdT>
