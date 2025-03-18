@@ -1425,25 +1425,25 @@ class PartitionedHypergraph {
     sync_update.edge_size = edgeSize(he);
     _pin_count_update_ownership[he].lock();
     notify_func(sync_update);
-    const PartitionID old_pins_in_from_part = pinCountInPart(he, from);
+    const HypernodeID old_pins_in_from_part = pinCountInPart(he, from);
     sync_update.pin_count_in_from_part_after = decrementPinCountOfBlock(he, from);
     sync_update.pin_count_in_to_part_after = incrementPinCountOfBlock(he, to);
     sync_update.connectivity_set_after = hasTargetGraph() ? &deepCopyOfConnectivitySet(he) : nullptr;
     sync_update.pin_counts_after = hasTargetGraph() ? &_con_info.pinCountSnapshot(he) : nullptr;
-    const PartitionID new_pins_in_to_part = pinCountInPart(he, to);
+    const HypernodeID new_pins_in_to_part = pinCountInPart(he, to);
     // update _part_cut_weights for from part
-    if (1 == old_pins_in_from_part && old_pins_in_from_part < edgeSize(he)) {
+    if (HypernodeID(1) == old_pins_in_from_part && old_pins_in_from_part < edgeSize(he)) {
       // he was a cutting edge for part from, but not anymore
       _part_cut_weights[from].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
-    } else if (1 < old_pins_in_from_part && old_pins_in_from_part == edgeSize(he)) {
+    } else if (HypernodeID(1) < old_pins_in_from_part && old_pins_in_from_part == edgeSize(he)) {
       // he was not a cutting edge for part from, but now is
       _part_cut_weights[from].fetch_add(edgeWeight(he), std::memory_order_relaxed);
     }
     // update _part_cut_weights for to part
-    if (1 == new_pins_in_to_part && new_pins_in_to_part < edgeSize(he)) {
+    if (HypernodeID(1) == new_pins_in_to_part && new_pins_in_to_part < edgeSize(he)) {
       // he was a cutting edge for part to, but not anymore
       _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
-    } else if (1 < new_pins_in_to_part && new_pins_in_to_part == edgeSize(he)) {
+    } else if (HypernodeID(1) < new_pins_in_to_part && new_pins_in_to_part == edgeSize(he)) {
       // he was not a cutting edge for part to, but now is
       _part_cut_weights[to].fetch_add(edgeWeight(he), std::memory_order_relaxed);
     }
