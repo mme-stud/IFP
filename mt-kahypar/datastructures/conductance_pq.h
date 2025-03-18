@@ -15,30 +15,47 @@ namespace mt_kahypar {
 namespace ds {
 
 template <typename Numerator, typename Denominator = Numerator>
-class Fraction {
+class NonnegativeFraction {
 private:
   Numerator numerator;
   Denominator denominator;
 public:
-  Fraction() :
+  NonnegativeFraction() :
     numerator(0),
     denominator(1) { }
 
-  Fraction(const Numerator& n, const Denominator& d) :
+  NonnegativeFraction(const Numerator& n, const Denominator& d) :
     numerator(n),
-    denominator(d) { }
+    denominator(d) { 
+      ASSERT(d > 0);
+      ASSERT(n > 0);
+    }
 
-  Fraction(const Fraction& other) :
+  NonnegativeFraction(const NonnegativeFraction& other) :
     numerator(other.numerator),
     denominator(other.denominator) { }
 
-  bool operator< (const Fraction& other) const {
+  bool operator< (const NonnegativeFraction& other) const {
     size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
     size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
     return lhs < rhs;
   }
 
+  bool operator== (const NonnegativeFraction& other) const {
+    size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
+    size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
+    return lhs == rhs;
+  }
+
+  bool operator> (const NonnegativeFraction& other) const {
+    size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
+    size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
+    return lhs > rhs;
+  }
+
+  // Numerator must be non-negative 
   void setNumerator(const Numerator& n) {
+    ASSERT(n >= 0)
     numerator = n;
   }
   // ! Denominator must be greater than 0
@@ -58,7 +75,7 @@ public:
   }
 };
 
-using ConductanceFraction = Fraction<HyperedgeWeight>;
+using ConductanceFraction = NonnegativeFraction<HyperedgeWeight>;
 
 
 /**
