@@ -534,7 +534,7 @@ class PartitionedHypergraph {
     // Aggregate local additional _part_volumes for each block
     for ( PartitionID block = 0; block < _k; ++block ) {
       HyperedgeWeight add_part_volume = 0;
-      for ( const vec<HypernodeID>& local_add_part_volumes : ets_add_part_volumes) {
+      for ( const vec<HyperedgeWeight>& local_add_part_volumes : ets_add_part_volumes) {
         add_part_volume += local_add_part_volumes[block];
       }
       incrementVolumeOfBlock(block, add_part_volume);
@@ -552,8 +552,8 @@ class PartitionedHypergraph {
         _con_info.setPinCountInPart(he, block, pin_count_in_part);
         _con_info.addBlock(he, block);
         // update _part_cut_weights
-        if (pinCountInPart < edgeSize(he)) {
-          increaseCutWeight(block, edgeWeight(he));
+        if (pin_count_in_part < edgeSize(he)) {
+          incrementCutWeightOfBlock(block, edgeWeight(he));
         }
       }
     }
