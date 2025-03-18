@@ -419,9 +419,9 @@ class StaticHypergraph {
     _total_volume(0),
     _hypernodes(),
     _incident_nets(),
-    _weighted_degrees(),
     _hyperedges(),
     _incidence_array(),
+    _weighted_degrees(),
     _community_ids(0),
     _fixed_vertices(),
     _tmp_contraction_buffer(nullptr) { }
@@ -442,9 +442,9 @@ class StaticHypergraph {
     _total_volume(other._total_volume),
     _hypernodes(std::move(other._hypernodes)),
     _incident_nets(std::move(other._incident_nets)),
-    _weighted_degrees(std::move(other._weighted_degrees)),
     _hyperedges(std::move(other._hyperedges)),
     _incidence_array(std::move(other._incidence_array)),
+    _weighted_degrees(std::move(other._weighted_degrees)),
     _community_ids(std::move(other._community_ids)),
     _fixed_vertices(std::move(other._fixed_vertices)),
     _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)) {
@@ -624,7 +624,9 @@ class StaticHypergraph {
   
     // ! Decrease weighted degree of a hypernode
     // ! (Not supported)
-    void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
+    void decreaseNodeWeightedDegree(const HypernodeID u, const HyperedgeWeight w) const {
+      unused(u);
+      unused(w);
       throw UnsupportedOperationException(
         "decreaseNodeWeightedDegree(u, w) is not supported in static hypergraph");
     }
