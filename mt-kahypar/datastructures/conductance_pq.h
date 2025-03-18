@@ -35,6 +35,12 @@ public:
     numerator(other.numerator),
     denominator(other.denominator) { }
 
+  NonnegativeFraction& operator= (const NonnegativeFraction& other) {
+    numerator = other.numerator;
+    denominator = other.denominator;
+    return *this;
+  }
+
   bool operator< (const NonnegativeFraction& other) const {
     size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
     size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
@@ -60,7 +66,7 @@ public:
 
   // Numerator must be non-negative 
   void setNumerator(const Numerator& n) {
-    ASSERT(n >= 0)
+    ASSERT(n >= 0);
     numerator = n;
   }
   // ! Denominator must be greater than 0
