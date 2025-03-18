@@ -44,7 +44,8 @@
 #include "mt-kahypar/parallel/parallel_prefix_sum.h"
 #include "mt-kahypar/utils/range.h"
 
-#include "mt-kahypar/datastructures/dynamic_hypergraph.h" // to calculate weighted_degrees
+// #include "mt-kahypar/datastructures/dynamic_hypergraph.h" // to calculate weighted_degrees
+class DynamicHypergraph;
 
 namespace mt_kahypar {
 namespace ds {

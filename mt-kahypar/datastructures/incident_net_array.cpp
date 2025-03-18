@@ -29,6 +29,8 @@
 
 #include "mt-kahypar/parallel/parallel_prefix_sum.h"
 
+#include "mt-kahypar/datastructures/dynamic_hypergraph.h"
+
 namespace mt_kahypar {
 namespace ds {
 
