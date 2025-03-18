@@ -31,16 +31,6 @@ public:
       ASSERT(n > 0);
     }
 
-  NonnegativeFraction(const NonnegativeFraction& other) :
-    numerator(other.numerator),
-    denominator(other.denominator) { }
-
-  NonnegativeFraction& operator= (const NonnegativeFraction& other) {
-    numerator = other.numerator;
-    denominator = other.denominator;
-    return *this;
-  }
-
   bool operator< (const NonnegativeFraction& other) const {
     size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
     size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
@@ -107,14 +97,6 @@ public:
     _size(0),
     _complement_val_bits(),
     _initialized(false)
-    { }
-  
-  ConductancePriorityQueue(const ConductancePriorityQueue& other) :
-    SuperPQ(other),
-    _total_volume(other._total_volume),
-    _size(other._size),
-    _complement_val_bits(other._complement_val_bits),
-    _initialized(other._initialized)
     { }
   
   // ! Initializes the priority queue with the partitions of the hypergraph
@@ -270,7 +252,7 @@ public:
   }
 
   size_t size() const {
-    ASSERT(_size == SuperPQ::size());
+    ASSERT(static_cast<PosT>(_size) == SuperPQ::size());
     return _size;
   }
 
@@ -278,7 +260,7 @@ private:
   // ! Builds the heap in O(_size) time
   // ! no built in lock
   void buildHeap() {
-    ASSERT(_size == SuperPQ::size());
+    ASSERT(static_cast<PosT>(_size) == SuperPQ::size());
     if (SuperPQ::isHeap()) return;
     for (PartitionID p = _size - 1; p >= 0; --p) {
       SuperPQ::siftDown(p);
