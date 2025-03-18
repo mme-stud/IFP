@@ -467,6 +467,7 @@ class StaticHypergraph {
     _incident_nets = std::move(other._incident_nets);
     _hyperedges = std::move(other._hyperedges);
     _incidence_array = std::move(other._incidence_array);
+    _weighted_degrees = std::move(other._weighted_degrees);
     _community_ids = std::move(other._community_ids);
     _fixed_vertices = std::move(other._fixed_vertices);
     _fixed_vertices.setHypergraph(this);
