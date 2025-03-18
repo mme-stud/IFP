@@ -127,7 +127,8 @@ public:
       HyperedgeWeight volume = hg.partVolume(p);
       _complement_val_bits[p] = (volume > _total_volume - volume);
       ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
-      SuperPQ::heap[p] = {p, f};
+      SuperPQ::heap[p].id = p; 
+      SuperPQ::heap[p].key = f;
       SuperPQ::positions[p] = p;
     });
     buildHeap();
@@ -160,7 +161,7 @@ public:
       HyperedgeWeight volume = hg.partVolume(p);
       _complement_val_bits[p] = (volume > _total_volume - volume);
       ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
-      SuperPQ::heap[p].key = f;
+      SuperPQ::heap[SuperPQ::positions[p]].key = f;
     });
     buildHeap();
     unlock(synchronized);
