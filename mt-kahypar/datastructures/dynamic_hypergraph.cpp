@@ -73,8 +73,9 @@ void DynamicHypergraph::updateTotalVolume(parallel_tag_t) {
       HypernodeWeight volume = init;
       for (HyperedgeID he = range.begin(); he < range.end(); ++he) {
         if ( edgeIsEnabled(he) ) {
-          volume += this->_hyperedges[he].weight() * this->_hyperedges[he].size();
-          // TODO: Why not "edgeWeight(he) * edgeSize(he);" ?
+          volume += edgeWeight(he) * edgeSize(he);
+          // this->_hyperedges[he].weight() * this->_hyperedges[he].size();
+          // DONE: Why not "edgeWeight(he) * edgeSize(he);" ?
         }
       }
       return volume;
