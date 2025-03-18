@@ -451,8 +451,7 @@ namespace mt_kahypar::ds {
           const HyperedgeID he = tmp_incident_nets[pos];
           if ( he_mapping.value(he) > 0 /* hyperedge is valid */ ) {
             tmp_incident_nets[pos] = he_mapping[he];
-//            hypergraph._weighted_degrees[id] += hypergraph._hyperedges[he_mapping[he]].weight();
-              hypergraph._weighted_degrees[id] += tmp_hyperedges[he].weight();
+            hypergraph._weighted_degrees[id] += hypergraph._hyperedges[he_mapping[he]].weight();
           } else {
             std::swap(tmp_incident_nets[pos--], tmp_incident_nets[--incident_nets_end]);
           }
