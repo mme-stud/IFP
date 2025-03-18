@@ -53,6 +53,11 @@ public:
     return lhs > rhs;
   }
 
+  // operator<< 
+  friend std::ostream& operator<< (std::ostream& s, const NonnegativeFraction& f) {
+    return s << f.numerator << " / " << f.denominator;
+  }
+
   // Numerator must be non-negative 
   void setNumerator(const Numerator& n) {
     ASSERT(n >= 0)
