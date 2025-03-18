@@ -73,6 +73,28 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::steiner_tree> {
   }
 };
 
+/*
+template<typename PartitionedHypergraph>
+struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
+  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+    ASSERT(phg.hasTargetGraph());
+    const TargetGraph* target_graph = phg.targetGraph();
+    const HyperedgeWeight distance = target_graph->distance(phg.shallowCopyOfConnectivitySet(he));
+    return distance * phg.edgeWeight(he);
+  }
+};
+
+template<typename PartitionedHypergraph>
+struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
+  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+    ASSERT(phg.hasTargetGraph());
+    const TargetGraph* target_graph = phg.targetGraph();
+    const HyperedgeWeight distance = target_graph->distance(phg.shallowCopyOfConnectivitySet(he));
+    return distance * phg.edgeWeight(he);
+  }
+};
+*/
+
 template<Objective objective, typename PartitionedHypergraph>
 HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
   ObjectiveFunction<PartitionedHypergraph, objective> func;
