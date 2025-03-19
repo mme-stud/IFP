@@ -260,9 +260,9 @@ class IncidentNetArray {
   void restoreIncidentNets(const HypernodeID u,
                           bool update_weighted_degrees = true);
 
-  IncidentNetArray copy(parallel_tag_t) const;
+  IncidentNetArray copy(parallel_tag_t, DynamicHypergraph* _hypergraph_ptr = nullptr) const;
 
-  IncidentNetArray copy() const;
+  IncidentNetArray copy(DynamicHypergraph* _hypergraph_ptr = nullptr) const;
 
   void reset();
 

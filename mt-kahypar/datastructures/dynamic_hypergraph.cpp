@@ -303,6 +303,7 @@ parallel::scalable_vector<DynamicHypergraph::ParallelHyperedge> DynamicHypergrap
         ContractedHyperedgeInformation { he, footprint, edge_size, true });
     } else {
       // update total volume (removed single-pin net)
+      ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "should be enabled to use edgeWeight(he)");
       _total_volume -= edgeWeight(he);
       // manually update weighted degree of the single pin
       const HypernodeID u = _incidence_array[hyperedge(he).firstEntry()];
@@ -456,7 +457,7 @@ DynamicHypergraph DynamicHypergraph::copy(parallel_tag_t) const {
       sizeof(Hypernode) * _hypernodes.size());
   }, [&] {
     tbb::parallel_invoke([&] {
-      hypergraph._incident_nets = _incident_nets.copy(parallel_tag_t());
+      hypergraph._incident_nets = _incident_nets.copy(parallel_tag_t(), &hypergraph);
     }, [&] {
       hypergraph._acquired_hns.resize(_acquired_hns.size());
       tbb::parallel_for(ID(0), _num_hypernodes, [&](const HypernodeID& hn) {
@@ -513,7 +514,7 @@ DynamicHypergraph DynamicHypergraph::copy() const {
   hypergraph._hypernodes.resize(_hypernodes.size());
   memcpy(hypergraph._hypernodes.data(), _hypernodes.data(),
     sizeof(Hypernode) * _hypernodes.size());
-  hypergraph._incident_nets = _incident_nets.copy();
+  hypergraph._incident_nets = _incident_nets.copy(&hypergraph);
   hypergraph._acquired_hns.resize(_num_hypernodes);
   for ( HypernodeID hn = 0; hn < _num_hypernodes; ++hn ) {
     hypergraph._acquired_hns[hn] = _acquired_hns[hn];

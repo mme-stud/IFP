@@ -187,6 +187,7 @@ void IncidentNetArray::removeIncidentNets(const HypernodeID u,
         --head->size;
         --head_u->degree;
         if (update_weighted_degrees && _hypergraph_ptr) { // _hypergraph_ptr can be nullptr!!!
+          ASSERT(_hypergraph_ptr -> edgeIsEnabled(current_entry->e), "Hyperedge" << current_entry->e << "should be enabled to use edgeWeight(he)");
           head_u->weighted_degree -= _hypergraph_ptr->edgeWeight(current_entry->e);
         }
       } else {
@@ -250,6 +251,7 @@ void IncidentNetArray::restoreIncidentNets(const HypernodeID u,
         ++head->size;
         ++head_u->degree;
         if (update_weighted_degrees && _hypergraph_ptr) { // _hypergraph_ptr can be nullptr!!!
+          ASSERT(_hypergraph_ptr->edgeIsEnabled(current_entry->e), "Hyperedge" << current_entry->e << "should be enabled to use edgeWeight(he) in IncidentNetArray::restoreIncidentNets");
           head_u->weighted_degree += _hypergraph_ptr->edgeWeight(current_entry->e);
         }
         case_one_func(current_entry->e);
@@ -277,11 +279,11 @@ void IncidentNetArray::restoreIncidentNets(const HypernodeID u,
   ASSERT(verifyIteratorPointers(u), "Iterator pointers of vertex" << u << "are corrupted");
 }
 
-IncidentNetArray IncidentNetArray::copy(parallel_tag_t) const {
+IncidentNetArray IncidentNetArray::copy(parallel_tag_t, DynamicHypergraph* other_hypergraph_ptr) const {
   IncidentNetArray incident_nets;
   incident_nets._num_hypernodes = _num_hypernodes;
   incident_nets._size_in_bytes = _size_in_bytes;
-  incident_nets._hypergraph_ptr = _hypergraph_ptr;
+  incident_nets._hypergraph_ptr = other_hypergraph_ptr;
 
   tbb::parallel_invoke([&] {
     incident_nets._index_array.resize(_index_array.size());
@@ -295,11 +297,11 @@ IncidentNetArray IncidentNetArray::copy(parallel_tag_t) const {
   return incident_nets;
 }
 
-IncidentNetArray IncidentNetArray::copy() const {
+IncidentNetArray IncidentNetArray::copy(DynamicHypergraph* other_hypergraph_ptr) const {
   IncidentNetArray incident_nets;
   incident_nets._num_hypernodes = _num_hypernodes;
   incident_nets._size_in_bytes = _size_in_bytes;
-  incident_nets._hypergraph_ptr = _hypergraph_ptr;
+  incident_nets._hypergraph_ptr = other_hypergraph_ptr;
   incident_nets._index_array.resize(_index_array.size());
   memcpy(incident_nets._index_array.data(), _index_array.data(),
     sizeof(size_t) * _index_array.size());
