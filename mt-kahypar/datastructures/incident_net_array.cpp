@@ -378,7 +378,7 @@ void IncidentNetArray::removeEmptyIncidentNetList(const HypernodeID u) {
   head->it_prev = u;
 }
 
-void IncidentNetArray::construct(const HyperedgeVector& edge_vector) {
+void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const HyperedgeWeight* hyperedge_weight_ptr) {
   // Accumulate degree of each vertex thread local
   // Weighted degree is also accumulated if _hypergraph_ptr is not nullptr
   const HyperedgeID num_hyperedges = edge_vector.size();
@@ -407,7 +407,13 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector) {
             local_weighted_degree_per_vertex.local();
         for ( const HypernodeID& pin : edge_vector[pos] ) {
           ASSERT(pin < _num_hypernodes, V(pin) << V(_num_hypernodes));
-          weighted_degree_per_vertex[pin] += _hypergraph_ptr->edgeWeight(pos);
+          if (hyperedge_weight_ptr) { // if passed on from construct(..) in DynamicHypergraphFactory
+            // In that case, we should use the passed on hyperedge_weight_ptr,
+            // as the hypergraph is constructed in parallel to its incident net array.
+            weighted_degree_per_vertex[pin] += hyperedge_weight_ptr[pos];
+          } else {
+            weighted_degree_per_vertex[pin] += _hypergraph_ptr->edgeWeight(pos);
+          }
         }
       });
     }

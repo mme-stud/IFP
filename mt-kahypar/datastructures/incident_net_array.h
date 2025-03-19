@@ -168,13 +168,14 @@ class IncidentNetArray {
 
   IncidentNetArray(const HypernodeID num_hypernodes,
                    const HyperedgeVector& edge_vector,
-                   DynamicHypergraph* hypergraph_ptr = nullptr) :
+                   DynamicHypergraph* hypergraph_ptr = nullptr,
+                   const HyperedgeWeight* hyperedge_weight_ptr = nullptr) :
     _num_hypernodes(num_hypernodes),
     _size_in_bytes(0),
     _index_array(),
     _incident_net_array(nullptr),
     _hypergraph_ptr(hypergraph_ptr) {
-    construct(edge_vector);
+    construct(edge_vector, hyperedge_weight_ptr);
   }
 
   // ! Degree of the vertex
@@ -322,7 +323,7 @@ class IncidentNetArray {
 
   void removeEmptyIncidentNetList(const HypernodeID u);
 
-  void construct(const HyperedgeVector& edge_vector);
+  void construct(const HyperedgeVector& edge_vector, const HyperedgeWeight* hyperedge_weight_ptr = nullptr);
 
   bool verifyIteratorPointers(const HypernodeID u) const;
 
