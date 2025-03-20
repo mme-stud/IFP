@@ -277,6 +277,12 @@ class IncidentNetArray {
     return _size_in_bytes + sizeof(size_t) * _index_array.size();
   }
 
+  // ! Adjusts the hypergraph pointer after the incident net array was copied / moved
+  void adjustHypergraphPtr(DynamicHypergraph* hypergraph_ptr) {
+    /// [debug] std::cerr << "adjustHypergraphPtr(hypergraph_ptr)" << std::endl;
+    _hypergraph_ptr = hypergraph_ptr;
+  }
+
  private:
   friend class IncidentNetIterator;
 

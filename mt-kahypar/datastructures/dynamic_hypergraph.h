@@ -466,6 +466,7 @@ class DynamicHypergraph {
       /// [debug] std::cerr << "DynamicHypergraph(DynamicHypergraph&& other)" << std::endl;
     _fixed_vertices.setHypergraph(this);
     _total_volume.store(other._total_volume);
+    _incident_nets.adjustHypergraphPtr(this); // Adjust the pointer to the hypergraph after move
   }
 
   DynamicHypergraph & operator= (DynamicHypergraph&& other) {
@@ -485,6 +486,7 @@ class DynamicHypergraph {
     _hypernodes = std::move(other._hypernodes);
     _contraction_tree = std::move(other._contraction_tree);
     _incident_nets = std::move(other._incident_nets);
+    _incident_nets.adjustHypergraphPtr(this); // Adjust the pointer to the hypergraph after move
     _acquired_hns = std::move(other._acquired_hns);
     _hyperedges = std::move(other._hyperedges);
     _incidence_array = std::move(other._incidence_array);
