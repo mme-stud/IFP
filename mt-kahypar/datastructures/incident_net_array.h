@@ -164,7 +164,9 @@ class IncidentNetArray {
     _size_in_bytes(0),
     _index_array(),
     _incident_net_array(nullptr),
-    _hypergraph_ptr(nullptr) { }
+    _hypergraph_ptr(nullptr) { 
+      /// [debug] std::cerr << "IncidentNetArray() !!!" << std::endl;
+    }
 
   IncidentNetArray(const HypernodeID num_hypernodes,
                    const HyperedgeVector& edge_vector,
@@ -180,18 +182,21 @@ class IncidentNetArray {
 
   // ! Degree of the vertex
   HypernodeID nodeDegree(const HypernodeID u) const {
+    /// [debug] std::cerr << "nodeDegree(u)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return header(u)->degree;
   }
 
   // ! Weighted degree of the vertex
   HyperedgeWeight nodeWeightedDegree(const HypernodeID u) const {
+    /// [debug] std::cerr << "nodeWeightedDegree(u)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return header(u)->weighted_degree;
   }
 
   // ! Decrease weighted degree of the vertex (for updating weighted degrees)
   void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
+    /// [debug] std::cerr << "decreaseNodeWeightedDegree(u, w)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     // header(u)->weighted_degree -= w;
     Header* headerU = reinterpret_cast<Header*>(_incident_net_array.get() + _index_array[u]);
@@ -200,6 +205,7 @@ class IncidentNetArray {
 
   // ! Returns a range to loop over the incident nets of hypernode u.
   IteratorRange<IncidentNetIterator> incidentEdges(const HypernodeID u) const {
+    /// [debug] std::cerr << "incidentEdges(u)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return IteratorRange<IncidentNetIterator>(
       IncidentNetIterator(u, this, UL(0), false),
@@ -209,6 +215,7 @@ class IncidentNetArray {
   // ! Returns a range to loop over the incident nets of hypernode u.
   IteratorRange<IncidentNetIterator> incidentEdges(const HypernodeID u,
                                                    const size_t pos) const {
+    /// [debug] std::cerr << "incidentEdges(u, pos)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return IteratorRange<IncidentNetIterator>(
       IncidentNetIterator(u, this, pos, false),

@@ -43,6 +43,7 @@ namespace ds {
 
 // ! Recomputes the total weight of the hypergraph (parallel)
 void DynamicHypergraph::updateTotalWeight(parallel_tag_t) {
+  /// [debug] std::cerr << "updateTotalWeight(parallel_tag_t)" << std::endl;
   _total_weight = tbb::parallel_reduce(tbb::blocked_range<HypernodeID>(ID(0), _num_hypernodes), 0,
     [this](const tbb::blocked_range<HypernodeID>& range, HypernodeWeight init) {
       HypernodeWeight weight = init;
@@ -57,6 +58,7 @@ void DynamicHypergraph::updateTotalWeight(parallel_tag_t) {
 
 // ! Recomputes the total weight of the hypergraph (sequential)
 void DynamicHypergraph::updateTotalWeight() {
+  /// [debug] std::cerr << "updateTotalWeight()" << std::endl;
   _total_weight = 0;
   for ( const HypernodeID& hn : nodes() ) {
     if ( nodeIsEnabled(hn) ) {
@@ -68,6 +70,7 @@ void DynamicHypergraph::updateTotalWeight() {
 
 // ! Recomputes the total volume of the hypergraph (parallel)
 void DynamicHypergraph::updateTotalVolume(parallel_tag_t) {
+  /// [debug] std::cerr << "updateTotalVolume(parallel_tag_t)" << std::endl;
   _total_volume = tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(ID(0), _num_hyperedges), 0,
     [this](const tbb::blocked_range<HyperedgeID>& range, HyperedgeWeight init) {
       HypernodeWeight volume = init;
@@ -84,6 +87,7 @@ void DynamicHypergraph::updateTotalVolume(parallel_tag_t) {
 
 // ! Recomputes the total volume of the hypergraph (sequential)
 void DynamicHypergraph::updateTotalVolume() {
+  /// [debug] std::cerr << "updateTotalVolume()" << std::endl;
   _total_volume = 0;
   for ( const HyperedgeID& he : edges() ) {
     if ( edgeIsEnabled(he) ) {
@@ -101,6 +105,7 @@ void DynamicHypergraph::updateTotalVolume() {
  * The contraction can be executed by calling function contract(v, max_node_weight).
  */
 bool DynamicHypergraph::registerContraction(const HypernodeID u, const HypernodeID v) {
+  /// [debug] std::cerr << "registerContraction(u, v)" << std::endl;
   return _contraction_tree.registerContraction(u, v, _version,
                                                [&](HypernodeID u) { acquireHypernode(u); },
                                                [&](HypernodeID u) { releaseHypernode(u); });
@@ -116,6 +121,7 @@ bool DynamicHypergraph::registerContraction(const HypernodeID u, const Hypernode
  */
 size_t DynamicHypergraph::contract(const HypernodeID v,
                                    const HypernodeWeight max_node_weight) {
+  /// [debug] std::cerr << "contract(v, max_node_weight)" << std::endl;
   ASSERT(_contraction_tree.parent(v) != v, "No contraction registered for hypernode" << v);
 
   HypernodeID x = _contraction_tree.parent(v);
@@ -146,6 +152,7 @@ size_t DynamicHypergraph::contract(const HypernodeID v,
 void DynamicHypergraph::uncontract(const Batch& batch,
                                    const UncontractionFunction& case_one_func,
                                    const UncontractionFunction& case_two_func) {
+  /// [debug] std::cerr << "uncontract(batch, case_one_func, case_two_func)" << std::endl;
   ASSERT(batch.size() > UL(0));
   ASSERT([&] {
     const HypernodeID expected_batch_index = hypernode(batch[0].v).batchIndex();
@@ -230,6 +237,7 @@ void DynamicHypergraph::uncontract(const Batch& batch,
  */
 VersionedBatchVector DynamicHypergraph::createBatchUncontractionHierarchy(const size_t batch_size,
                                                                           const bool test) {
+  /// [debug] std::cerr << "createBatchUncontractionHierarchy(batch_size, test)" << std::endl;
   const size_t num_versions = _version + 1;
   // Finalizes the contraction tree such that it is traversable in a top-down fashion
   // and contains subtree size for each  tree node
@@ -285,6 +293,7 @@ VersionedBatchVector DynamicHypergraph::createBatchUncontractionHierarchy(const 
  * and single-pin hyperedges are removed. Returns a vector of removed hyperedges.
  */
 parallel::scalable_vector<DynamicHypergraph::ParallelHyperedge> DynamicHypergraph::removeSinglePinAndParallelHyperedges() {
+  /// [debug] std::cerr << "removeSinglePinAndParallelHyperedges()" << std::endl;
   _removable_single_pin_and_parallel_nets.reset();
   // Remove singple-pin hyperedges directly from the hypergraph and
   // insert all other hyperedges into a bucket data structure such that
@@ -401,6 +410,7 @@ parallel::scalable_vector<DynamicHypergraph::ParallelHyperedge> DynamicHypergrap
  * must be exactly the same and given in the reverse order as returned by removeSinglePinAndParallelNets(...).
  */
 void DynamicHypergraph::restoreSinglePinAndParallelNets(const parallel::scalable_vector<ParallelHyperedge>& hes_to_restore) {
+  /// [debug] std::cerr << "restoreSinglePinAndParallelNets(hes_to_restore)" << std::endl;
   // Restores all previously removed hyperedges
   tbb::parallel_for(UL(0), hes_to_restore.size(), [&](const size_t i) {
     const ParallelHyperedge& parallel_he = hes_to_restore[i];
@@ -436,6 +446,7 @@ void DynamicHypergraph::restoreSinglePinAndParallelNets(const parallel::scalable
 
 // ! Copy dynamic hypergraph in parallel
 DynamicHypergraph DynamicHypergraph::copy(parallel_tag_t) const {
+  /// [debug] std::cerr << "copy(parallel_tag_t)" << std::endl;
   DynamicHypergraph hypergraph;
 
   hypergraph._num_hypernodes = _num_hypernodes;
@@ -496,6 +507,7 @@ DynamicHypergraph DynamicHypergraph::copy(parallel_tag_t) const {
 
 // ! Copy dynamic hypergraph sequential
 DynamicHypergraph DynamicHypergraph::copy() const {
+  /// [debug] std::cerr << "copy()" << std::endl;
   DynamicHypergraph hypergraph;
 
   hypergraph._num_hypernodes = _num_hypernodes;
@@ -543,6 +555,7 @@ DynamicHypergraph DynamicHypergraph::copy() const {
 }
 
 void DynamicHypergraph::memoryConsumption(utils::MemoryTreeNode* parent) const {
+  /// [debug] std::cerr << "memoryConsumption(parent)" << std::endl;
   ASSERT(parent);
 
   parent->addChild("Hypernodes", sizeof(Hypernode) * _hypernodes.size());
@@ -564,6 +577,7 @@ void DynamicHypergraph::memoryConsumption(utils::MemoryTreeNode* parent) const {
 
 // ! Only for testing
 bool DynamicHypergraph::verifyIncidenceArrayAndIncidentNets() {
+  /// [debug] std::cerr << "verifyIncidenceArrayAndIncidentNets()" << std::endl;
   bool success = true;
   tbb::parallel_invoke([&] {
     doParallelForAllNodes([&](const HypernodeID& hn) {
@@ -613,7 +627,7 @@ bool DynamicHypergraph::verifyIncidenceArrayAndIncidentNets() {
 DynamicHypergraph::ContractionResult DynamicHypergraph::contract(const HypernodeID u,
                                                                  const HypernodeID v,
                                                                  const HypernodeWeight max_node_weight) {
-
+  /// [debug] std::cerr << "contract(u, v, max_node_weight)" << std::endl;
   // Acquire ownership in correct order to prevent deadlocks
   if ( u < v ) {
     acquireHypernode(u);
@@ -702,6 +716,7 @@ void DynamicHypergraph::contractHyperedge(const HypernodeID u,
                                           const HypernodeID v,
                                           const HyperedgeID he,
                                           kahypar::ds::FastResetFlagArray<>& shared_incident_nets_u_and_v) {
+  /// [debug] std::cerr << "contractHyperedge(u, v, he, shared_incident_nets_u_and_v)" << std::endl;
   Hyperedge& e = hyperedge(he);
   const HypernodeID pins_begin = e.firstEntry();
   const HypernodeID pins_end = e.firstInvalidEntry();
@@ -746,6 +761,7 @@ void DynamicHypergraph::contractHyperedge(const HypernodeID u,
 void DynamicHypergraph::restoreHyperedgeSizeForBatch(const HyperedgeID he,
                                                      const HypernodeID batch_index,
                                                      const UncontractionFunction& case_one_func) {
+  /// [debug] std::cerr << "restoreHyperedgeSizeForBatch(he, batch_index, case_one_func)" << std::endl;
   const size_t first_invalid_entry = hyperedge(he).firstInvalidEntry();
   const size_t last_invalid_entry = hyperedge(he + 1).firstEntry();
   ASSERT(hypernode(_incidence_array[first_invalid_entry]).batchIndex() == batch_index);
@@ -766,6 +782,7 @@ void DynamicHypergraph::restoreHyperedgeSizeForBatch(const HyperedgeID he,
 // ! Search for the position of pin u in hyperedge he in the incidence array
 size_t DynamicHypergraph::findPositionOfPinInIncidenceArray(const HypernodeID u,
                                                             const HyperedgeID he) {
+  /// [debug] std::cerr << "findPositionOfPinInIncidenceArray(u, he)" << std::endl;
   const size_t first_valid_entry = hyperedge(he).firstEntry();
   const size_t first_invalid_entry = hyperedge(he).firstInvalidEntry();
   size_t slot_of_u = first_invalid_entry;
@@ -814,6 +831,7 @@ size_t DynamicHypergraph::findPositionOfPinInIncidenceArray(const HypernodeID u,
  */
 BatchVector DynamicHypergraph::createBatchUncontractionHierarchyForVersion(BatchIndexAssigner& batch_assigner,
                                                                            const size_t version) {
+  /// [debug] std::cerr << "createBatchUncontractionHierarchyForVersion(batch_assigner, version)" << std::endl;
   return _contraction_tree.createBatchUncontractionHierarchyForVersion(batch_assigner, version);
 }
 

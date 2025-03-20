@@ -119,6 +119,7 @@ void IncidentNetArray::contract(const HypernodeID u,
                                 const kahypar::ds::FastResetFlagArray<>& shared_hes_of_u_and_v,
                                 const AcquireLockFunc& acquire_lock,
                                 const ReleaseLockFunc& release_lock) {
+  /// [debug] std::cerr << "contract(u, v, shared_hes_of_u_and_v, acquire_lock, release_lock)" << std::endl;
   // Remove all HEs flagged in shared_hes_of_u_and_v from v
   removeIncidentNets(v, shared_hes_of_u_and_v); // updates weighted_degrees
 
@@ -139,6 +140,7 @@ void IncidentNetArray::uncontract(const HypernodeID u,
                                   const HypernodeID v,
                                   const AcquireLockFunc& acquire_lock,
                                   const ReleaseLockFunc& release_lock) {
+  /// [debug] std::cerr << "uncontract(u, v, acquire_lock, release_lock)" << std::endl;
   uncontract(u, v, [](HyperedgeID) {}, [](HyperedgeID) {}, acquire_lock, release_lock);
 }
 
@@ -154,6 +156,7 @@ void IncidentNetArray::uncontract(const HypernodeID u,
                                   const CaseTwoFunc& case_two_func,
                                   const AcquireLockFunc& acquire_lock,
                                   const ReleaseLockFunc& release_lock) {
+  /// [debug] std::cerr << "uncontract(u, v, case_one_func, case_two_func, acquire_lock, release_lock)" << std::endl;
   ASSERT(header(v)->prev != v);
   Header* head_v = header(v);
   acquire_lock(u);
@@ -173,6 +176,7 @@ void IncidentNetArray::uncontract(const HypernodeID u,
 void IncidentNetArray::removeIncidentNets(const HypernodeID u,
                                           const kahypar::ds::FastResetFlagArray<>& hes_to_remove,
                                           bool update_weighted_degrees) {
+  /// [debug] std::cerr << "removeIncidentNets(u, hes_to_remove, update_weighted_degrees)" << std::endl;
   HypernodeID current_u = u;
   Header* head_u = header(u);
   do {
@@ -213,6 +217,7 @@ void IncidentNetArray::removeIncidentNets(const HypernodeID u,
 // ! be processed.
 void IncidentNetArray::restoreIncidentNets(const HypernodeID u,
                                            bool update_weighted_degrees) {
+  /// [debug] std::cerr << "restoreIncidentNets(u, update_weighted_degrees)" << std::endl;
   restoreIncidentNets(u, [](HyperedgeID) {}, [](HyperedgeID) {}, update_weighted_degrees);
 }
 
@@ -225,6 +230,7 @@ void IncidentNetArray::restoreIncidentNets(const HypernodeID u,
                                            const CaseOneFunc& case_one_func,
                                            const CaseTwoFunc& case_two_func,
                                            bool update_weighted_degrees) {
+  /// [debug] std::cerr << "restoreIncidentNets(u, case_one_func, case_two_func, update_weighted_degrees)" << std::endl;
   Header* head_u = header(u);
   HypernodeID current_u = u;
   HypernodeID last_non_empty_entry = kInvalidHypernode;
@@ -280,6 +286,7 @@ void IncidentNetArray::restoreIncidentNets(const HypernodeID u,
 }
 
 IncidentNetArray IncidentNetArray::copy(parallel_tag_t, DynamicHypergraph* other_hypergraph_ptr) const {
+  /// [debug] std::cerr << "copy(parallel_tag_t, other_hypergraph_ptr)" << std::endl;
   IncidentNetArray incident_nets;
   incident_nets._num_hypernodes = _num_hypernodes;
   incident_nets._size_in_bytes = _size_in_bytes;
@@ -298,6 +305,7 @@ IncidentNetArray IncidentNetArray::copy(parallel_tag_t, DynamicHypergraph* other
 }
 
 IncidentNetArray IncidentNetArray::copy(DynamicHypergraph* other_hypergraph_ptr) const {
+  /// [debug] std::cerr << "copy(other_hypergraph_ptr)" << std::endl;
   IncidentNetArray incident_nets;
   incident_nets._num_hypernodes = _num_hypernodes;
   incident_nets._size_in_bytes = _size_in_bytes;
@@ -311,6 +319,7 @@ IncidentNetArray IncidentNetArray::copy(DynamicHypergraph* other_hypergraph_ptr)
 }
 
 void IncidentNetArray::reset() {
+  /// [debug] std::cerr << "reset()" << std::endl;
   tbb::parallel_for(ID(0), _num_hypernodes, [&](const HypernodeID u) {
     header(u)->current_version = 0;
     for ( Entry* entry = firstEntry(u); entry != lastEntry(u); ++entry ) {
@@ -381,6 +390,7 @@ void IncidentNetArray::removeEmptyIncidentNetList(const HypernodeID u) {
 }
 
 void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const HyperedgeWeight* hyperedge_weight_ptr) {
+  /// [debug] std::cerr << "construct(edge_vector, hyperedge_weight_ptr)" << std::endl;
   // Accumulate degree of each vertex thread local
   // Weighted degree is also accumulated if _hypergraph_ptr is not nullptr
   const HyperedgeID num_hyperedges = edge_vector.size();
