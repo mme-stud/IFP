@@ -149,7 +149,7 @@ class IncidentNetArray {
     HypernodeID degree;
     // ! Weighted degree of the vertex (calculated only if _hypergraph_ref for the
     // ! incident net array is not nullptr)
-    HyperedgeWeight weighted_degree;
+    CAtomic<HyperedgeWeight> weighted_degree;
     // ! Current version of the incident net list
     HypernodeID current_version;
     // ! True, if the vertex is the head of a incident net list
@@ -191,7 +191,7 @@ class IncidentNetArray {
   HyperedgeWeight nodeWeightedDegree(const HypernodeID u) const {
     /// [debug] std::cerr << "nodeWeightedDegree(u)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
-    return header(u)->weighted_degree;
+    return header(u)->weighted_degree.load();
   }
 
   // ! Decrease weighted degree of the vertex (for updating weighted degrees)
