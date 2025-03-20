@@ -47,7 +47,8 @@ python/examples/*.so
 compile_commands.json
 build_original/*
 build/*
-build_test_suite/*
+build_test/*
 run_test_suite
 run_build_test_suite
 run_build
+test_results*.txt
