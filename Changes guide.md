@@ -1,4 +1,7 @@
 # Guide to my code changes
+### Notes:
+- `HyperedgeWeight` has to be positive (or at least non-negative). Hence, `NonnegativeFraction`.
+
 ### Potential problems:
 - uncontraction in relative contraction order?: reversed 
     &rarr; should be ok
@@ -112,18 +115,29 @@ For partitioned hypergraph:
 &rarr; `dynamic_hypergraph.h`:
 - \+ `nodeWeightedDegree(u)` analog. to `nodeDegree()` 
 - \+ **!!!** `decreaseNodeWeightedDegree(u, w)`: for dealing with single-pin he (`remove`, `restore`)
+- move constructor, move assigment: call `adjustHypergraphPtr(this)` for `_incident_nets` [debug]
 
 &rarr; `incident_net_array.h'
-- **!!!** \+ `#include .../dynamic_hypergraph.h` 
-- \+ `_hypergraph_ptr` (to compute weighted degrees, **!!!** no support for `set/changeWeight`, can be `nullptr`)
-    - &rarr; changes in 2 constructors + usages of constructors to include `_hypergraph_ptr` 
-	- `dynamic_hypergraph_factory.cpp`: in `construct(...)`
-	- `incident_net_array.cpp`: in 2 `copy(...)`-s
+- \+ `CAtomic<HyperedgeWeight> weighted_degree` of a node in `Header` of its incident_net's list (analog. to `IncidentNetArray::Header::degree`)
+	- **!!!**  \+ `decreaseNodeWeightedDegree(u, w)`: for dealing with single-pin he (`remove...`, `restore...`)
+	- `CAtomic`, as it is potentially changed simultaniously by `DynamicHypergraph::removeSinglePinAndParallelHyperedges()` through `decreaseNodeWeightedDegree(..)`
 - \+ `nodeWeightedDegree(u)` 
-- **!!!**  \+ `decreaseNodeWeightedDegree(u, w)`: for dealing with single-pin he (`remove...`, `restore...`) \
-- \+ `weighted_degree` of a node in `Header` of its incident_net's list (analog. to `IncidentNetArray::Header::degree`)
+- **!!!** ~~\+ `#include .../dynamic_hypergraph.h` ~~ forward declaration of `DynamicHypergraph`
+- \+ `_hypergraph_ptr` (to compute weighted degrees, **!!!** no support for `set/changeWeight`, can be `nullptr`)
+    - &rarr; changes in 2 constructors of `IncidentNetArray` + usages of constructor (?) to pass on `_hypergraph_ptr`:
+		- in non-trivial constructor: \+ parameter `const HyperedgeWeight* hyperedge_weight_ptr = nullptr` to pass it in `construct(..)`, to make parallel construction of hg and its `incident_nets` possible (see `construct(..)` in `dynamic_hypergraph_factory.cpp`)
+		- \+ new parameter in `construct(..)`: `const HyperedgeWeight* hyperedge_weight_ptr = nullptr` **TODO** check usage
+		- **!!!** \+ `public adjustHypergraphPtr(hg_ptr)` to adjust `_hypergraph_ptr` in move constructor, move assigment of `DynamicHypergraph`, (maybe in `DynamicHypergraphFactory` too? &rarr; TODO?)
+	- `dynamic_hypergraph_factory.cpp`: in `construct(...)`: \
+		pass `const HyperedgeWeight* _hyperedge_weight_ptr` - [const pointer] and `&hypergraph` in `IncidentNetArray(...)` constructor
+	- `incident_net_array.h`: in 2 `copy(...)`-s add new parameter `hypergraph_ptr = nullptr`
+	- `incident_net_array.cpp`: in 2 `copy(...)`-s ~~copy `_hypergraph_ptr`~~:
+		- set `_hypergraph_ptr` of the copy to the passed on `hypergraph_ptr` (passed by 2 `DynamicHypergraph::copy(..)`)
+	- &rarr; `dynamic_hypergraph.cpp`:
+		- in `copy()` and `copy(parallel_tag)` call `_incident_nets.copy` with a new parameter `&hypergraph` (to set the pointer to the copied hg [**debugging**])
 
 &rarr; `incident_net_array.cpp`
+- `#include '.../dynamic_hypergraph.h'` to avoid usage of an incomplete type `DynamicHypergraph` (forward declaration in `incident_net_array.h`)
 - `contract(u, v, ...)`: add `weighted_degree`
 - `uncontract(u, v, ...)`: subtract `weighted_degree`  
 - `removeIncidentNets(u, ...)`: subtract `weighted_degree` 
@@ -133,7 +147,8 @@ For partitioned hypergraph:
 - `construct(...)`: calculate `weighted_degree` analog. to degree (`.local()` etc) \
     **!!!** for degree,  `ThreadLocalCounter = tbb::enumerable_thread_specific< parallel::scalable_vector< size_t >` is used \
     &rarr; for weighted degree, I use `tbb::enumerable_thread_specific< parallel::scalable_vector<HyperedgeWeight> >` \
-    [analog. to `IncidentNetArray::Header::degree`]
+    [analog. to `IncidentNetArray::Header::degree`] \
+	**!!!** if `hyperedge_weight_ptr` is passed on from `construct(..)` in `DynamicHypergraphFactory`, we should use it, else use weight=1 for all he instead of `_hypergraph_ptr`, as **the hypergraph is constructed in parallel to its incident net array.**
 
 **For ``StaticHypergraph``**
 
@@ -146,7 +161,8 @@ For partitioned hypergraph:
 
 `static_hypergraph.cpp`:
 - `contract(..)`: Stage 4 [construction of coarsened hg]: resize `_weighted_degrees`, calculate weighted degrees in `setup_hypernodes` \
-	&rarr; **LOOK IN `dynamic_hypergraph`, `partitioned_hypergraph`: resized all arrays?** &rarr; yes
+	&rarr; **LOOK IN `dynamic_hypergraph`, `partitioned_hypergraph`: resized all arrays?** &rarr; yes \
+	**!!!** `he.weight()` - only for **enabled** edges &rArr; used `tmp_hyperedges[id].weight()`
 - `copy(parallel_tag_t)`: copy `_weighted_degrees` parallel and analog. to other arrays (under `_incidence_array`).
 - `copy()`: copy `_weighted_degrees` analog. to other arrays (under `_incidence_array`).
 - `memoryConsumption(parent)`: add memory consumption of `_weighted_degrees` array
@@ -239,8 +255,10 @@ TODO: write a TODO list for this section :)
 
 #### Implementation of PQ
 \+ `conductance_pq.h`:
-- \+ class `Fraction<Numerator, Denominator>` with `operator<`, `double_t value()` and getters \+ setters
-- `ConductanceFraction := Fraction<HyperedgeWeight>`
+- \+ class `NonnegativeFraction<Numerator, Denominator>` with `operator< , ==, >`, `double_t value()` and getters \+ setters
+	- ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
+	- &rarr; default versions are perfect (and are generated as only the trivial constructor is defined)
+- `ConductanceFraction := NonnegativeFraction<HyperedgeWeight>`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
 	- \+ `initialize(partitioned_hg, sync)`: initializes underlying `MaxHeap` with `build()` \
@@ -257,6 +275,13 @@ TODO: write a TODO list for this section :)
 		+ `insert(p, cut_weight, vol, sync)`, `remove(p, sync)`, `deleteTop(sync)` - shouldn't be used if `k = const` 
 		+ `topFraction(sync)`, `secondTopFraction(sync)`, `topConductance(sync)`, `secondTopConductance(sync)` - can be emulated witt their `PartitionID` versions + `getCutWeight()`, `getVolume()` from `PartitionedHypergraph`
 		+ `getFraction(p, sync)`, `getConductance(p, sync)` shuldn't be used as this information could be obtained from `PartitionedHypergraph`. That way, there will be less syncronization problems withthe underlying pq.
+
+&rarr; `priority_queue.h`: 
+- `ExclusiveHandleHeap`:
+	- \+ `operator=(&)`, `operator=(&&)`, `ExclusiveHandleHeap(&&)` analog. to the copy constructor of `ExclusiveHandleHeap` \
+		&rarr; *Reason:* to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)
+- `Heap`, `HandleBase`: nothing changed, as only a normal constructor defined &rArr; implicitly defined move assigment operator, move constructor and copy constructor are used.
+
 
 #### Support of PQ in PartitionedHypergraph
 
