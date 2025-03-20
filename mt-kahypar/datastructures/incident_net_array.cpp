@@ -185,14 +185,15 @@ void IncidentNetArray::removeIncidentNets(const HypernodeID u,
     Entry* last_entry = lastEntry(current_u);
     for ( Entry* current_entry = firstEntry(current_u); current_entry != last_entry; ++current_entry ) {
       if ( hes_to_remove[current_entry->e] ) {
+        HyperedgeID he = current_entry->e;
         // Hyperedge should be removed => decrement size of incident net list
         swap(current_entry--, --last_entry);
         ASSERT(head->size > 0);
         --head->size;
         --head_u->degree;
         if (update_weighted_degrees && _hypergraph_ptr) { // _hypergraph_ptr can be nullptr!!!
-          ASSERT(_hypergraph_ptr -> edgeIsEnabled(current_entry->e), "Hyperedge" << current_entry->e << "should be enabled to use edgeWeight(he)");
-          head_u->weighted_degree -= _hypergraph_ptr->edgeWeight(current_entry->e);
+          ASSERT(_hypergraph_ptr -> edgeIsEnabled(he), "Hyperedge" << he << "should be enabled to use edgeWeight(he)");
+          head_u->weighted_degree -= _hypergraph_ptr->edgeWeight(he);
         }
       } else {
         // Vertex is non-shared between u and v => adapt version number of current incident net
@@ -413,7 +414,7 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
     current_incident_net_pos.assign(
       _num_hypernodes, parallel::IntegralAtomicWrapper<size_t>(0));
   }, [&] {
-    if (_hypergraph_ptr) { // _hypergraph_ptr can be nullptr!!!
+    if (_hypergraph_ptr) { // _hypergraph_ptr is nullptr => not factory-constructed => no weighted deg !!!
       tbb::parallel_for(ID(0), num_hyperedges, [&](const size_t pos) {
         parallel::scalable_vector<HyperedgeWeight>& weighted_degree_per_vertex =
             local_weighted_degree_per_vertex.local();
@@ -424,7 +425,9 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
             // as the hypergraph is constructed in parallel to its incident net array.
             weighted_degree_per_vertex[pin] += hyperedge_weight_ptr[pos];
           } else {
-            weighted_degree_per_vertex[pin] += _hypergraph_ptr->edgeWeight(pos);
+            // weighted_degree_per_vertex[pin] += _hypergraph_ptr->edgeWeight(pos);
+            // else: we use the default edge weight of the hypergraph: 1
+            weighted_degree_per_vertex[pin] += 1;
           }
         }
       });
