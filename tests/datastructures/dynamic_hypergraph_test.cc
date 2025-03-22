@@ -178,7 +178,7 @@ TEST_F(ADynamicHypergraph, VerifiesVertexWeightedDegrees) {
   ASSERT_EQ(2, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(2, hypergraph.nodeWeightedDegree(4));
   ASSERT_EQ(1, hypergraph.nodeWeightedDegree(5));
-  ASSERT_EQ(2, hypergraph.nodeDnodeWeightedDegreeegree(6));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(6));
 }
 
 TEST_F(ADynamicHypergraph, RemovesVertices) {
