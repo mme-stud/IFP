@@ -347,7 +347,7 @@ public:
     return *this;
   }
   ExclusiveHandleHeap& operator=(ExclusiveHandleHeap&& other) {
-    if (this != &source) {
+    if (this != &other) {
       HandlesPBase::operator=(other);
       HeapT::comp = std::move(other.comp);
       HeapT::heap = std::move(other.heap);
