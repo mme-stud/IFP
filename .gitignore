@@ -48,6 +48,7 @@ compile_commands.json
 build_original/*
 build/*
 build_test/*
+build_with_new_stats/*
 run_test_suite
 run_build_test_suite
 run_build
