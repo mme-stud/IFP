@@ -191,6 +191,7 @@ class IncidentNetArray {
   HyperedgeWeight nodeWeightedDegree(const HypernodeID u) const {
     /// [debug] std::cerr << "nodeWeightedDegree(u)" << std::endl;
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    ASSERT(_hypergraph_ptr, "Hypergraph pointer is nullptr");
     return header(u)->weighted_degree.load();
   }
 
