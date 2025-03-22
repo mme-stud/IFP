@@ -121,7 +121,7 @@ For partitioned hypergraph:
 - \+ `CAtomic<HyperedgeWeight> weighted_degree` of a node in `Header` of its incident_net's list (analog. to `IncidentNetArray::Header::degree`)
 	- **!!!**  \+ `decreaseNodeWeightedDegree(u, w)`: for dealing with single-pin he (`remove...`, `restore...`)
 	- `CAtomic`, as it is potentially changed simultaniously by `DynamicHypergraph::removeSinglePinAndParallelHyperedges()` through `decreaseNodeWeightedDegree(..)`
-- \+ `nodeWeightedDegree(u)` 
+- \+ `nodeWeightedDegree(u)` : asserts `_hypergraph_ptr != nullptr`
 - **!!!** ~~\+ `#include .../dynamic_hypergraph.h` ~~ forward declaration of `DynamicHypergraph`
 - \+ `_hypergraph_ptr` (to compute weighted degrees, **!!!** no support for `set/changeWeight`, can be `nullptr`)
     - &rarr; changes in 2 constructors of `IncidentNetArray` + usages of constructor (?) to pass on `_hypergraph_ptr`:
@@ -243,6 +243,45 @@ Access to new hypergraph infos:
 - `resetPartition()`: reset `_paer_volumes` analog. to `_part_weights`
 - **???** `freeInternalData()` : used by destructor for external memory usages (connectivity...) \
 	&rArr; nothing changed
+
+### Part 1.3 Test
+
+#### StaticHypergraph, DynamicHypergraph (Total volume, Weighted degrees)
+- `dynamic_hypergraph_test.cc`: `ADynamicHypergraph` [check `nodeWeightedDegree(..)`, `totalVolume`]
+	- `HasCorrectStats`: `totalVolume == 12`
+	- \+ `VerifiesVertexWeightedDegrees`: [analog. to `VerifiesVertexDegrees`] fixture sets no weights (`nullptr`) &rArr; `nodeDegree = nodeWeightedDegree`
+	- `ModifiesEdgeWeights`: `updateTotalVolume()`, `totalVolume == 17`
+	- `ComparesStatsIfCopiedParallel`, `ComparesStatsIfCopiedSequential`: `totalVolume`
+	- `PerformsAContraction1 ... 5`: check both
+	- `PerformAContractionsInParallel1 ... 3` check both
+	- `verifyEqualityOfDynamicHypergraphs`: check both
+	- `RemovesSinglePinAndParallelNets1 ... 2` check both
+	- `RestoreSinglePinAndParallelNets1 ... 2` check both
+	- `GeneratesACompactifiedHypergraph2` check both
+- `hypergraph_fixtures.h`: ~~TODO(?) `verifyPins`: weighted degrees ? &rarr; no!~~ (done in `dynamic_hypergraph_test.cc`)
+- `incident_net_array_test.cc`: [check `nodeWeightedDegree(..)`, `_hypergraph_ptr` (?)]
+	- TODO tests with _hypergraph_ptr != nullptr (?)
+- `static_hypergraph_test.cc`: AStaticHypergraph [check `nodeWeightedDegree(..)`, `totalVolume`]
+	- `HasCorrectStats`: `totalVolume() == 12`
+	- \+ `VerifiesVertexWeightedDegrees`: `nodeWeightedDegree(..)`
+	- `RemovesAHyperedgeFromTheHypergraph1 ... 4`: check both
+	- `ComparesStatsIfCopiedParallel`, `ComparesStatsIfCopiedSequential`: `totalVolume`
+	- \+ `ComparesWeightedDegreesIfCopiedParallel`, `ComparesWeightedDegreesIfCopiedSequential`: weighted degrees
+	- `ContractsCommunities1 ... 3`, `ContractsCommunitiesWithDisabledHypernodes`, `ContractsCommunitiesWithDisabledHyperedges`: check both
+ 
+#### PartitionedHypergraph (PartVolume, PartCutWeight, ConductancePriorityQueue)
+- `partitioned_hypergraph_test.cc`: APartitionedHypergraph
+	- \+ `HasCorrectPartVolumes`,  analog. to `HasCorrectPartWeightAndSizes` 
+	- \+ `HasCorrectPartVolumesIfOnlyOneThreadPerformsModifications`, `HasCorrectPartCutWeightsIfOnlyOneThreadPerformsModifications` analog. to `HasCorrectPartWeightsIfOnlyOneThreadPerformsModifications`
+	- `PerformsConcurrentMovesWhereAllSucceed`: check `partVolume`, `partCutWeight`, `conductance_pq`
+	- `ComputesPartInfoCorrectIfNodePartsAreSetOnly`: check `partVolume`, `partCutWeight`, `conductance_pq`
+
+- `dynamic_partitioned_hypergraph.cc`: ADynamicPartitionedHypergraph
+	- nothing to do (?): only define checking functions for new `Objective`
+
+- `priority_queue_test.cc`: TODO (?) analog. tests for `ConductancePriorityQueue`
+
+STOPPED HERE: TODO run tests
 
 ## Part 2: implementation of the objective function
 
