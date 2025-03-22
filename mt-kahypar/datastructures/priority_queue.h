@@ -347,11 +347,13 @@ public:
     return *this;
   }
   ExclusiveHandleHeap& operator=(ExclusiveHandleHeap&& other) {
-    HandlesPBase::operator=(other);
-    HeapT::comp = std::move(other.comp);
-    HeapT::heap = std::move(other.heap);
-    HeapT::positions = this->handles.data();
-    HeapT::positions_size = this->handles.size();
+    if (this != &source) {
+      HandlesPBase::operator=(other);
+      HeapT::comp = std::move(other.comp);
+      HeapT::heap = std::move(other.heap);
+      HeapT::positions = this->handles.data();
+      HeapT::positions_size = this->handles.size();
+    }
     return *this;
   }
   
