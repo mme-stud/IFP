@@ -171,6 +171,16 @@ TEST_F(ADynamicHypergraph, VerifiesVertexDegrees) {
   ASSERT_EQ(2, hypergraph.nodeDegree(6));
 }
 
+TEST_F(ADynamicHypergraph, VerifiesVertexWeightedDegrees) {
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(1, hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(2));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(3));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(4));
+  ASSERT_EQ(1, hypergraph.nodeWeightedDegree(5));
+  ASSERT_EQ(2, hypergraph.nodeDnodeWeightedDegreeegree(6));
+}
+
 TEST_F(ADynamicHypergraph, RemovesVertices) {
   hypergraph.removeHypernode(0);
   hypergraph.removeHypernode(5);
@@ -188,7 +198,7 @@ TEST_F(ADynamicHypergraph, ModifiesEdgeWeight) {
   hypergraph.setEdgeWeight(2, 2);
   ASSERT_EQ(2, hypergraph.edgeWeight(0));
   ASSERT_EQ(2, hypergraph.edgeWeight(2));
-  hypergraph.updateTotalVolume(parallel_tag_t());
+  hypergraph.updateTotalVolume();
   ASSERT_EQ(17, hypergraph.totalVolume()); // 12 + (2 + 3) = 17
 }
 
@@ -767,7 +777,10 @@ TEST_F(ADynamicHypergraph, PerformsAContraction1) {
 
   ASSERT_FALSE(hypergraph.nodeIsEnabled(0));
   ASSERT_EQ(2, hypergraph.nodeWeight(1));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(1));
   ASSERT_EQ(0, hypergraph.pendingContractions(1));
+
+  ASSERT_EQ(11, hypergraph.totalVolume());
 
   verifyIncidentNets(1, {0, 1});
   verifyPins({ 0, 1, 2, 3 },
@@ -783,7 +796,10 @@ TEST_F(ADynamicHypergraph, PerformsAContraction2) {
   ASSERT_FALSE(hypergraph.nodeIsEnabled(0));
   ASSERT_FALSE(hypergraph.nodeIsEnabled(1));
   ASSERT_EQ(3, hypergraph.nodeWeight(2));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(2));
   ASSERT_EQ(0, hypergraph.pendingContractions(2));
+
+  ASSERT_EQ(10, hypergraph.totalVolume());
 
   verifyIncidentNets(2, {0, 1, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -798,13 +814,17 @@ TEST_F(ADynamicHypergraph, PerformsAContraction3) {
   hypergraph.contract(1);
   ASSERT_FALSE(hypergraph.nodeIsEnabled(1));
   ASSERT_EQ(2, hypergraph.nodeWeight(2));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(2));
   ASSERT_EQ(1, hypergraph.pendingContractions(2));
 
   hypergraph.contract(0);
   ASSERT_FALSE(hypergraph.nodeIsEnabled(0));
   ASSERT_FALSE(hypergraph.nodeIsEnabled(2));
   ASSERT_EQ(4, hypergraph.nodeWeight(3));
+  ASSERT_EQ(4, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(0, hypergraph.pendingContractions(3));
+
+  ASSERT_EQ(9, hypergraph.totalVolume());
 
   verifyIncidentNets(3, {0, 1, 2, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -823,6 +843,8 @@ TEST_F(ADynamicHypergraph, PerformsAContraction4) {
   ASSERT_FALSE(hypergraph.nodeIsEnabled(4));
   ASSERT_EQ(2, hypergraph.nodeWeight(2));
   ASSERT_EQ(2, hypergraph.nodeWeight(3));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(2));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(1, hypergraph.pendingContractions(2));
   ASSERT_EQ(1, hypergraph.pendingContractions(3));
 
@@ -830,7 +852,10 @@ TEST_F(ADynamicHypergraph, PerformsAContraction4) {
   ASSERT_FALSE(hypergraph.nodeIsEnabled(0));
   ASSERT_FALSE(hypergraph.nodeIsEnabled(2));
   ASSERT_EQ(5, hypergraph.nodeWeight(3));
+  ASSERT_EQ(4, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(0, hypergraph.pendingContractions(3));
+  
+  ASSERT_EQ(7, hypergraph.totalVolume());
 
   verifyIncidentNets(3, {0, 1, 2, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -848,6 +873,9 @@ TEST_F(ADynamicHypergraph, PerformsAContraction5) {
   hypergraph.contract(4);
   hypergraph.contract(0);
   ASSERT_EQ(6, hypergraph.nodeWeight(6));
+  ASSERT_EQ(4, hypergraph.nodeWeightedDegree(6));
+ 
+  ASSERT_EQ(5, hypergraph.totalVolume());
 
   verifyIncidentNets(6, {0, 1, 2, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -896,7 +924,10 @@ TEST_F(ADynamicHypergraph, PerformAContractionsInParallel1) {
   ASSERT_FALSE(hypergraph.nodeIsEnabled(0));
   ASSERT_FALSE(hypergraph.nodeIsEnabled(1));
   ASSERT_EQ(3, hypergraph.nodeWeight(2));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(2));
   ASSERT_EQ(0, hypergraph.pendingContractions(2));
+  
+  ASSERT_EQ(10, hypergraph.totalVolume());
 
   verifyIncidentNets(2, {0, 1, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -916,7 +947,10 @@ TEST_F(ADynamicHypergraph, PerformAContractionsInParallel2) {
   ASSERT_FALSE(hypergraph.nodeIsEnabled(1));
   ASSERT_FALSE(hypergraph.nodeIsEnabled(2));
   ASSERT_EQ(4, hypergraph.nodeWeight(3));
+  ASSERT_EQ(4, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(0, hypergraph.pendingContractions(3));
+  
+  ASSERT_EQ(9, hypergraph.totalVolume());
 
   verifyIncidentNets(3, {0, 1, 2, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -945,7 +979,10 @@ TEST_F(ADynamicHypergraph, PerformAContractionsInParallel3) {
   ASSERT_FALSE(hypergraph.nodeIsEnabled(3));
   ASSERT_FALSE(hypergraph.nodeIsEnabled(4));
   ASSERT_EQ(6, hypergraph.nodeWeight(6));
+  ASSERT_EQ(4, hypergraph.nodeWeightedDegree(6));
   ASSERT_EQ(0, hypergraph.pendingContractions(6));
+  
+  ASSERT_EQ(5, hypergraph.totalVolume());
 
   verifyIncidentNets(6, {0, 1, 2, 3});
   verifyPins({ 0, 1, 2, 3 },
@@ -1212,6 +1249,7 @@ void verifyEqualityOfDynamicHypergraphs(const DynamicHypergraph& expected_hyperg
     ASSERT_TRUE(actual_hypergraph.nodeIsEnabled(hn));
     ASSERT_EQ(expected_hypergraph.nodeWeight(hn), actual_hypergraph.nodeWeight(hn));
     ASSERT_EQ(expected_hypergraph.nodeDegree(hn), actual_hypergraph.nodeDegree(hn));
+    ASSERT_EQ(expected_hypergraph.nodeWeightedDegree(hn), actual_hypergraph.nodeWeightedDegree(hn));
     for ( const HyperedgeID he : expected_hypergraph.incidentEdges(hn) ) {
       expected_incident_edges.push_back(he);
     }
@@ -1328,6 +1366,12 @@ TEST_F(ADynamicHypergraph, RemovesSinglePinAndParallelNets1) {
   ASSERT_FALSE(hypergraph.edgeIsEnabled(0));
   ASSERT_FALSE(hypergraph.edgeIsEnabled(3));
   ASSERT_EQ(2, hypergraph.edgeWeight(1));
+  ASSERT_EQ(1, hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(3));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(4));
+
+  ASSERT_EQ(7, hypergraph.totalVolume());
+
   verifyPins( { 1, 2 },
     { { 0, 3, 4 }, { 3, 4 } } );
   verifyIncidentNets(0, { 1 });
@@ -1362,6 +1406,12 @@ TEST_F(ADynamicHypergraph, RemovesSinglePinAndParallelNets2) {
   ASSERT_FALSE(hypergraph.edgeIsEnabled(2));
   ASSERT_FALSE(hypergraph.edgeIsEnabled(3));
   ASSERT_EQ(2, hypergraph.edgeWeight(1));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(6));
+
+  ASSERT_EQ(6, hypergraph.totalVolume());
+
   verifyPins( { 1 },
     { { 0, 1, 6 } } );
   verifyIncidentNets(0, { 1 });
@@ -1390,6 +1440,11 @@ TEST_F(ADynamicHypergraph, RestoreSinglePinAndParallelNets1) {
   ASSERT_EQ(1, hypergraph.edgeWeight(1));
   ASSERT_EQ(1, hypergraph.edgeWeight(2));
   ASSERT_EQ(1, hypergraph.edgeWeight(3));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(3));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(4));
+  
+  ASSERT_EQ(9, hypergraph.totalVolume());
 }
 
 TEST_F(ADynamicHypergraph, RestoresSinglePinAndParallelNets2) {
@@ -1413,6 +1468,11 @@ TEST_F(ADynamicHypergraph, RestoresSinglePinAndParallelNets2) {
   ASSERT_EQ(1, hypergraph.edgeWeight(1));
   ASSERT_EQ(1, hypergraph.edgeWeight(2));
   ASSERT_EQ(1, hypergraph.edgeWeight(3));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(3, hypergraph.nodeWeightedDegree(6));
+
+  ASSERT_EQ(8, hypergraph.totalVolume());
 }
 
 TEST_F(ADynamicHypergraph, GeneratesACompactifiedHypergraph1) {
@@ -1451,6 +1511,12 @@ TEST_F(ADynamicHypergraph, GeneratesACompactifiedHypergraph2) {
   ASSERT_EQ(2, compactified_hg.nodeWeight(0));
   ASSERT_EQ(2, compactified_hg.nodeWeight(1));
   ASSERT_EQ(3, compactified_hg.nodeWeight(2));
+  ASSERT_EQ(2, compactified_hg.nodeWeightedDegree(0)); // edge 0 has weight 2
+  ASSERT_EQ(2, compactified_hg.nodeWeightedDegree(1));
+  ASSERT_EQ(2, compactified_hg.nodeWeightedDegree(2));
+
+  ASSERT_EQ(6, compactified_hg.totalVolume());
+  
   verifyPins(compactified_hg, {0}, { {0, 1, 2} });
 }
 
