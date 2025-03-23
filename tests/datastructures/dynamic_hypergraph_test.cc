@@ -1370,7 +1370,7 @@ TEST_F(ADynamicHypergraph, RemovesSinglePinAndParallelNets1) {
   ASSERT_EQ(3, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(3, hypergraph.nodeWeightedDegree(4));
 
-  ASSERT_EQ(7, hypergraph.totalVolume());
+  ASSERT_EQ(8, hypergraph.totalVolume());
 
   verifyPins( { 1, 2 },
     { { 0, 3, 4 }, { 3, 4 } } );
