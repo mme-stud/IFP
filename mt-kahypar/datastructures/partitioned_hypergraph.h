@@ -716,7 +716,7 @@ class PartitionedHypergraph {
         for (PartitionID partId : connectivitySet(he)) {
           incrementCutWeightOfBlock(partId, edgeWeight(he));
         }
-      } else if (new_connectivity != old_connectivity) {
+      } else if (new_connectivity != old_connectivity && new_connectivity > 1) {
         ASSERT(new_connectivity == old_connectivity + 1);
         // Hyperedge he was a cutting edge for partitions of its pins
         // and is now a cutting edge for a new partition p of its pin u
