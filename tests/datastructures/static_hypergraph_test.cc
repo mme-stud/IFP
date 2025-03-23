@@ -437,10 +437,10 @@ TEST_F(AStaticHypergraph, ContractsCommunities2) {
   ASSERT_EQ(1, c_hypergraph.nodeWeight(3));
 
   // Verify Vertex Weighted Degrees
-  ASSERT_EQ(2, c_hypergraph.nodeWeight(0));
-  ASSERT_EQ(1, c_hypergraph.nodeWeight(1));
-  ASSERT_EQ(2, c_hypergraph.nodeWeight(2));
-  ASSERT_EQ(1, c_hypergraph.nodeWeight(3));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(1, c_hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(2));
+  ASSERT_EQ(1, c_hypergraph.nodeWeightedDegree(3));
 
   // Verify Hyperedge Weights
   ASSERT_EQ(1, c_hypergraph.edgeWeight(0));
@@ -482,10 +482,10 @@ TEST_F(AStaticHypergraph, ContractsCommunities3) {
   ASSERT_EQ(2, c_hypergraph.nodeWeight(3));
 
   // Verify Vertex Weighted Degrees
-  ASSERT_EQ(2, c_hypergraph.nodeWeight(0));
-  ASSERT_EQ(2, c_hypergraph.nodeWeight(1));
-  ASSERT_EQ(2, c_hypergraph.nodeWeight(2));
-  ASSERT_EQ(2, c_hypergraph.nodeWeight(3));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(2));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(3));
 
   // Verify Hyperedge Weights
   ASSERT_EQ(1, c_hypergraph.edgeWeight(0));
