@@ -148,7 +148,8 @@ For partitioned hypergraph:
     **!!!** for degree,  `ThreadLocalCounter = tbb::enumerable_thread_specific< parallel::scalable_vector< size_t >` is used \
     &rarr; for weighted degree, I use `tbb::enumerable_thread_specific< parallel::scalable_vector<HyperedgeWeight> >` \
     [analog. to `IncidentNetArray::Header::degree`] \
-	**!!!** if `hyperedge_weight_ptr` is passed on from `construct(..)` in `DynamicHypergraphFactory`, we should use it, else use weight=1 for all he instead of `_hypergraph_ptr`, as **the hypergraph is constructed in parallel to its incident net array.**
+	**!!!** if `hyperedge_weight_ptr` is passed on from `construct(..)` in `DynamicHypergraphFactory`, we should use it, else use weight=1 for all he instead of `_hypergraph_ptr`, as **the hypergraph is constructed in parallel to its incident net array.** \
+	**!!!** Initialize weighted degree to 0 in header(p) as **no `Header` constructor is called** due to pointer tricks with `static_cast` *[debug]*
 
 **For ``StaticHypergraph``**
 
@@ -232,7 +233,7 @@ Access to new hypergraph infos:
 	- update `_part_cut_weights` for incident he-s \
 		&rarr; if he - new cutting edge (connectivity: 1 &rarr; 2): \
 			for both 2 part
-		&rarr; if p - new part for cutting edge he (con.: x &rarr; x + 1 | x != 1): \
+		&rarr; if p - new part for cutting edge he (con.: x &rarr; x + 1 | x + 1 > 1): \
 			only for part p 
 	- **!!!** &rArr; now uses `connectivity_info`, `connectivity_set` \
 	&rArr; should be run **sequentialy** 
@@ -351,7 +352,8 @@ Update of `_conductance_pq` (if enabled):
 - `setNodePart(u, p)` - sets partition for the first time \
 	&rArr; `_conductance_pq` shouldn't be initialized yet \
 	&rArr; not touched
-- `changeNodePart(u, from, to, ...)`: call `adjustKey()` for `from` and `to`
+- `changeNodePart(u, from, to, ...)`: call `adjustKey()` for `from` and `to` \
+	!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight
 - `initializePartition()` - not touched for now \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
 - `resetPartition()`: `_conductance_pq.reset()`
