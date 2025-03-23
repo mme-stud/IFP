@@ -469,6 +469,7 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
     head->size = current_incident_net_pos[u].load(std::memory_order_relaxed);
     head->degree = head->size;
     // weighted degree is calculated later if _hypergraph_ptr is not nullptr
+    head->weighted_degree.store(0);
     head->current_version = 0;
     head->is_head = true;
   });
