@@ -1366,7 +1366,7 @@ TEST_F(ADynamicHypergraph, RemovesSinglePinAndParallelNets1) {
   ASSERT_FALSE(hypergraph.edgeIsEnabled(0));
   ASSERT_FALSE(hypergraph.edgeIsEnabled(3));
   ASSERT_EQ(2, hypergraph.edgeWeight(1));
-  ASSERT_EQ(1, hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(2, hypergraph.nodeWeightedDegree(0));
   ASSERT_EQ(3, hypergraph.nodeWeightedDegree(3));
   ASSERT_EQ(3, hypergraph.nodeWeightedDegree(4));
 
