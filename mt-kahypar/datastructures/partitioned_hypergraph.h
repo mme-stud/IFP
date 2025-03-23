@@ -528,7 +528,7 @@ class PartitionedHypergraph {
       const HypernodeID pin = _hg->_incidence_array[pos];
       const PartitionID block = partID(pin);
       ++ets_pin_count_in_part.local()[block];
-      ets_add_part_volumes.local()[block] += edgeWeight(he) * ets_pin_count_in_part.local()[block];
+      ets_add_part_volumes.local()[block] += edgeWeight(he);//  * ets_pin_count_in_part.local()[block]; - wrong: for each pin only once
     });
 
     // Aggregate local additional _part_volumes for each block
@@ -690,7 +690,7 @@ class PartitionedHypergraph {
         ASSERT(new_connectivity == old_connectivity + 1);
         // Hyperedge he was a cutting edge for partitions of its pins
         // and is now a cutting edge for a new partition p of its pin u
-        _part_cut_weights[p].fetch_add(edgeWeight(he), std::memory_order_relaxed);
+        // _part_cut_weights[p].fetch_add(edgeWeight(he), std::memory_order_relaxed);
         incrementCutWeightOfBlock(p, edgeWeight(he));
       }
     }
@@ -719,11 +719,6 @@ class PartitionedHypergraph {
       // update _part_volumes
       decrementVolumeOfBlock(from, nodeWeightedDegree(u));
       incrementVolumeOfBlock(to, nodeWeightedDegree(u));
-      // update _conductance_pq if enabled
-      if (hasConductancePriorityQueue()) {
-        _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from));
-        _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to));
-      }
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
@@ -733,6 +728,12 @@ class PartitionedHypergraph {
       for ( const HyperedgeID he : incidentEdges(u) ) {
         // updates _part_cut_weights in updatePinCountOfHyperedge(...)
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
+        // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
+      }
+      // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
+      if (hasConductancePriorityQueue()) {
+        _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from));
+        _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to));
       }
       return true;
     } else {
@@ -1431,21 +1432,21 @@ class PartitionedHypergraph {
     sync_update.connectivity_set_after = hasTargetGraph() ? &deepCopyOfConnectivitySet(he) : nullptr;
     sync_update.pin_counts_after = hasTargetGraph() ? &_con_info.pinCountSnapshot(he) : nullptr;
     const HypernodeID new_pins_in_to_part = pinCountInPart(he, to);
-    // update _part_cut_weights for from part
+    // update _part_cut_weights for "from" part
     if (HypernodeID(1) == old_pins_in_from_part && old_pins_in_from_part < edgeSize(he)) {
-      // he was a cutting edge for part from, but not anymore
+      // he was a cutting edge for part "from", but not anymore
       _part_cut_weights[from].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
     } else if (HypernodeID(1) < old_pins_in_from_part && old_pins_in_from_part == edgeSize(he)) {
-      // he was not a cutting edge for part from, but now is
+      // he was not a cutting edge for part "from", but now is
       _part_cut_weights[from].fetch_add(edgeWeight(he), std::memory_order_relaxed);
     }
-    // update _part_cut_weights for to part
+    // update _part_cut_weights for "to" part
     if (HypernodeID(1) == new_pins_in_to_part && new_pins_in_to_part < edgeSize(he)) {
-      // he was a cutting edge for part to, but not anymore
-      _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
-    } else if (HypernodeID(1) < new_pins_in_to_part && new_pins_in_to_part == edgeSize(he)) {
       // he was not a cutting edge for part to, but now is
       _part_cut_weights[to].fetch_add(edgeWeight(he), std::memory_order_relaxed);
+    } else if (HypernodeID(1) < new_pins_in_to_part && new_pins_in_to_part == edgeSize(he)) {
+      // he was a cutting edge for part "to", but not anymore
+      _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
     }
     // for all other parts, _part_cut_weights remains the same
     _pin_count_update_ownership[he].unlock();
