@@ -117,6 +117,7 @@ class PartitionedHypergraph {
     _con_info(hypergraph.initialNumEdges(), k, hypergraph.maxEdgeSize()),
     _pin_count_update_ownership(
         "Refinement", "pin_count_update_ownership", hypergraph.initialNumEdges(), true, false) {
+    /// [debug] std::cerr << "PartitionedHypergraph::PartitionedHypergraph(k, hypergraph)" << std::endl;
     _part_ids.assign(hypergraph.initialNumNodes(), kInvalidPartition, false);
   }
 
@@ -135,6 +136,7 @@ class PartitionedHypergraph {
     _part_ids(),
     _con_info(),
     _pin_count_update_ownership() {
+    /// [debug] std::cerr << "PartitionedHypergraph::PartitionedHypergraph(k, hypergraph, parallel_tag_t)" << std::endl;
     tbb::parallel_invoke([&] {
       _part_ids.resize(
         "Refinement", "vertex_part_info", hypergraph.initialNumNodes());
@@ -160,6 +162,7 @@ class PartitionedHypergraph {
   }
 
   void resetData() {
+    /// [debug] std::cerr << "PartitionedHypergraph::resetData()" << std::endl;
     tbb::parallel_invoke([&] {
     }, [&] {
       _part_ids.assign(_part_ids.size(), kInvalidPartition);
@@ -186,6 +189,7 @@ class PartitionedHypergraph {
   }
 
   void setHypergraph(Hypergraph& hypergraph) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setHypergraph(hypergraph)" << std::endl;
     _hg = &hypergraph;
   }
 
@@ -248,6 +252,7 @@ class PartitionedHypergraph {
   // ####################### Mapping ######################
 
   void setTargetGraph(const TargetGraph* target_graph) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setTargetGraph(target_graph)" << std::endl;
     _target_graph = target_graph;
   }
 
@@ -263,6 +268,7 @@ class PartitionedHypergraph {
 
   // ! Returns the conductance of a block
   double_t conductance(const PartitionID p) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::conductance(p)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
     const HypernodeWeight cut_weight = partCutWeight(p);
     const HypernodeWeight volume = partVolume(p);
@@ -274,6 +280,7 @@ class PartitionedHypergraph {
 
   // ! Enables the conductance priority queue
   void enableConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableConductancePriorityQueue()" << std::endl;
     _conductance_pq.initialize(*this);
   }
 
@@ -287,6 +294,7 @@ class PartitionedHypergraph {
   // ! for each vertex
   template<typename F>
   void doParallelForAllNodes(const F& f) {
+    /// [debug] std::cerr << "PartitionedHypergraph::doParallelForAllNodes(f)" << std::endl;
     static_cast<const PartitionedHypergraph&>(*this).doParallelForAllNodes(f);
   }
 
@@ -294,6 +302,7 @@ class PartitionedHypergraph {
   // ! for each vertex
   template<typename F>
   void doParallelForAllNodes(const F& f) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::doParallelForAllNodes(f) const" << std::endl;
     _hg->doParallelForAllNodes(f);
   }
 
@@ -301,6 +310,7 @@ class PartitionedHypergraph {
   // ! for each net
   template<typename F>
   void doParallelForAllEdges(const F& f) {
+    /// [debug] std::cerr << "PartitionedHypergraph::doParallelForAllEdges(f)" << std::endl;
     static_cast<const PartitionedHypergraph&>(*this).doParallelForAllEdges(f);
   }
 
@@ -308,37 +318,44 @@ class PartitionedHypergraph {
   // ! for each net
   template<typename F>
   void doParallelForAllEdges(const F& f) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::doParallelForAllEdges(f) const" << std::endl;
     _hg->doParallelForAllEdges(f);
   }
 
   // ! Returns an iterator over the set of active nodes of the hypergraph
   IteratorRange<HypernodeIterator> nodes() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::nodes()" << std::endl;
     return _hg->nodes();
   }
 
   // ! Returns an iterator over the set of active edges of the hypergraph
   IteratorRange<HyperedgeIterator> edges() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::edges()" << std::endl;
     return _hg->edges();
   }
 
   // ! Returns a range to loop over the incident nets of hypernode u.
   IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::incidentEdges(u)" << std::endl;
     return _hg->incidentEdges(u);
   }
 
   // ! Returns a range to loop over the incident nets of hypernode u.
   IteratorRange<IncidentNetsIterator> incidentEdges(const HypernodeID u,
                                                     const size_t pos) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::incidentEdges(u, pos)" << std::endl;
     return _hg->incident_nets_of(u, pos);
   }
 
   // ! Returns a range to loop over the pins of hyperedge e.
   IteratorRange<IncidenceIterator> pins(const HyperedgeID e) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::pins(e)" << std::endl;
     return _hg->pins(e);
   }
 
   // ! Returns a range to loop over the set of block ids contained in hyperedge e.
   IteratorRange<ConnectivitySetIterator> connectivitySet(const HyperedgeID e) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::connectivitySet(e)" << std::endl;
     ASSERT(_hg->edgeIsEnabled(e), "Hyperedge" << e << "is disabled");
     ASSERT(e < _hg->initialNumEdges(), "Hyperedge" << e << "does not exist");
     return _con_info.connectivitySet(e);
@@ -353,6 +370,7 @@ class PartitionedHypergraph {
 
   // ! Sets the weight of a vertex
   void setNodeWeight(const HypernodeID u, const HypernodeWeight weight) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setNodeWeight(u, weight)" << std::endl;
     const PartitionID block = partID(u);
     if ( block != kInvalidPartition ) {
       ASSERT(block < _k);
@@ -379,16 +397,19 @@ class PartitionedHypergraph {
 
   // ! Enables a hypernode (must be disabled before)
   void enableHypernode(const HypernodeID u) {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableHypernode(u)" << std::endl;
     _hg->enableHypernode(u);
   }
 
   // ! Disable a hypernode (must be enabled before)
   void disableHypernode(const HypernodeID u) {
+    /// [debug] std::cerr << "PartitionedHypergraph::disableHypernode(u)" << std::endl;
     _hg->disableHypernode(u);
   }
 
   // ! Restores a degree zero hypernode
   void restoreDegreeZeroHypernode(const HypernodeID u, const PartitionID to) {
+    /// [debug] std::cerr << "PartitionedHypergraph::restoreDegreeZeroHypernode(u, to)" << std::endl;
     _hg->restoreDegreeZeroHypernode(u);
     setNodePart(u, to);
   }
@@ -407,6 +428,7 @@ class PartitionedHypergraph {
 
   // ! Sets the weight of a hyperedge
   void setEdgeWeight(const HyperedgeID e, const HyperedgeWeight weight) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setEdgeWeight(e, weight)" << std::endl;
     _hg->setEdgeWeight(e, weight);
   }
 
@@ -422,11 +444,13 @@ class PartitionedHypergraph {
 
   // ! Enables a hyperedge (must be disabled before)
   void enableHyperedge(const HyperedgeID e) {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableHyperedge(e)" << std::endl;
     _hg->enableHyperedge(e);
   }
 
   // ! Disabled a hyperedge (must be enabled before)
   void disableHyperedge(const HyperedgeID e) {
+    /// [debug] std::cerr << "PartitionedHypergraph::disableHyperedge(e)" << std::endl;
     _hg->disableHyperedge(e);
   }
 
@@ -459,6 +483,7 @@ class PartitionedHypergraph {
    */
   template<typename GainCache>
   void uncontract(const Batch& batch, GainCache& gain_cache) {
+    /// [debug] std::cerr << "PartitionedHypergraph::uncontract(batch, gain_cache)" << std::endl;
     // Set block ids of contraction partners
     tbb::parallel_for(UL(0), batch.size(), [&](const size_t i) {
       const Memento& memento = batch[i];
@@ -516,6 +541,7 @@ class PartitionedHypergraph {
    * Restores a large hyperedge previously removed from the hypergraph.
    */
   void restoreLargeEdge(const HyperedgeID& he) {
+    /// [debug] std::cerr << "PartitionedHypergraph::restoreLargeEdge(he)" << std::endl;
     _hg->restoreLargeEdge(he);
 
     // Recalculate pin count in parts
@@ -571,6 +597,7 @@ class PartitionedHypergraph {
   template<typename GainCache>
   void restoreSinglePinAndParallelNets(const vec<typename Hypergraph::ParallelHyperedge>& hes_to_restore,
                                        GainCache& gain_cache) {
+    /// [debug] std::cerr << "PartitionedHypergraph::restoreSinglePinAndParallelNets(hes_to_restore, gain_cache)" << std::endl;
     // needed decide if conductance_pq should be updated
     HyperedgeWeight old_total_volume = totalVolume();
 
@@ -647,6 +674,7 @@ class PartitionedHypergraph {
   }
 
   void extractPartIDs(Array<PartitionID>& part_ids) {
+    /// [debug] std::cerr << "PartitionedHypergraph::extractPartIDs(part_ids)" << std::endl;
     // If we pass the input hypergraph to initial partitioning, then initial partitioning
     // will pass an part ID vector of size |V'|, where V' are the number of nodes of
     // smallest hypergraph, while the _part_ids vector of the input hypergraph is initialized
@@ -663,6 +691,7 @@ class PartitionedHypergraph {
   }
 
   void setOnlyNodePart(const HypernodeID u, PartitionID p) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setOnlyNodePart(u, p)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
@@ -672,6 +701,7 @@ class PartitionedHypergraph {
   // ! This function is surely not thread-safe after adding _part_cut_weights 
   // ! (mostly used for tests?)
   void setNodePart(const HypernodeID u, PartitionID p) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setNodePart(u, p)" << std::endl;
     setOnlyNodePart(u, p);
     _part_weights[p].fetch_add(nodeWeight(u), std::memory_order_relaxed);
     incrementVolumeOfBlock(p, nodeWeightedDegree(u));
@@ -707,6 +737,7 @@ class PartitionedHypergraph {
                       const DeltaFunction& delta_func,
                       const NotificationFunc& notify_func = NOOP_NOTIFY_FUNC,
                       const bool force_moving_fixed_vertices = false) {
+    /// [debug] std::cerr << "PartitionedHypergraph::changeNodePart(u, from, to, max_weight_to, report_success, delta_func, notify_func, force_moving_fixed_vertices)" << std::endl;
     unused(force_moving_fixed_vertices);
     ASSERT(partID(u) == from);
     ASSERT(from != to);
@@ -865,6 +896,7 @@ class PartitionedHypergraph {
   // ! setOnlyNodePart(...). In that case, block weights and pin counts in part for
   // ! each hyperedge must be initialized explicitly here.
   void initializePartition() {
+    /// [debug] std::cerr << "PartitionedHypergraph::initializePartition()" << std::endl;
     tbb::parallel_invoke(
             [&] { initializeBlockWeights(); },
             [&] { initializeBlockVolumes(); },
@@ -877,6 +909,7 @@ class PartitionedHypergraph {
 
   // ! Reset partition (not thread-safe)
   void resetPartition() {
+    /// [debug] std::cerr << "PartitionedHypergraph::resetPartition()" << std::endl;
     _part_ids.assign(_part_ids.size(), kInvalidPartition, false);
     for (auto& x : _part_weights) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
@@ -889,6 +922,7 @@ class PartitionedHypergraph {
 
   // ! Only for testing
   void recomputePartWeights() {
+    /// [debug] std::cerr << "PartitionedHypergraph::recomputePartWeights()" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
       _part_weights[p].store(0);
     }
@@ -900,6 +934,7 @@ class PartitionedHypergraph {
 
   // ! Only for testing
   void recomputePartVolumes() {
+    /// [debug] std::cerr << "PartitionedHypergraph::recomputePartVolumes()" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
       _part_volumes[p].store(0);
     }
@@ -913,6 +948,7 @@ class PartitionedHypergraph {
 
   // ! Only for testing
   void recomputePartCutWeights() {
+    /// [debug] std::cerr << "PartitionedHypergraph::recomputePartCutWeights()" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
       _part_cut_weights[p].store(0);
     }
@@ -928,6 +964,7 @@ class PartitionedHypergraph {
 
   // ! Only for testing
   bool checkConductancePQ() {
+    /// [debug] std::cerr << "PartitionedHypergraph::checkConductancePQ()" << std::endl;
     if (hasConductancePriorityQueue()) {
       return _conductance_pq.check(*this);
     }
@@ -936,6 +973,7 @@ class PartitionedHypergraph {
 
   // ! Only for testing
   bool checkTrackedPartitionInformation() {
+    /// [debug] std::cerr << "PartitionedHypergraph::checkTrackedPartitionInformation()" << std::endl;
     bool success = true;
 
     for (HyperedgeID e : edges()) {
@@ -963,6 +1001,7 @@ class PartitionedHypergraph {
   // ! Only for testing
   template<typename GainCache>
   bool checkTrackedPartitionInformation(GainCache& gain_cache) {
+    /// [debug] std::cerr <<  "PartitionedHypergraph::checkTrackedPartitionInformation(gain_cache)" << std::endl;
     bool success = true;
 
     for (HyperedgeID e : edges()) {
@@ -1063,6 +1102,7 @@ class PartitionedHypergraph {
                          const vec<uint8_t>* already_cut,
                          bool cut_net_splitting,
                          bool stable_construction_of_incident_edges) {
+    /// [debug] std::cerr << "PartitionedHypergraph::extract(block, already_cut, cut_net_splitting, stable_construction_of_incident_edges)" << std::endl;
     ASSERT(block != kInvalidPartition && block < _k);
     ASSERT(!already_cut || already_cut->size() == _hg->initialNumEdges());
 
@@ -1150,6 +1190,7 @@ class PartitionedHypergraph {
                                                                     const vec<uint8_t>* already_cut,
                                                                     const bool cut_net_splitting,
                                                                     const bool stable_construction_of_incident_edges) {
+    /// [debug] std::cerr << "PartitionedHypergraph::extractAllBlocks(k, already_cut, cut_net_splitting, stable_construction_of_incident_edges)" << std::endl;
     ASSERT(k <= _k);
 
     vec<HypernodeID> hn_mapping(_hg->initialNumNodes(), kInvalidHypernode);
@@ -1285,6 +1326,7 @@ class PartitionedHypergraph {
   }
 
   void freeInternalData() {
+    /// [debug] std::cerr << "PartitionedHypergraph::freeInternalData()" << std::endl;
     if ( _k > 0 ) {
       tbb::parallel_invoke( [&] {
         parallel::parallel_free(_part_ids, _pin_count_update_ownership);
@@ -1297,24 +1339,28 @@ class PartitionedHypergraph {
 
  private:
   void applyPartWeightUpdates(vec<HypernodeWeight>& part_weight_deltas) {
+    /// [debug] std::cerr << "PartitionedHypergraph::applyPartWeightUpdates(part_weight_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
       _part_weights[p].fetch_add(part_weight_deltas[p], std::memory_order_relaxed);
     }
   }
 
   void applyPartVolumeUpdates(vec<HyperedgeWeight>& part_volume_deltas) {
+    /// [debug] std::cerr << "PartitionedHypergraph::applyPartVolumeUpdates(part_volume_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
       _part_volumes[p].fetch_add(part_volume_deltas[p], std::memory_order_relaxed);
     }
   }
 
   void applyPartCutWeightUpdates(vec<HyperedgeWeight>& part_cut_weight_deltas) {
+    /// [debug] std::cerr << "PartitionedHypergraph::applyPartCutWeightUpdates(part_cut_weight_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
       _part_cut_weights[p].fetch_add(part_cut_weight_deltas[p], std::memory_order_relaxed);
     }
   }
 
   void initializeBlockWeights() {
+    /// [debug] std::cerr << "PartitionedHypergraph::initializeBlockWeights()" << std::endl;
     auto accumulate = [&](tbb::blocked_range<HypernodeID>& r) {
       vec<HypernodeWeight> pws(_k, 0);  // this is not enumerable_thread_specific because of the static partitioner
       for (HypernodeID u = r.begin(); u < r.end(); ++u) {
@@ -1334,6 +1380,7 @@ class PartitionedHypergraph {
   }
 
   void initializeBlockVolumes() {
+    /// [debug] std::cerr << "PartitionedHypergraph::initializeBlockVolumes()" << std::endl;
     auto accumulate = [&](tbb::blocked_range<HypernodeID>& r) {
       vec<HyperedgeWeight> pvs(_k, 0);  // this is not enumerable_thread_specific because of the static partitioner
       for (HypernodeID u = r.begin(); u < r.end(); ++u) {
@@ -1354,6 +1401,7 @@ class PartitionedHypergraph {
   }
 
   void initializePinCountInPart() {
+    /// [debug] std::cerr << "PartitionedHypergraph::initializePinCountInPart()" << std::endl;
     tls_enumerable_thread_specific< vec<HypernodeID> > ets_pin_count_in_part(_k, 0);
 
     auto assign = [&](tbb::blocked_range<HyperedgeID>& r) {
@@ -1382,6 +1430,7 @@ class PartitionedHypergraph {
   // ! Uses connectivity, connectivitySet
   // ! => use only after initializePinCountInPart !!!
   void initializeBlockCutWeights() {
+    /// [debug] std::cerr << "PartitionedHypergraph::initializeBlockCutWeights()" << std::endl;
     auto accumulate = [&](tbb::blocked_range<HyperedgeID>& r) {
       vec<HyperedgeWeight> pcws(_k, 0);  // this is not enumerable_thread_specific because of the static partitioner
       for (HyperedgeID he = r.begin(); he < r.end(); ++he) {
@@ -1418,6 +1467,7 @@ class PartitionedHypergraph {
                                                                     SynchronizedEdgeUpdate& sync_update,
                                                                     const DeltaFunction& delta_func,
                                                                     const NotificationFunc& notify_func) {
+    /// [debug] std::cerr << "PartitionedHypergraph::updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func)" << std::endl;
     ASSERT(he < _pin_count_update_ownership.size());
     // TODO: change sync_update to contain info for calculating concuctance gain (1st and 2nd max cond cuts; total val; ...)
     //       Problem: conductance gain depends on both whole parts, not just the edge
@@ -1455,6 +1505,7 @@ class PartitionedHypergraph {
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   HypernodeID decrementPinCountOfBlock(const HyperedgeID e, const PartitionID p) {
+    /// [debug] std::cerr << "PartitionedHypergraph::decrementPinCountOfBlock(e, p)" << std::endl;
     ASSERT(e < _hg->initialNumEdges(), "Hyperedge" << e << "does not exist");
     ASSERT(edgeIsEnabled(e), "Hyperedge" << e << "is disabled");
     ASSERT(p != kInvalidPartition && p < _k);
@@ -1467,6 +1518,7 @@ class PartitionedHypergraph {
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   HypernodeID incrementPinCountOfBlock(const HyperedgeID e, const PartitionID p) {
+    /// [debug] std::cerr << "PartitionedHypergraph::incrementPinCountOfBlock(e, p)" << std::endl;
     ASSERT(e < _hg->initialNumEdges(), "Hyperedge" << e << "does not exist");
     ASSERT(edgeIsEnabled(e), "Hyperedge" << e << "is disabled");
     ASSERT(p != kInvalidPartition && p < _k);
@@ -1479,6 +1531,7 @@ class PartitionedHypergraph {
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   HyperedgeWeight decrementCutWeightOfBlock(const PartitionID p, const HyperedgeWeight w) {
+    /// [debug] std::cerr << "PartitionedHypergraph::decrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
     const HyperedgeWeight cut_weight_after = _part_cut_weights[p].fetch_sub(w, std::memory_order_relaxed);
     return cut_weight_after;
@@ -1486,6 +1539,7 @@ class PartitionedHypergraph {
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   HyperedgeWeight incrementCutWeightOfBlock(const PartitionID p, const HyperedgeWeight w) {
+    /// [debug] std::cerr << "PartitionedHypergraph::incrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
     const HyperedgeWeight cut_weight_after = _part_cut_weights[p].fetch_add(w, std::memory_order_relaxed);
     return cut_weight_after;
@@ -1493,6 +1547,7 @@ class PartitionedHypergraph {
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   HyperedgeWeight decrementVolumeOfBlock(const PartitionID p, const HyperedgeWeight w) {
+    /// [debug] std::cerr << "PartitionedHypergraph::decrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
     const HyperedgeWeight volume_after = _part_volumes[p].fetch_sub(w, std::memory_order_relaxed);
     return volume_after;
@@ -1500,6 +1555,7 @@ class PartitionedHypergraph {
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
   HyperedgeWeight incrementVolumeOfBlock(const PartitionID p, const HyperedgeWeight w) {
+    /// [debug] std::cerr << "PartitionedHypergraph::incrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
     const HyperedgeWeight volume_after = _part_volumes[p].fetch_add(w, std::memory_order_relaxed);
     return volume_after;
