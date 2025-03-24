@@ -284,6 +284,13 @@ Access to new hypergraph infos:
 
 - `priority_queue_test.cc`: TODO (?) analog. tests for `ConductancePriorityQueue`
 
+- `partitioned_hypergraph_smoke_test.cc`: `AConcurrectHypergraph`
+	- \+ `verifyBlockVolumes(hg, k)`, `verifyBlockCutWeights(hg, k)` analog. to `verifyBlockWeightsAndSizes(hg, k)`
+	- \+ `verifyConductancePriorityQueue(hg)` (not really..) analog. to `verifyConnectivitySet(hg, k)`
+	- `moveAllNodesOfHypergraphRandom(hg, k, obj, show_timing)`: after moving all nodes stats are recomputed (`hypergraph.recomputePartWeights();`) &rArr; call `.recomputePartCutWeights()`, `.recomputePartVolumes()` and `.recomputeConductancePriorityQueue()`
+	+ \+ `VerifyBlockVolumesSmokeTest`, `VerifyBlockCutWeightsSmokeTest` analog. to `VerifyBlockWeightsSmokeTest`
+	+ \+ `VerifyConductancePriorityQueueSmokeTest` analog. to `VerifyConnectivitySetSmokeTest`
+
 STOPPED HERE: TODO run tests
 
 ## Part 2: implementation of the objective function
@@ -339,7 +346,8 @@ Update of `_conductance_pq` (if enabled):
 	&rarr; \+ `bool hasConductancePQ()`, `enableConductancePQ()`
 - \+ `double_t conductance(p)` - calculates conductance of a partition without using `_conductance_pq` \
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
-- \+ `bool checkConductancePQ()` - for testing. True if not initialized.
+- \+ `bool checkConductancePriorityQueue()` - for testing. True if not initialized.
+- \+ `recomputeConductancePriorityQueue()`: runs global update (only for testing (?))
 
 - in 2 constructors: `_conductance_pq()` &lArr; no `initialize()` **!!!**
 - `resetData()`: call `_conductance_pq.reset()` in parallel, if enabled
