@@ -24,14 +24,15 @@
     - &rarr; **Problem**: conductance gain depends on both whole parts, not just the edge
 
 ### Next steps:
-- implement `_total_volume`, weighted degrees + "their" functions in `static_hypergraph.h/.cpp`
-- write tests (better somewhere in-between)
+- implement `_total_volume`, weighted degrees + "their" functions in `static_hypergraph.h/.cpp`: *done*
+- write tests (better somewhere in-between): *done*
 - implement pq for all conductances (pairs `<Vi_vol, Vi_cut_weight>`)
 	- **!!!** Problem: conductance depends on `total_vol` \
 	&rarr; heap will not be correct after changes in `total_vol` :( \
 	    **???** (= contract, uncontract, remove single-pin?) \
 	&rarr; Naive: rebuild heap after changes in `total_vol`? \
-	**???** &rarr; implement `increase_total_vol` and refactor to do smth on changes on `total_vol`..?
+	**???** &rarr; implement `increase_total_vol` and refactor to do smth on changes on `total_vol`..?  - *done*
+- *STOPPED HERE*
 - follow the guide to implement a custom objective function \
 	&rarr; adjust `sync_update` (see TODO above)
 - debug (potentially many times :( )
@@ -50,7 +51,7 @@ For partitioned hypergraph:
 + volume of Vi
 + cut weight of Vi
 
-### Part 1.1: dynamic hypergraph (total volume, weighted degrees)
+### Part 1.1: Hypergraph stats (total volume, weighted degrees)
 **???** Also implement for other (heper-)graphs (not only dynamic hg?) as in `lib_generic_impls.h`?
 &rarr; for static hg
 
@@ -111,7 +112,7 @@ For partitioned hypergraph:
 #### Weighted Degrees (!!!)
 (**???** `dynamic_adjacency_array.cpp` - for vectors **???**)
 
-**For `DynamicHypergraph`**:
+##### For `DynamicHypergraph`:
 
 &rarr; `dynamic_hypergraph.h`:
 - \+ `nodeWeightedDegree(u)` analog. to `nodeDegree()` 
@@ -152,7 +153,7 @@ For partitioned hypergraph:
 	**!!!** if `hyperedge_weight_ptr` is passed on from `construct(..)` in `DynamicHypergraphFactory`, we should use it, else use weight=1 for all he instead of `_hypergraph_ptr`, as **the hypergraph is constructed in parallel to its incident net array.** \
 	**!!!** Initialize weighted degree to 0 in header(p) as **no `Header` constructor is called** due to pointer tricks with `static_cast` *[debug]*
 
-**For ``StaticHypergraph``**
+##### For ``StaticHypergraph``
 
 `static_hypergraph.h`:
 - \+ `_weighted_degrees = Array<HyperedgeWeight>`
@@ -177,7 +178,7 @@ For partitioned hypergraph:
 		&rArr; `hyperedge_weight ? hyperedge_weight[pos] : 1;` \
 		**!!!** use thread-local storage `tbb::enumerable_thread_specific< parallel::scalable_vector < HyperedgeWeight> > local_weighted_degree_per_vertex(num_hypernodes, 0);` analog. to `num_incident_nets_per_vertex` [debug]
 
-### Part 1.2: partitioned hypergraph (access to hgInfo, number of pins, volumes, cut weights)
+### Part 1.2: Partitioned hypergraph stats (access to hgInfo, number of pins, volumes, cut weights)
 Access to new hypergraph infos:
 &rarr; `partitioned_hypergraph.h`:
 - \+ `totalVolume()` analog. to `totalWeight()`
