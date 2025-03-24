@@ -303,6 +303,11 @@ class PartitionedHypergraph {
     return _conductance_pq.topThreeKeys();
   }
 
+  // ! Get a pointer to the conductance priority queue
+  const ConductancePQ* conductancePriorityQueue() const {
+    return &_conductance_pq;
+  }
+
 
   // ####################### Iterators #######################
 
