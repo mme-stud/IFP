@@ -210,7 +210,7 @@ TYPED_TEST(APartitionedHypergraph, PerformsConcurrentMovesWhereAllSucceed) {
   ASSERT_EQ(3, this->partitioned_hypergraph.partCutWeight(1));
   ASSERT_EQ(4, this->partitioned_hypergraph.partCutWeight(2));
 
-  ASSERT(this->partitioned_hypergraph.checkConductancePQ());
+  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue());
 }
 
 
@@ -782,7 +782,7 @@ TYPED_TEST(APartitionedHypergraph, ComputesPartInfoCorrectIfNodePartsAreSetOnly)
   ASSERT_EQ(2, this->partitioned_hypergraph.partCutWeight(1));
   ASSERT_EQ(2, this->partitioned_hypergraph.partCutWeight(2));
 
-  ASSERT(this->partitioned_hypergraph.checkConductancePQ());
+  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue());
 }
 
 TYPED_TEST(APartitionedHypergraph, SetPinCountsInPartCorrectIfNodePartsAreSetOnly) {

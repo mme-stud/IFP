@@ -963,8 +963,16 @@ class PartitionedHypergraph {
   }
 
   // ! Only for testing
-  bool checkConductancePQ() {
-    /// [debug] std::cerr << "PartitionedHypergraph::checkConductancePQ()" << std::endl;
+  void recomputeConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::recomputeConductancePriorityQueue()" << std::endl;
+    if (hasConductancePriorityQueue()) {
+      _conductance_pq.globalUpdate(*this);
+    }
+  }
+
+  // ! Only for testing
+  bool checkConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::checkConductancePriorityQueue()" << std::endl;
     if (hasConductancePriorityQueue()) {
       return _conductance_pq.check(*this);
     }
