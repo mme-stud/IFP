@@ -288,6 +288,22 @@ class PartitionedHypergraph {
     return _conductance_pq.initialized();
   }
 
+  // ! Get the partition with the hightes conductance
+  PartitionID topConductancePart() const {
+    return _conductance_pq.topKey();
+  }
+
+  // ! Get the partition with the second hightes conductance
+  PartitionID secondTopConductancePart() const {
+    return _conductance_pq.secondTopKey();
+  }
+
+  // ! Get top 3 partitions with the highest conductance
+  vec<PartitionID> topThreeConductanceParts() const {
+    return _conductance_pq.topThreeKeys();
+  }
+
+
   // ####################### Iterators #######################
 
   // ! Iterates in parallel over all active nodes and calls function f
