@@ -115,8 +115,8 @@ namespace mt_kahypar {
       case Objective::km1: return os << "km1";
       case Objective::soed: return os << "soed";
       case Objective::steiner_tree: return os << "steiner_tree";
-//      case Objective::conductance_local: return os << "conductance_local";
-//      case Objective::conductance_global: return os << "conductance_global";
+      case Objective::conductance_local: return os << "conductance_local";
+      case Objective::conductance_global: return os << "conductance_global";
       case Objective::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -131,8 +131,8 @@ namespace mt_kahypar {
       case GainPolicy::steiner_tree: return os << "steiner_tree";
       case GainPolicy::cut_for_graphs: return os << "cut_for_graphs";
       case GainPolicy::steiner_tree_for_graphs: return os << "steiner_tree_for_graphs";
-//      case GainPolicy::conductance_local: return os << "conductance_local";
-//      case GainPolicy::conductance_global: return os << "conductance_global";
+      case GainPolicy::conductance_local: return os << "conductance_local";
+      case GainPolicy::conductance_global: return os << "conductance_global";
       case GainPolicy::none: return os << "none";
         // omit default case to trigger compiler warning for missing cases
     }

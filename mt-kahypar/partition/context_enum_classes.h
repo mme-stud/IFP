@@ -80,8 +80,8 @@ enum class Objective : uint8_t {
   km1,
   soed,
   steiner_tree,
-//  conductance_local,
-//  conductance_global,
+  conductance_local,
+  conductance_global,
   UNDEFINED
 };
 
@@ -92,8 +92,8 @@ enum class GainPolicy : uint8_t {
   steiner_tree,
   cut_for_graphs,
   steiner_tree_for_graphs,
-//  conductance_local,
-//  conductance_global,
+  conductance_local,
+  conductance_global,
   none
 };
 
