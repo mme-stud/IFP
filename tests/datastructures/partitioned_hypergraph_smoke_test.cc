@@ -162,9 +162,9 @@ void moveAllNodesOfHypergraphRandom(HyperGraph& hypergraph,
   } );
 
   hypergraph.recomputePartWeights();
-  hypergraph.recomputePartCutWeights();
-  hypergraph.recomputePartVolumes();
-  hypergraph.recomputeConductancePriorityQueue();
+  // hypergraph.recomputePartCutWeights();
+  // hypergraph.recomputePartVolumes();
+  // hypergraph.recomputeConductancePriorityQueue();
 
   HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
   double timing = std::chrono::duration<double>(end - start).count();
@@ -200,7 +200,7 @@ void verifyBlockVolumes(HyperGraph& hypergraph,
   std::vector<HyperedgeWeight> block_volume(k, 0);
   for (const HyperedgeID& he : hypergraph.edges()) {
     for (const HypernodeID& hn : hypergraph.pins(he)) {
-      block_volume[hypergraph.partID(hn)] += hypergraph.nodeWeight(hn);
+      block_volume[hypergraph.partID(hn)] += hypergraph.edgeWeight(he);
     }
   }
 
@@ -268,7 +268,8 @@ void verifyConnectivitySet(HyperGraph& hypergraph,
 }
 
 template<typename HyperGraph>
-void verifyConductancePriorityQueue(Hypergraph& hypergraph) {
+void verifyConductancePriorityQueue(HyperGraph& hypergraph) {
+  unused(hypergraph);
   ASSERT(hypergraph.checkConductancePriorityQueue());
 }
 
@@ -311,7 +312,6 @@ TYPED_TEST(AConcurrentHypergraph, VerifyConnectivitySetSmokeTest) {
   verifyConnectivitySet(this->hypergraph, this->k);
 }
 
-// VerifyConductancePriorityQueueSmokeTest
 TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueSmokeTest) {
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
   verifyConductancePriorityQueue(this->hypergraph);

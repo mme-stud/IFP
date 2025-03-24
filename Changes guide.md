@@ -287,7 +287,7 @@ Access to new hypergraph infos:
 - `partitioned_hypergraph_smoke_test.cc`: `AConcurrectHypergraph`
 	- \+ `verifyBlockVolumes(hg, k)`, `verifyBlockCutWeights(hg, k)` analog. to `verifyBlockWeightsAndSizes(hg, k)`
 	- \+ `verifyConductancePriorityQueue(hg)` (not really..) analog. to `verifyConnectivitySet(hg, k)`
-	- `moveAllNodesOfHypergraphRandom(hg, k, obj, show_timing)`: after moving all nodes stats are recomputed (`hypergraph.recomputePartWeights();`) &rArr; call `.recomputePartCutWeights()`, `.recomputePartVolumes()` and `.recomputeConductancePriorityQueue()`
+	- `moveAllNodesOfHypergraphRandom(hg, k, obj, show_timing)`: after moving all nodes stats are recomputed (`hypergraph.recomputePartWeights();`) &rArr; ~~call `.recomputePartCutWeights()`, `.recomputePartVolumes()` and `.recomputeConductancePriorityQueue()`~~ do nothing (or else the new tests `VerifyBlockVolumesSmokeTest`... are useless)
 	+ \+ `VerifyBlockVolumesSmokeTest`, `VerifyBlockCutWeightsSmokeTest` analog. to `VerifyBlockWeightsSmokeTest`
 	+ \+ `VerifyConductancePriorityQueueSmokeTest` analog. to `VerifyConnectivitySetSmokeTest`
 
@@ -383,3 +383,16 @@ Update of `_conductance_pq` (if enabled):
 3. `partition/metrics.cpp`: 
 
 **STOPPED HERE**
+TODO: look at the build problems!!!
+
+	- \+ `ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local>` -  template specializations for new `Objective` enum type \
+	&rarr; `operator()(phg, he)`
+	`ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global>` - template specializations for new `Objective` enum types and override operator()(const PartitionedHypergraph& phg, const HyperedgeID he). The function takes a partitioned hypergraph and a hyperedge ID and computes the contribution of the hyperedge to the objective function. Moreover, add your new objective function to the switch statements in quality(...) and contribution(...).
+partition/refinement/gains/gain_definitions.h: Create a gain type struct for your new objective function. You can copy one of the existing structures. This struct contains all relevant implementations for the gain computation in our refinement algorithms. We will later replace them with custom implementations for the new objective function. You also have to add this struct to the type list GainTypes and to the macro INSTANTIATE_CLASS_WITH_TYPE_TRAITS_AND_GAIN_TYPES.
+partition/refinement/gains/gain_cache_ptr.h: Add the GainPolicy type of your new objective function to all switch statements in the GainCachePtr class. Use the gain cache implementation of your gain type struct defined in gain_definitions.h. We will later replace it by the concrete gain cache implementation for your new objective function. Moreover, add the GainPolicy type of your new objective function to the switch statement of the bipartition_each_block(...) function in partition/deep_multilevel.cpp
+partition/context.cpp: Create a mapping between the enum type Objective and GainPolicy in the sanityCheck(...) function.
+partition/registries/register_policies.cpp: Create a mapping between the enum class GainPolicy and your gain type struct.
+partition/refinement/gains/bipartitioning_policy.h: Add the GainPolicy type of your new objective function to the switch statements in useCutNetSplitting(...) and nonCutEdgeMultiplier(...). You can copy one of the existing parameters of an other objective function for now. An explanation how to configure these functions properly follows later.
+Create a folder for your objective function in partition/refinement/gains. We will later add here all relevant gain computation techniques.
+
+	
