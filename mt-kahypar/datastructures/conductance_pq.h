@@ -180,6 +180,7 @@ public:
         LOG << "Cut weight of partition in ConductancePriorityQueue" << p << "is" << cut_weight << ", but should be" << hg.partCutWeight(p);
       }
     }
+    ASSERT(SuperPQ::isHeap() && SuperPQ::positionsMatch());
     unlock(synchronized);
     return correct;
   }
