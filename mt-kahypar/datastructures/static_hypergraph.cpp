@@ -460,6 +460,7 @@ namespace mt_kahypar::ds {
           if ( he_mapping.value(he) > 0 /* hyperedge is valid */ ) {
             tmp_incident_nets[pos] = he_mapping[he];
 //            hypergraph._weighted_degrees[id] += hypergraph._hyperedges[he_mapping[he]].weight();
+              // Important: parallel_for iterates over nodes (id) => no MT-PROBLEM
               hypergraph._weighted_degrees[id] += tmp_hyperedges[he].weight();
           } else {
             std::swap(tmp_incident_nets[pos--], tmp_incident_nets[--incident_nets_end]);
