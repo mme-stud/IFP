@@ -162,6 +162,9 @@ void moveAllNodesOfHypergraphRandom(HyperGraph& hypergraph,
   } );
 
   hypergraph.recomputePartWeights();
+  hypergraph.recomputePartCutWeights();
+  hypergraph.recomputePartVolumes();
+  hypergraph.recomputeConductancePriorityQueue();
 
   HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
   double timing = std::chrono::duration<double>(end - start).count();
@@ -188,6 +191,38 @@ void verifyBlockWeightsAndSizes(HyperGraph& hypergraph,
 
   for (PartitionID i = 0; i < k; ++i) {
     ASSERT_EQ(block_weight[i], hypergraph.partWeight(i));
+  }
+}
+
+template <typename HyperGraph>
+void verifyBlockVolumes(HyperGraph& hypergraph,
+                         const PartitionID k) {
+  std::vector<HyperedgeWeight> block_volume(k, 0);
+  for (const HyperedgeID& he : hypergraph.edges()) {
+    for (const HypernodeID& hn : hypergraph.pins(he)) {
+      block_volume[hypergraph.partID(hn)] += hypergraph.nodeWeight(hn);
+    }
+  }
+
+  for (PartitionID i = 0; i < k; ++i) {
+    ASSERT_EQ(block_volume[i], hypergraph.partVolume(i));
+  }
+}
+
+template <typename HyperGraph>
+void verifyBlockCutWeights(HyperGraph& hypergraph,
+                           const PartitionID k) {
+  std::vector<HyperedgeWeight> block_cut_weight(k, 0);
+  for (const HyperedgeID& he : hypergraph.edges()) {
+    if (hypergraph.connectivity(he) > 1) {
+      for (const PartitionID& block : hypergraph.connectivitySet(he)) {
+        block_cut_weight[block] += hypergraph.edgeWeight(he);
+      }
+    }
+  }
+
+  for (PartitionID i = 0; i < k; ++i) {
+    ASSERT_EQ(block_cut_weight[i], hypergraph.partCutWeight(i));
   }
 }
 
@@ -233,6 +268,11 @@ void verifyConnectivitySet(HyperGraph& hypergraph,
 }
 
 template<typename HyperGraph>
+void verifyConductancePriorityQueue(Hypergraph& hypergraph) {
+  ASSERT(hypergraph.checkConductancePriorityQueue());
+}
+
+template<typename HyperGraph>
 void verifyBorderNodes(HyperGraph& hypergraph) {
   for (const HypernodeID& hn : hypergraph.nodes()) {
     bool is_border_node = false;
@@ -251,6 +291,16 @@ TYPED_TEST(AConcurrentHypergraph, VerifyBlockWeightsSmokeTest) {
   verifyBlockWeightsAndSizes(this->hypergraph, this->k);
 }
 
+TYPED_TEST(AConcurrentHypergraph, VerifyBlockVolumesSmokeTest) {
+  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+  verifyBlockVolumes(this->hypergraph, this->k);
+}
+
+TYPED_TEST(AConcurrentHypergraph, VerifyBlockCutWeightsSmokeTest) {
+  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+  verifyBlockCutWeights(this->hypergraph, this->k);
+}
+
 TYPED_TEST(AConcurrentHypergraph, VerifyPinCountsInPartsSmokeTest) {
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
   verifyPinCountsInParts(this->hypergraph, this->k);
@@ -259,6 +309,12 @@ TYPED_TEST(AConcurrentHypergraph, VerifyPinCountsInPartsSmokeTest) {
 TYPED_TEST(AConcurrentHypergraph, VerifyConnectivitySetSmokeTest) {
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
   verifyConnectivitySet(this->hypergraph, this->k);
+}
+
+// VerifyConductancePriorityQueueSmokeTest
+TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueSmokeTest) {
+  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+  verifyConductancePriorityQueue(this->hypergraph);
 }
 
 TYPED_TEST(AConcurrentHypergraph, VerifyBorderNodesSmokeTest) {
