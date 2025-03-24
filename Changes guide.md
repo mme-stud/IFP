@@ -106,7 +106,7 @@ For partitioned hypergraph:
 
 &rarr; `static_hypergraph_factory.cpp`:
 - `construct(..)`: 
-	- compute `_total_volume`: `computeAndSetTotalVolume(parallel_tag_t)`
+	- compute `_total_volume`: `computeAndSetTotalVolume(parallel_tag_t)` *(! thread-safe !)*
 
 #### Weighted Degrees (!!!)
 (**???** `dynamic_adjacency_array.cpp` - for vectors **???**)
@@ -174,7 +174,8 @@ For partitioned hypergraph:
 - `construct(..)`: 
 	- resize `_weighted_degrees`
 	- compute `_weighted_degrees`: `hyperedge_weight`is a ptr \
-		&rArr; `hyperedge_weight ? hyperedge_weight[pos] : 1;`
+		&rArr; `hyperedge_weight ? hyperedge_weight[pos] : 1;` \
+		**!!!** use thread-local storage `tbb::enumerable_thread_specific< parallel::scalable_vector < HyperedgeWeight> > local_weighted_degree_per_vertex(num_hypernodes, 0);` analog. to `num_incident_nets_per_vertex` [debug]
 
 ### Part 1.2: partitioned hypergraph (access to hgInfo, number of pins, volumes, cut weights)
 Access to new hypergraph infos:
