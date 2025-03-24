@@ -418,6 +418,8 @@ namespace mt_kahypar::ds {
 
       // Write hyperedges from temporary buffers to incidence array
       tbb::enumerable_thread_specific<size_t> local_max_edge_size(UL(0));
+      // _total_volume is not atomic => collect local values and sum them up afterwards
+      tbb::enumerable_thread_specific<HyperedgeWeight> local_total_volume(HyperedgeWeight(0));
       tbb::parallel_for(ID(0), _num_hyperedges, [&](const HyperedgeID& id) {
         if ( he_mapping.value(id) > 0 /* hyperedge is valid */ ) {
           const size_t he_pos = he_mapping[id];
@@ -431,12 +433,18 @@ namespace mt_kahypar::ds {
                       tmp_incidence_array.data() + tmp_incidence_array_start,
                       sizeof(HypernodeID) * edge_size);
           he.setFirstEntry(incidence_array_start);
-          hypergraph._total_volume += edge_size * he.weight();
+          // MT-PROBLEM with _total_volume: hypergraph._total_volume += edge_size * he.weight();
+          local_total_volume.local() += edge_size * he.weight();
         }
       });
       hypergraph._max_edge_size = local_max_edge_size.combine(
               [&](const size_t lhs, const size_t rhs) {
                 return std::max(lhs, rhs);
+              });
+      // combine local total volumes
+      hypergraph._total_volume = local_total_volume.combine(
+              [&](const HyperedgeWeight lhs, const HyperedgeWeight rhs) {
+                return lhs + rhs;
               });
     };
 
