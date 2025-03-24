@@ -285,26 +285,36 @@ class PartitionedHypergraph {
   }
 
   bool hasConductancePriorityQueue() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
+    ASSERT(hasConductancePriorityQueue());
     return _conductance_pq.initialized();
   }
 
   // ! Get the partition with the hightes conductance
   PartitionID topConductancePart() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::topConductancePart()" << std::endl;
+    ASSERT(hasConductancePriorityQueue());
     return _conductance_pq.topKey();
   }
 
   // ! Get the partition with the second hightes conductance
   PartitionID secondTopConductancePart() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::secondTopConductancePart()" << std::endl;
+    ASSERT(hasConductancePriorityQueue());
     return _conductance_pq.secondTopKey();
   }
 
   // ! Get top 3 partitions with the highest conductance
   vec<PartitionID> topThreeConductanceParts() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::topThreeConductanceParts()" << std::endl;
+    ASSERT(hasConductancePriorityQueue());
     return _conductance_pq.topThreeKeys();
   }
 
   // ! Get a pointer to the conductance priority queue
   const ConductancePQ* conductancePriorityQueue() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::conductancePriorityQueue()" << std::endl;
+    ASSERT(hasConductancePriorityQueue());
     return &_conductance_pq;
   }
 
