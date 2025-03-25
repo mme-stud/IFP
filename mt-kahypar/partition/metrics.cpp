@@ -73,6 +73,63 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::steiner_tree> {
   }
 };
 
+template<typename PartitionedHypergraph>
+struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
+  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+    ASSERT(phg.hasConductancePriorityQueue());
+    ASSERT(phg.edgeIsEnabled(he), "Hyperedge " + he + " must be enabled to compute its contribution to the objective");
+    // const ConductancePQ* conductance_pq = phg.conductancePriorityQueue();
+    // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
+    const PartitionID part_with_biggest_conductance = phg.topConductancePart();
+    ASSERT(0 <= part_with_biggest_conductance && part_with_biggest_conductance < phg.k());
+    const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, part_with_biggest_conductance);
+    if (pin_count_he_in_part == 0 || pin_count_he_in_part == phg.edgeSize(he)) {
+      // not a cutting edge => contributes by 0
+      return 0;
+    } else {
+      // cutting edge => contributes by its weight / min(vol, total_vol - vol)
+      double conductance_contribution = static_cast<double>(phg.edgeWeight(he)) /
+                          static_cast<double>(std::min(pin_count_he_in_part, phg.edgeSize(he) - pin_count_he_in_part));
+      double current_multiplier = static_cast<double>(phg.totalVolume()) / static_cast<double>(phg.k());
+      // TODO: make current_multiplier a parameter / member of phg, ASK ABOUT THIS APPROACH
+      double scaled_contribution = conductance_contribution * current_multiplier;
+      ASSERT(0 <= scaled_contribution && scaled_contribution <= std::numeric_limits<HyperedgeWeight>::max());
+      return static_cast<HyperedgeWeight>(conductance_contribution * current_multiplier);
+    }
+    // TODO: several parts with the same conductance?
+  }
+};
+
+template<typename PartitionedHypergraph>
+struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
+  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+    ASSERT(phg.hasConductancePriorityQueue());
+    ASSERT(phg.edgeIsEnabled(he), "Hyperedge " + he + " must be enabled to compute its contribution to the objective");
+    // const ConductancePQ* conductance_pq = phg.conductancePriorityQueue();
+    // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
+    const PartitionID part_with_biggest_conductance = phg.topConductancePart();
+    ASSERT(0 <= part_with_biggest_conductance && part_with_biggest_conductance < phg.k());
+    const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, part_with_biggest_conductance);
+    if (pin_count_he_in_part == 0 || pin_count_he_in_part == phg.edgeSize(he)) {
+      // not a cutting edge => contributes by 0
+      return 0;
+    } else {
+      // cutting edge => contributes by its weight / min(vol, total_vol - vol)
+      double conductance_contribution = static_cast<double>(phg.edgeWeight(he)) /
+                          static_cast<double>(std::min(pin_count_he_in_part, phg.edgeSize(he) - pin_count_he_in_part));
+      double current_multiplier = static_cast<double>(phg.totalVolume()) / static_cast<double>(phg.k());
+      // TODO: make current_multiplier a parameter / member of phg, ASK ABOUT THIS APPROACH
+      double scaled_contribution = conductance_contribution * current_multiplier;
+      if (0 <= scaled_contribution && scaled_contribution <= std::numeric_limits<HyperedgeWeight>::max()) {
+        return static_cast<HyperedgeWeight>(conductance_contribution * current_multiplier);
+      } else {
+        std::cerr << "Gain of hyperedge " << he << " is too large: " << scaled_contribution << std::endl;
+        return std::numeric_limits<HyperedgeWeight>::max();
+      }
+    }
+  }
+};
+
 template<Objective objective, typename PartitionedHypergraph>
 HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
   ObjectiveFunction<PartitionedHypergraph, objective> func;
@@ -125,6 +182,12 @@ HyperedgeWeight quality(const PartitionedHypergraph& hg,
     case Objective::steiner_tree:
       return parallel ? compute_objective_parallel<Objective::steiner_tree>(hg) :
         compute_objective_sequentially<Objective::steiner_tree>(hg);
+    case Objective::conductance_local:
+      return parallel ? compute_objective_parallel<Objective::conductance_local>(hg) :
+        compute_objective_sequentially<Objective::conductance_local>(hg);
+    case Objective::conductance_global:
+      return parallel ? compute_objective_parallel<Objective::conductance_global>(hg) :
+        compute_objective_sequentially<Objective::conductance_global>(hg);
     default: throw InvalidParameterException("Unknown Objective");
   }
   return 0;
@@ -139,6 +202,8 @@ HyperedgeWeight contribution(const PartitionedHypergraph& hg,
     case Objective::km1: return contribution<Objective::km1>(hg, he);
     case Objective::soed: return contribution<Objective::soed>(hg, he);
     case Objective::steiner_tree: return contribution<Objective::steiner_tree>(hg, he);
+    case Objective::conductance_local: return contribution<Objective::conductance_local>(hg, he);
+    case Objective::conductance_global: return contribution<Objective::conductance_global>(hg, he);
     default: throw InvalidParameterException("Unknown Objective");
   }
   return 0;
