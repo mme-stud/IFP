@@ -259,7 +259,7 @@ public:
   vec<PartitionID> topThree() const {
     vec<PartitionID> top_three(3, kInvalidPartition);
     for (size_t i = 0; i < 3 && i < _size; ++i) {
-      topThree[i] = SuperPQ::heap[i].id;
+      top_three[i] = SuperPQ::heap[i].id;
     }
     return top_three;
   }

@@ -95,7 +95,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
       // TODO: make current_multiplier a parameter / member of phg, ASK ABOUT THIS APPROACH
       double scaled_contribution = conductance_contribution * current_multiplier;
       ASSERT(0 <= scaled_contribution && scaled_contribution <= std::numeric_limits<HyperedgeWeight>::max());
-      return static_cast<HyperedgeWeight>(conductance_contribution * current_multiplier);
+      return static_cast<HyperedgeWeight>(scaled_contribution);
     }
     // TODO: several parts with the same conductance?
   }
