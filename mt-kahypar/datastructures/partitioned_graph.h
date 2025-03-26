@@ -45,6 +45,9 @@
 #include "mt-kahypar/utils/range.h"
 #include "mt-kahypar/utils/timer.h"
 
+template<typename PartitionedHypergraph>
+class ConductancePriorityQueue;
+
 namespace mt_kahypar {
 
 // Forward
@@ -1043,6 +1046,93 @@ private:
     _k = 0;
   }
 
+  // ################## Non-supported operations from PHG #######################
+
+  // ! Total volume of graph: not supported 
+  HypernodeWeight totalVolume() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }  
+
+  // ! Node weighted degree: not supported
+  HyperedgeWeight nodeWeightedDegree(const HypernodeID) const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! Part volume: not supported
+  HyperedgeWeight partVolume(const PartitionID) const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! Recompute part volumes: not supported
+  void recomputePartVolumes() {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+  }
+
+  // ! Initialize part volumes: not supported
+  void initializeBlockVolumes() {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+  }
+
+  // ! Cut weight of a block: not supported
+  HypernodeWeight partCutWeight(const PartitionID) const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! iNITIALIZE part cut weights: not supported
+  void initializeBlockCutWeights() {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+  }
+
+  // not supported
+  bool hasConductancePriorityQueue() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return false;
+  }
+
+  // ! Conductance of a block: not supported
+  double_t conductance(const PartitionID) const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! Check conductance priority queue: not supported
+  bool checkConductancePriorityQueue() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return false;
+  }
+
+  // ! Recompute conductance priority queue: not supported
+  void recomputeConductancePriorityQueue() {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+  }
+
+  // ! Get the partition with the hightes conductance: not supported
+  PartitionID topConductancePart() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! Get the partition with the second highest conductance: not supported
+  PartitionID secondTopConductancePart() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! Get top 3 partitions with the highest conductance: not supported
+  vec<PartitionID> topThreeConductanceParts() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return {};
+  }
+
+  const ConductancePriorityQueue<Self>* conductancePriorityQueue() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return nullptr;
+  }
+     
  private:
   template<bool notify, typename SuccessFunc>
   bool changeNodePartImpl(const HypernodeID u,
