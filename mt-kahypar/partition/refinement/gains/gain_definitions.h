@@ -214,6 +214,8 @@ using GraphAndGainTypesList = kahypar::meta::Typelist<_LIST_HYPERGRAPH_COMBINATI
 #define _INSTANTIATE_CLASS_MACRO_FOR_HYPERGRAPH_COMBINATIONS(C, TYPE_TRAITS)                  \
   template class C(GraphAndGainTypes<TYPE_TRAITS COMMA Km1GainTypes>);                                \
   template class C(GraphAndGainTypes<TYPE_TRAITS COMMA CutGainTypes>);                                \
+  template class C(GraphAndGainTypes<TYPE_TRAITS COMMA ConductanceLocalGainTypes>);                   \
+  template class C(GraphAndGainTypes<TYPE_TRAITS COMMA ConductanceGlobalGainTypes>);                  \
   ENABLE_SOED(template class C(GraphAndGainTypes<TYPE_TRAITS COMMA SoedGainTypes>);)                  \
   ENABLE_STEINER_TREE(template class C(GraphAndGainTypes<TYPE_TRAITS COMMA SteinerTreeGainTypes>);)
 
