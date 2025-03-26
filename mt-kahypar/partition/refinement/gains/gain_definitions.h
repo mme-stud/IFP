@@ -88,6 +88,40 @@ struct CutGainTypes : public kahypar::meta::PolicyBase {
   using FlowNetworkConstruction = CutFlowNetworkConstruction;
 };
 
+struct ConductanceLocalGainTypes : public kahypar::meta::PolicyBase {
+  using GainComputation = CutGainComputation;
+  using AttributedGains = CutAttributedGains;
+  using GainCache = CutGainCache;
+  using DeltaGainCache = DeltaCutGainCache;
+  using Rollback = CutRollback;
+  using FlowNetworkConstruction = CutFlowNetworkConstruction;
+  /* To be implemented
+  using GainComputation = ConductanceLocalGainComputation;
+  using AttributedGains = ConductanceLocalAttributedGains;
+  using GainCache = ConductanceLocalGainCache;
+  using DeltaGainCache = DeltaConductanceLocalGainCache;
+  using Rollback = ConductanceLocalRollback;
+  using FlowNetworkConstruction = ConductanceLocalFlowNetworkConstruction;
+  */
+};
+
+struct ConductanceGlobalGainTypes : public kahypar::meta::PolicyBase {
+  using GainComputation = CutGainComputation;
+  using AttributedGains = CutAttributedGains;
+  using GainCache = CutGainCache;
+  using DeltaGainCache = DeltaCutGainCache;
+  using Rollback = CutRollback;
+  using FlowNetworkConstruction = CutFlowNetworkConstruction;
+  /* To be implemented
+  using GainComputation = ConductanceGlobalGainComputation;
+  using AttributedGains = ConductanceGlobalAttributedGains;
+  using GainCache = ConductanceGlobalGainCache;
+  using DeltaGainCache = DeltaConductanceGlobalGainCache;
+  using Rollback = ConductanceGlobalRollback;
+  using FlowNetworkConstruction = ConductanceGlobalFlowNetworkConstruction;
+  */
+};
+
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
 struct SoedGainTypes : public kahypar::meta::PolicyBase {
   using GainComputation = SoedGainComputation;
@@ -150,7 +184,9 @@ struct GraphAndGainTypes : public kahypar::meta::PolicyBase {
 
 
 using GainTypes = kahypar::meta::Typelist<Km1GainTypes,
-                                          CutGainTypes
+                                          CutGainTypes,
+                                          ConductanceLocalGainTypes,
+                                          ConductanceGlobalGainTypes
                                           ENABLE_SOED(COMMA SoedGainTypes)
                                           ENABLE_STEINER_TREE(COMMA SteinerTreeGainTypes)
                                           ENABLE_GRAPHS(COMMA CutGainForGraphsTypes)
@@ -158,7 +194,9 @@ using GainTypes = kahypar::meta::Typelist<Km1GainTypes,
 
 #define _LIST_HYPERGRAPH_COMBINATIONS(TYPE_TRAITS)                                     \
   GraphAndGainTypes<TYPE_TRAITS, Km1GainTypes>,                                           \
-  GraphAndGainTypes<TYPE_TRAITS, CutGainTypes>                                            \
+  GraphAndGainTypes<TYPE_TRAITS, CutGainTypes>,                                           \
+  GraphAndGainTypes<TYPE_TRAITS, ConductanceLocalGainTypes>,                              \
+  GraphAndGainTypes<TYPE_TRAITS, ConductanceGlobalGainTypes>                              \
   ENABLE_SOED(COMMA GraphAndGainTypes<TYPE_TRAITS COMMA SoedGainTypes>)                   \
   ENABLE_STEINER_TREE(COMMA GraphAndGainTypes<TYPE_TRAITS COMMA SteinerTreeGainTypes>)
 
@@ -202,6 +240,8 @@ using GraphAndGainTypesList = kahypar::meta::Typelist<_LIST_HYPERGRAPH_COMBINATI
   switch ( gain_policy ) {                                                                    \
     case GainPolicy::km1: _RETURN_COMBINED_POLICY(TYPE_TRAITS, Km1GainTypes)                  \
     case GainPolicy::cut: _RETURN_COMBINED_POLICY(TYPE_TRAITS, CutGainTypes)                  \
+    case GainPolicy::conductance_local: _RETURN_COMBINED_POLICY(TYPE_TRAITS, ConductanceLocalGainTypes)   \
+    case GainPolicy::conductance_global: _RETURN_COMBINED_POLICY(TYPE_TRAITS, ConductanceGlobalGainTypes) \
     case GainPolicy::soed: ENABLE_SOED(_RETURN_COMBINED_POLICY(TYPE_TRAITS, SoedGainTypes))   \
     case GainPolicy::steiner_tree:                                                            \
       ENABLE_STEINER_TREE(_RETURN_COMBINED_POLICY(TYPE_TRAITS, SteinerTreeGainTypes))         \
