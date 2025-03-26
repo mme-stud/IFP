@@ -33,6 +33,7 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/mapping/target_graph.h"
 #include "mt-kahypar/utils/exception.h"
+// include "mt-kahypar/datastructures/conductance_pq.h"
 
 namespace mt_kahypar::metrics {
 
@@ -78,7 +79,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
   HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " + he + " must be enabled to compute its contribution to the objective");
-    // const ConductancePriorityQueue* conductance_pq = phg.conductancePriorityQueue();
+    // const ConductancePriorityQueue<PartitionedHypergraph>* conductance_pq = phg.conductancePriorityQueue();
     // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
     const PartitionID part_with_biggest_conductance = phg.topConductancePart();
     ASSERT(0 <= part_with_biggest_conductance && part_with_biggest_conductance < phg.k());
@@ -105,7 +106,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
   HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " + he + " must be enabled to compute its contribution to the objective");
-    // const ConductancePriorityQueue* conductance_pq = phg.conductancePriorityQueue();
+    // const ConductancePriorityQueue<PartitionedHypergraph>* conductance_pq = phg.conductancePriorityQueue();
     // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
     const PartitionID part_with_biggest_conductance = phg.topConductancePart();
     ASSERT(0 <= part_with_biggest_conductance && part_with_biggest_conductance < phg.k());

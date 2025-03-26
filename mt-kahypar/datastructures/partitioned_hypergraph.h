@@ -312,7 +312,7 @@ class PartitionedHypergraph {
   }
 
   // ! Get a pointer to the conductance priority queue
-  const ConductancePriorityQueue* conductancePriorityQueue() const {
+  const ConductancePriorityQueue<Self>* conductancePriorityQueue() const {
     /// [debug] std::cerr << "PartitionedHypergraph::conductancePriorityQueue()" << std::endl;
     ASSERT(hasConductancePriorityQueue());
     return &_conductance_pq;
