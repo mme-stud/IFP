@@ -179,6 +179,9 @@ For partitioned hypergraph:
 		**!!!** use thread-local storage `tbb::enumerable_thread_specific< parallel::scalable_vector < HyperedgeWeight> > local_weighted_degree_per_vertex(num_hypernodes, 0);` analog. to `num_incident_nets_per_vertex` [debug]
 
 ### Part 1.2: Partitioned hypergraph stats (access to hgInfo, number of pins, volumes, cut weights)
+
+**!!!** Add new methods (except for some testing-only / intern used only) to `partitioned_graph.h` with `UnsupportedOperationException("..")` to make instantiation of `ObjectiveFunction::operator()` possible (templated...)
+
 Access to new hypergraph infos:
 &rarr; `partitioned_hypergraph.h`:
 - \+ `totalVolume()` analog. to `totalWeight()`
@@ -218,7 +221,7 @@ Access to new hypergraph infos:
 &rarr; `partitioned_hypergpaph.h`
 - \+ `_part_cut_weights` (`vec<CAtomic>` **!!!**)
 - constructors, `resetData()` - trivially adjusted analog. to `_part_weights`
-- `partCutWeight(p)` - getter
+- \+ `partCutWeight(p)` - getter
 - \+ `decrementCutWeightOfBlock(p, w)`, `incrementCutWeightOfBlock(p, w)` \
 	analog. to `incrementPinCountOfBlock(e, p)` \
 	**???**	potentially reimplement later in ~ `pin_count.h`?
@@ -316,7 +319,8 @@ TODO: write a TODO list for this section :)
 		&rarr; \+ `reset(sync)` to return underlying heap to the uninitialized state
 	- \+ `globalUpdate(hg, sync)`: a version of `initialize` but for already initialized pq. Should be used after global changes in partitioned hg (e.g. `uncontract(batch, gain_cache)`)
 	- \+ *private* metods `lock(sync)`, `uplock(sync)` for a *private* `Spinlock _pq_lock`: \
-		Are used by all public methods, when the last parameter `bool synchronized` is set `true`. Per default it is set to `true` only by writing methods except `initialize`, `globalUpdate`, `reset` (These shouldn't be called in parallel).
+		Are used by all "sync"-versions of public methods, when the last parameter `bool synchronized` is set `true`. Per default it is set to `true` only by writing methods except `initialize`, `globalUpdate`, `reset` (These shouldn't be called in parallel). \
+		**Not used by normal - const - versions of getters**
 	- \+ `adjustKey(p, cut_weight, volume, sync)`, `size()`, `bool empty()` - standard pq methods
 	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
 	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
@@ -344,11 +348,13 @@ Update of `_conductance_pq` (if enabled):
 `partitioned_hypergraph.h`:
 - \+ `#include "conductance_pq.h"`
 - \+ `ConductancePriorityQueue<Self> _conductance_pq` - optional attribute \
-	&rarr; \+ `bool hasConductancePQ()`, `enableConductancePQ()`
+	&rarr; \+ `bool hasConductancePriorityQueue()`, `enableConductancePriorityQueue()`
 - \+ `double_t conductance(p)` - calculates conductance of a partition without using `_conductance_pq` \
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
 - \+ `bool checkConductancePriorityQueue()` - for testing. True if not initialized.
 - \+ `recomputeConductancePriorityQueue()`: runs global update (only for testing (?))
+- \+ `topConductancePart()`, `secondTopConductancePart()`, `topThreeConductanceParts()` in `PartitionedHypergraph`
+- \+ `conductancePriorityQueue()` to get a const pointer to `_conductance_pq`
 
 - in 2 constructors: `_conductance_pq()` &lArr; no `initialize()` **!!!**
 - `resetData()`: call `_conductance_pq.reset()` in parallel, if enabled
@@ -382,18 +388,35 @@ Update of `_conductance_pq` (if enabled):
 2. `partition/context_enum_classes.cpp`: 
 	- `operator<< (os, Objective)` and `operator<< (os, GainPolicy)` for `conductance_local`, `conductance_global` (mapping from enum to string)
 3. `partition/metrics.cpp`: 
-
-**STOPPED HERE**
-TODO: look at the build problems!!!
-
-	- \+ `ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local>` -  template specializations for new `Objective` enum type \
-	&rarr; `operator()(phg, he)`
-	`ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global>` - template specializations for new `Objective` enum types and override operator()(const PartitionedHypergraph& phg, const HyperedgeID he). The function takes a partitioned hypergraph and a hyperedge ID and computes the contribution of the hyperedge to the objective function. Moreover, add your new objective function to the switch statements in quality(...) and contribution(...).
-partition/refinement/gains/gain_definitions.h: Create a gain type struct for your new objective function. You can copy one of the existing structures. This struct contains all relevant implementations for the gain computation in our refinement algorithms. We will later replace them with custom implementations for the new objective function. You also have to add this struct to the type list GainTypes and to the macro INSTANTIATE_CLASS_WITH_TYPE_TRAITS_AND_GAIN_TYPES.
-partition/refinement/gains/gain_cache_ptr.h: Add the GainPolicy type of your new objective function to all switch statements in the GainCachePtr class. Use the gain cache implementation of your gain type struct defined in gain_definitions.h. We will later replace it by the concrete gain cache implementation for your new objective function. Moreover, add the GainPolicy type of your new objective function to the switch statement of the bipartition_each_block(...) function in partition/deep_multilevel.cpp
-partition/context.cpp: Create a mapping between the enum type Objective and GainPolicy in the sanityCheck(...) function.
-partition/registries/register_policies.cpp: Create a mapping between the enum class GainPolicy and your gain type struct.
-partition/refinement/gains/bipartitioning_policy.h: Add the GainPolicy type of your new objective function to the switch statements in useCutNetSplitting(...) and nonCutEdgeMultiplier(...). You can copy one of the existing parameters of an other objective function for now. An explanation how to configure these functions properly follows later.
-Create a folder for your objective function in partition/refinement/gains. We will later add here all relevant gain computation techniques.
-
-	
+	- \+ `ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local>` and `conductance_global` analog.-  template specializations for new `Objective` enum type:
+		- &rarr; `operator()(phg, he)` returns 0 if `he` isn't in the most expensive cut, otherwise returns edge weight divided by $min{_part_volume(p), _total_volume - _part_volume(p)}$
+		- &rArr; depends on `conductance_pq` of `PartitionedHypergraph`
+		- **TODO**: What if several parts have the biggest conductance?
+		- **Problem**: value of `ObjectiveFunction` has to be `HyperedgeWeight`: \
+		Current solution: `current_multiplier = phg.totalVolume() / phg.k()`. Problems? -> **ASK!!!**
+	- `quality(...)` and `contribution(...)`: add new objective functions to the switch statements
+4. `partition/refinement/gains/gain_definitions.h`:
+	- \+ `ConductanceLocalGainTypes`, `ConductanceGlobalGainTypes` - gain type structs analog. to `CutGainTypes`:
+		- should in the end contain all relevant implementations for the gain computation in the refinement algorithms &rarr; *to be implemented*
+		- for now used `CutGainTypes::[..]`
+	- add these classes to the `GainTypes` list
+	- and these classes to the macro ~~`INSTANTIATE_CLASS_WITH_TYPE_TRAITS_AND_GAIN_TYPES`~~ [**!!!** no such macro] &rArr; Currently added to all the macros with `CutGainTypes`:
+		- `_LIST_HYPERGRAPH_COMBINATIONS`
+		- `_INSTANTIATE_CLASS_MACRO_FOR_HYPERGRAPH_COMBINATIONS`
+		- `SWITCH_HYPERGRAPH_GAIN_TYPES`
+5. `partition/refinement/gains/gain_cache_ptr.h`:
+	- `GainCachePtr`: 
+		- add new GainPolicy types to all switch statements:
+		`applyWithConcreteGainCache(..)`, `applyWithConcreteGainCacheForHG(..)`, `constructGainCache(..)` \
+		**!!!** for now used `CutGainCache` &rarr; ***to be changed later**
+5. `partition/deep_multilevel.cpp`: 
+	- `bipartition_each_block(...)`: ~~add the `GainPolicy` type of new objective functions to the switch statement~~ [no switch statements] &rarr; **nothing changed**
+6. `partition/context.cpp`:
+	- ~~`sanityCheck(..)`~~ [nothing there] `Context::setupGainPolicy()`: create a mapping between the enum type `Objective` and `GainPolicy` (for `conductance_local` and `clonductance_global`)
+7. `partition/registries/register_policies.cpp`: 
+	- `== Gain Type Policies ==`: Create a mapping between the enum class `GainPolicy` and its gain type struct (for `conductance_local` and `clonductance_global`)
+8. `partition/refinement/gains/bipartitioning_policy.h:`:
+	- `useCutNetSplitting(..)` and `nonCutEdgeMultiplier(..)`: add the `GainPolicy` type of new objective functions to the switch statements.	**!!!** **to be rethought later**. For now:
+		- `useCutNetSplitting = true`: already cut nets could be cutting nets in the block (if it will be bipartitioned further) &rArr; cannot remove cut nets
+		- `nonCutEdgeMultiplier = 1`: otherwise it would change edge weights... Note: in `deep_multilevel.cpp` only `bipartition_each_block(..)` calls `adaptWeightsOfNonCutEdges(..)` and a partitioned hypergraph is built later &rArr; we could recalculate weighted degrees and total volume in the constructor of a partitioned hypergraph **???** &rarr; **no...**: `recursive_bipartitioning.cpp` changes edge weights of a given partitioned hypergraph...
+9. \+ `partition/refinement/gains/conductance_local`, `partition/refinement/gains/conductance_global` - folders to that we will later add all relevant gain computation techniques.	
