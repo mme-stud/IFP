@@ -78,7 +78,7 @@ template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
   HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
-    ASSERT(phg.edgeIsEnabled(he), "Hyperedge " + he + " must be enabled to compute its contribution to the objective");
+    ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
     // const ConductancePriorityQueue<PartitionedHypergraph>* conductance_pq = phg.conductancePriorityQueue();
     // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
     const PartitionID part_with_biggest_conductance = phg.topConductancePart();
@@ -105,7 +105,7 @@ template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
   HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
-    ASSERT(phg.edgeIsEnabled(he), "Hyperedge " + he + " must be enabled to compute its contribution to the objective");
+    ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
     // const ConductancePriorityQueue<PartitionedHypergraph>* conductance_pq = phg.conductancePriorityQueue();
     // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
     const PartitionID part_with_biggest_conductance = phg.topConductancePart();
