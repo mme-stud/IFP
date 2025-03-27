@@ -286,7 +286,6 @@ class PartitionedHypergraph {
 
   bool hasConductancePriorityQueue() const {
     /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
-    ASSERT(hasConductancePriorityQueue());
     return _conductance_pq.initialized();
   }
 
