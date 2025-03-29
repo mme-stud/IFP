@@ -206,6 +206,7 @@ kahypar::meta::PolicyBase& getGraphAndGainTypesPolicy(mt_kahypar_partition_type_
     case N_LEVEL_HYPERGRAPH_PARTITIONING: SWITCH_HYPERGRAPH_GAIN_TYPES(DynamicHypergraphTypeTraits, gain_policy);
     case N_LEVEL_GRAPH_PARTITIONING: SWITCH_GRAPH_GAIN_TYPES(DynamicGraphTypeTraits, gain_policy);
     case LARGE_K_PARTITIONING: SWITCH_HYPERGRAPH_GAIN_TYPES(LargeKHypergraphTypeTraits, gain_policy);
+    case MULTILEVEL_HYPERGRAPH_CLUSTERING: SWITCH_HYPERGRAPH_GAIN_TYPES(StaticHypergraphTypeTraits, gain_policy);
     default: throw InvalidParameterException("Invalid partition type");
   }
 }

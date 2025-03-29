@@ -56,6 +56,7 @@ void delete_partitioned_hypergraph(mt_kahypar_partitioned_hypergraph_t phg) {
       ENABLE_LARGE_K(case LARGE_K_PARTITIONING: delete reinterpret_cast<StaticSparsePartitionedHypergraph*>(phg.partitioned_hg); break;)
       ENABLE_HIGHEST_QUALITY(case N_LEVEL_HYPERGRAPH_PARTITIONING: delete reinterpret_cast<DynamicPartitionedHypergraph*>(phg.partitioned_hg); break;)
       ENABLE_HIGHEST_QUALITY_FOR_GRAPHS(case N_LEVEL_GRAPH_PARTITIONING: delete reinterpret_cast<DynamicPartitionedGraph*>(phg.partitioned_hg); break;)
+      ENABLE_CLUSTERING(case MULTILEVEL_HYPERGRAPH_CLUSTERING: delete reinterpret_cast<StaticPartitionedHypergraph*>(phg.partitioned_hg); break;)
       case NULLPTR_PARTITION: break;
       default: break;
     }

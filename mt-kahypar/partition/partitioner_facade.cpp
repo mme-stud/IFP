@@ -93,6 +93,13 @@ namespace internal {
         "to the cmake command and rebuild Mt-KaHyPar.");
     }
     #endif
+    #ifndef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+    if ( type == MULTILEVEL_HYPERGRAPH_CLUSTERING ) {
+      throw InvalidParameterException(
+        "Clustering are deactivated. Add -DKAHYPAR_ENABLE_CLUSTERING_FEATURES=ON "
+        "to the cmake command and rebuild Mt-KaHyPar.");
+    }
+    #endif
   }
 
 } // namespace internal
@@ -122,6 +129,10 @@ namespace internal {
       case N_LEVEL_HYPERGRAPH_PARTITIONING:
         return internal::partition<DynamicHypergraphTypeTraits>(hypergraph, context, target_graph);
       #endif
+      #ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+       case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+         return internal::partition<StaticHypergraphTypeTraits>(hypergraph, context, target_graph);
+       #endif
       default:
         return mt_kahypar_partitioned_hypergraph_t { nullptr, NULLPTR_PARTITION };
     }
@@ -154,6 +165,10 @@ namespace internal {
       case N_LEVEL_HYPERGRAPH_PARTITIONING:
         internal::improve<DynamicHypergraphTypeTraits>(partitioned_hg, context, target_graph); break;
       #endif
+      #ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+       case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+         internal::improve<StaticHypergraphTypeTraits>(partitioned_hg, context, target_graph); break;
+       #endif
       default: break;
     }
   }
@@ -186,6 +201,11 @@ namespace internal {
         io::printPartitioningResults(utils::cast_const<DynamicPartitionedHypergraph>(phg), context, elapsed_seconds);
         break;
       #endif
+      #ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+      case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+        io::printPartitioningResults(utils::cast_const<StaticPartitionedHypergraph>(phg), context, elapsed_seconds);
+        break;
+      #endif
       default: break;
     }
   }
@@ -214,6 +234,10 @@ namespace internal {
       case N_LEVEL_HYPERGRAPH_PARTITIONING:
         return io::csv::serialize(utils::cast_const<DynamicPartitionedHypergraph>(phg), context, elapsed_seconds);
       #endif
+      #ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+      case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+        return io::csv::serialize(utils::cast_const<StaticPartitionedHypergraph>(phg), context, elapsed_seconds);
+      #endif
       default: return "";
     }
     return "";
@@ -241,6 +265,10 @@ namespace internal {
       #endif
       case N_LEVEL_HYPERGRAPH_PARTITIONING:
         return io::serializer::serialize(utils::cast_const<DynamicPartitionedHypergraph>(phg), context, elapsed_seconds);
+      #endif
+      #ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+      case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+        return io::serializer::serialize(utils::cast_const<StaticPartitionedHypergraph>(phg), context, elapsed_seconds);
       #endif
       default: return "";
     }
@@ -272,6 +300,11 @@ namespace internal {
       #endif
       case N_LEVEL_HYPERGRAPH_PARTITIONING:
         io::writePartitionFile(utils::cast_const<DynamicPartitionedHypergraph>(phg), filename);
+        break;
+      #endif
+      #ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES
+      case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+        io::writePartitionFile(utils::cast_const<StaticPartitionedHypergraph>(phg), filename);
         break;
       #endif
       default: break;

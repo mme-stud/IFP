@@ -248,6 +248,28 @@ class PartitionedHypergraph {
     return _k;
   }
 
+  // ! Change k value after the initialization 
+  // ! To be called before the first call to setNodePart / setOnlyNodePart
+  // ! (needed for singleton IP, mirroring of interfaces)
+  void setK(PartitionID k, HyperedgeID init_num_hyperedges) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setK(k)" << std::endl;
+    ASSERT(k > 0);
+    if (_k == k) {
+      return;
+    }
+    _k = k;
+    _part_weights.assign(k,CAtomic<HypernodeWeight>(0));
+    _part_volumes.assign(k,CAtomic<HyperedgeWeight>(0));
+    _part_cut_weights.assign(k,CAtomic<HyperedgeWeight>(0));
+    tbb::parallel_invoke([&] {
+    }, [&] {
+        _con_info.reset();
+        _con_info = ConnectivityInformation(
+                init_num_hyperedges, k, _hg->maxEdgeSize(), parallel_tag_t { });
+    });
+  }
+
+
 
   // ####################### Mapping ######################
 

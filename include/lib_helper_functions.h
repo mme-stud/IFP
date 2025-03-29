@@ -126,6 +126,9 @@ bool is_compatible(mt_kahypar_partitioned_hypergraph_t partitioned_hg, mt_kahypa
     case HIGHEST_QUALITY:
       return partitioned_hg.type == N_LEVEL_GRAPH_PARTITIONING ||
              partitioned_hg.type == N_LEVEL_HYPERGRAPH_PARTITIONING;
+    case CLUSTER:
+      return partitioned_hg.type == MULTILEVEL_HYPERGRAPH_PARTITIONING ||
+             partitioned_hg.type == MULTILEVEL_HYPERGRAPH_CLUSTERING;
   }
   return false;
 }
@@ -194,6 +197,7 @@ InstanceType get_instance_type(mt_kahypar_partitioned_hypergraph_t partitioned_h
     case N_LEVEL_GRAPH_PARTITIONING:
       return InstanceType::graph;
     case MULTILEVEL_HYPERGRAPH_PARTITIONING:
+    case MULTILEVEL_HYPERGRAPH_CLUSTERING:
     case N_LEVEL_HYPERGRAPH_PARTITIONING:
     case LARGE_K_PARTITIONING:
       return InstanceType::hypergraph;
@@ -210,6 +214,7 @@ mt_kahypar_preset_type_t get_preset_c_type(const PresetType preset) {
     case PresetType::highest_quality: return HIGHEST_QUALITY;
     case PresetType::deterministic: return DETERMINISTIC;
     case PresetType::large_k: return LARGE_K;
+    case PresetType::cluster: return CLUSTER;
     case PresetType::UNDEFINED: return DEFAULT;
   }
   return DEFAULT;
@@ -262,7 +267,7 @@ std::string incompatibility_description(mt_kahypar_partitioned_hypergraph_t part
     case MULTILEVEL_HYPERGRAPH_PARTITIONING:
       ss << "The partitioned hypergraph uses the data structures for multilevel hypergraph partitioning "
          << "which can be only used in combination with the following presets: "
-         << "DEFAULT, QUALITY, and DETERMINISTIC"; break;
+         << "DEFAULT, QUALITY, DETERMINISTIC and CLUSTER"; break;
     case N_LEVEL_HYPERGRAPH_PARTITIONING:
       ss << "The partitioned hypergraph uses the data structures for n-level hypergraph partitioning "
          << "which can be only used in combination with the following preset: "
@@ -271,6 +276,10 @@ std::string incompatibility_description(mt_kahypar_partitioned_hypergraph_t part
       ss << "The partitioned hypergraph uses the data structures for large k hypergraph partitioning "
          << "which can be only used in combination with the following preset: "
          << "LARGE_K"; break;
+    case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+      ss << "The partitioned hypergraph uses the data structures for multilevel hypergraph clustering "
+        << "which can be only used in combination with the following presets: "
+        << "CLUSTER"; break;
     case NULLPTR_PARTITION:
       ss << "The hypergraph holds a nullptr. "
          << "Did you forgot to construct or load a hypergraph?"; break;
@@ -302,6 +311,7 @@ mt_kahypar_hypergraph_t create_hypergraph(const Context& context,
     case PresetType::deterministic:
     case PresetType::large_k:
     case PresetType::default_preset:
+    case PresetType::cluster:
     case PresetType::quality:
       return mt_kahypar_hypergraph_t {
         reinterpret_cast<mt_kahypar_hypergraph_s*>(new ds::StaticHypergraph(
@@ -328,6 +338,7 @@ mt_kahypar_hypergraph_t create_graph(const Context& context,
     case PresetType::deterministic:
     case PresetType::large_k:
     case PresetType::default_preset:
+    case PresetType::cluster:
     case PresetType::quality:
       return mt_kahypar_hypergraph_t {
         reinterpret_cast<mt_kahypar_hypergraph_s*>(new ds::StaticGraph(
@@ -367,6 +378,7 @@ mt_kahypar_partitioned_hypergraph_t create_partitioned_hypergraph(mt_kahypar_hyp
       case PresetType::large_k:
       case PresetType::deterministic:
       case PresetType::default_preset:
+      case PresetType::cluster:
       case PresetType::quality:
         ASSERT(hypergraph.type == STATIC_GRAPH);
         return create_partitioned_hypergraph<StaticPartitionedGraph>(
@@ -385,6 +397,7 @@ mt_kahypar_partitioned_hypergraph_t create_partitioned_hypergraph(mt_kahypar_hyp
           utils::cast<ds::StaticHypergraph>(hypergraph), num_blocks, partition);
       case PresetType::deterministic:
       case PresetType::default_preset:
+      case PresetType::cluster:
       case PresetType::quality:
         ASSERT(hypergraph.type == STATIC_HYPERGRAPH);
         return create_partitioned_hypergraph<StaticPartitionedHypergraph>(

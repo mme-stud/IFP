@@ -119,7 +119,8 @@ namespace mt_kahypar {
              " - large_k\n"
              " - default\n"
              " - quality\n"
-             " - highest_quality"
+             " - highest_quality\n"
+             " - cluster"
              )
             ("seed",
              po::value<int>(&context.partition.seed)->value_name("<int>")->default_value(0),
@@ -617,7 +618,7 @@ namespace mt_kahypar {
              "- rb")
             ("i-enabled-ip-algos",
             po::value<std::vector<bool> >(&context.initial_partitioning.enabled_ip_algos)->multitoken(),
-            "Indicate which IP algorithms should be executed. E.g. i-enabled-ip-algos=1 1 0 1 0 1 1 1 0\n"
+            "Indicate which IP algorithms should be executed. E.g. i-enabled-ip-algos=1 1 0 1 0 1 1 1 0 0\n"
             "indicates that\n"
             "  1.) greedy_round_robin_fm      (is executed)\n"
             "  2.) greedy_global_fm           (is executed)\n"
@@ -628,7 +629,8 @@ namespace mt_kahypar {
             "  7.) greedy_round_robin_max_net (is executed)\n"
             "  8.) greedy_global_max_net      (is executed)\n"
             "  9.) greedy_sequential_max_net  (is NOT executed)\n"
-            "Note vector must exactly contain 9 values otherwise partitioner will exit with failure")
+            "  10.) singleton                 (is NOT executed)\n"
+            "Note vector must exactly contain 10 values otherwise partitioner will exit with failure")
             ("i-runs",
              po::value<size_t>(&context.initial_partitioning.runs)->value_name("<size_t>")->default_value(20),
              "Number of runs for each bipartitioning algorithm.")

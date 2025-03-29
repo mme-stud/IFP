@@ -108,6 +108,8 @@ ReturnT switch_phg(mt_kahypar_partitioned_hypergraph_t phg, Func f) {
       return f(utils::cast<DynamicPartitionedHypergraph>(phg));
     case LARGE_K_PARTITIONING:
       return f(utils::cast<SparsePartitionedHypergraph>(phg));
+    case MULTILEVEL_HYPERGRAPH_CLUSTERING:
+      return f(utils::cast<StaticPartitionedHypergraph>(phg));
     case NULLPTR_PARTITION:
       break;
   }

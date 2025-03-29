@@ -38,6 +38,7 @@ mt_kahypar_hypergraph_type_t to_hypergraph_c_type(const PresetType preset,
     switch ( preset ) {
       case PresetType::deterministic:
       case PresetType::large_k:
+      case PresetType::cluster:
       case PresetType::default_preset:
       case PresetType::quality: return STATIC_HYPERGRAPH;
       case PresetType::highest_quality: return DYNAMIC_HYPERGRAPH;
@@ -48,6 +49,7 @@ mt_kahypar_hypergraph_type_t to_hypergraph_c_type(const PresetType preset,
     switch ( preset ) {
       case PresetType::deterministic:
       case PresetType::large_k:
+      case PresetType::cluster:
       case PresetType::default_preset:
       case PresetType::quality: return STATIC_GRAPH;
       case PresetType::highest_quality: return DYNAMIC_GRAPH;
@@ -66,6 +68,7 @@ mt_kahypar_partition_type_t to_partition_c_type(const PresetType preset,
     if ( preset == PresetType::default_preset ||
          preset == PresetType::quality ||
          preset == PresetType::large_k ||
+         preset == PresetType::cluster ||
          preset == PresetType::deterministic ) {
       return MULTILEVEL_GRAPH_PARTITIONING;
     } else if ( preset == PresetType::highest_quality ) {
@@ -74,6 +77,7 @@ mt_kahypar_partition_type_t to_partition_c_type(const PresetType preset,
   } else if ( instance == InstanceType::hypergraph ) {
     if ( preset == PresetType::default_preset ||
          preset == PresetType::quality ||
+         preset == PresetType::cluster ||
          preset == PresetType::deterministic ) {
       return MULTILEVEL_HYPERGRAPH_PARTITIONING;
     } else if ( preset == PresetType::highest_quality ) {

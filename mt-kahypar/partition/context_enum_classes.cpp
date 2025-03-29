@@ -70,6 +70,7 @@ namespace mt_kahypar {
       case PresetType::default_preset: return os << "default";
       case PresetType::quality: return os << "quality";
       case PresetType::highest_quality: return os << "highest_quality";
+      case PresetType::cluster: return os << "cluster";
       case PresetType::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -83,6 +84,7 @@ namespace mt_kahypar {
       case MULTILEVEL_HYPERGRAPH_PARTITIONING: return os << "multilevel_hypergraph_partitioning";
       case LARGE_K_PARTITIONING: return os << "large_k_partitioning";
       case N_LEVEL_HYPERGRAPH_PARTITIONING: return os << "n_level_hypergraph_partitioning";
+      case MULTILEVEL_HYPERGRAPH_CLUSTERING: return os << "multilevel_hypergraph_clustering";
       case NULLPTR_PARTITION: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -214,6 +216,7 @@ namespace mt_kahypar {
       case InitialPartitioningAlgorithm::greedy_global_max_net: return os << "greedy_global_max_net";
       case InitialPartitioningAlgorithm::greedy_sequential_max_net: return os << "greedy_sequential_max_net";
       case InitialPartitioningAlgorithm::label_propagation: return os << "label_propagation";
+      case InitialPartitioningAlgorithm::singleton: return os << "singleton";
       case InitialPartitioningAlgorithm::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -313,6 +316,8 @@ namespace mt_kahypar {
       return PresetType::quality;
     } else if (type == "highest_quality") {
       return PresetType::highest_quality;
+    } else if (type == "cluster") {
+      return PresetType::cluster;
     }
     throw InvalidParameterException("Illegal option: " + type);
     return PresetType::UNDEFINED;
@@ -431,6 +436,8 @@ namespace mt_kahypar {
       return InitialPartitioningAlgorithm::greedy_sequential_max_net;
     } else if (algo == "label_propagation") {
       return InitialPartitioningAlgorithm::label_propagation;
+    } else if (algo == "singleton") {
+      return InitialPartitioningAlgorithm::singleton;
     }
     throw InvalidParameterException("Illegal option: " + algo);
     return InitialPartitioningAlgorithm::UNDEFINED;

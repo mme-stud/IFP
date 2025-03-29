@@ -312,6 +312,21 @@ private:
     return _k;
   }
 
+  // ! Change k value after the initialization
+  // ! To be called before the first call to setNodePart / setOnlyNodePart
+  // ! (needed for singleton IP, mirroring of interfaces)
+  void setK(PartitionID k, HyperedgeID init_num_hyperedges) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setK(k)" << std::endl;
+    unused(init_num_hyperedges);
+    ASSERT(k > 0);
+    if (_k == k) {
+      return;
+    }
+    _k = k;
+    _part_weights.resize(k, CAtomic<HypernodeWeight>(0));
+    _part_ids.resize(_hg->initialNumNodes(), kInvalidPartition);
+  }
+
   // ####################### Mapping ######################
 
   void setTargetGraph(const TargetGraph* target_graph) {

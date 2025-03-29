@@ -71,6 +71,7 @@ namespace {
       case DEFAULT: return PresetType::default_preset;
       case QUALITY: return PresetType::quality;
       case HIGHEST_QUALITY: return PresetType::highest_quality;
+      case CLUSTER: return PresetType::cluster;
     }
     return PresetType::UNDEFINED;
   }

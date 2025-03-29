@@ -47,6 +47,7 @@ python/examples/*.so
 compile_commands.json
 build_original/*
 build/*
+build_with_dummy_objective/*
 build_test/*
 build_with_new_stats/*
 run_test_suite

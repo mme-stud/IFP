@@ -420,3 +420,145 @@ Update of `_conductance_pq` (if enabled):
 		- `useCutNetSplitting = true`: already cut nets could be cutting nets in the block (if it will be bipartitioned further) &rArr; cannot remove cut nets
 		- `nonCutEdgeMultiplier = 1`: otherwise it would change edge weights... Note: in `deep_multilevel.cpp` only `bipartition_each_block(..)` calls `adaptWeightsOfNonCutEdges(..)` and a partitioned hypergraph is built later &rArr; we could recalculate weighted degrees and total volume in the constructor of a partitioned hypergraph **???** &rarr; **no...**: `recursive_bipartitioning.cpp` changes edge weights of a given partitioned hypergraph...
 9. \+ `partition/refinement/gains/conductance_local`, `partition/refinement/gains/conductance_global` - folders to that we will later add all relevant gain computation techniques.	
+
+### Part 2.2 Guide: Initial Partitioning
+
+**Problem**: Recursive bipartitioning's invariant 
+>  the cut of all bipartitions sum up to the objective value of the initial k-way partition
+is not implementable for (scaled) conductance.
+
+&rArr; 2 ways:
+1) use singleton partitioning &rArr; change `k` to the number of nodes in the kernel;
+2) use recursive bipartitioning with other objective &larr; TODO later (if enough time) - see `partitioner.cpp  partition(...)  #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC ...` 
+
+#### Singleton Partitioning:
+Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context for cluster & singleton IP set up", `f799400` "singleton IP with k = num nodes of coarsened hg", `04fc118` "fix uncoarsening bug (con info - input num hyperedges)" from https://github.com/adilchhabra/mt-kahypar]:
+
+##### New clustering preset and new singleton IP
+
+- in `CMakeLists.txt`:
+	- \+ option `KAHYPAR_ENABLE_CLUSTERING_FEATURES` \
+		[by Adil: `add_compile_definitions`...; by me: `target_compile_definitions`]
+	- \+ in `# meta target for library build, which must be built with all features enabled` target compite definitions \+ `KAHYPAR_ENABLE_CLUSTERING_FEATURES` [my idea]
+- in `CMakePresets.json` [**my idea**, as no such file by Adil]:
+	- enable `KAHYPAR_ENABLE_CLUSTERING_FEATURES` in `default` preset
+	- disable `KAHYPAR_ENABLE_CLUSTERING_FEATURES` in `minimal` preset
+
+- in `config/`:
+	- \+ `cluster_preset.ini`: uses `multilevel_coarsener`, only `singleton` IP, no IP refinement, `label_propagation`, `fm` [TODO: shut `fm` down, if `gain_cache` not implemented (?)]
+	- `large_k_preset.ini`: \+ `i-enabled-ip-algos=0` 
+	- all other `.ini` use `initial_partitioning: i-mode=rb` [recursive bipartitioning] &rArr; no changes
+
+- in `mt-kahypar/`:
+	- in `partition/`:
+		- `context_enum_classes.h`: 
+			- \+ `PresetType::cluster`
+			- \+ `InitialPartitioningAlgorithm::singleton = 9` (&rArr;  `UNDEFINED = 10`) 
+		- `context_enum_classes.cpp`
+			- in `operator<< (os, PresetType)`: \+ case `PresetType::cluster` (str: `"cluster"`)
+			- in `operator<< (os, mt_kahypar_partition_type_t)`: \+ case `MULTILEVEL_HYPERGRAPH_CLUSTERING` (str: `"multilevel_hypergraph_clustering"`) 
+			- in `operator<< (os, InitialPartitioningAlgorithm)`: \+ case `singleton` (str `"singleton"`)
+			+ in `presetTypeFromString(string type)`: \+ case `"cluster"`
+			+ in `initialPartitioningAlgorithmFromString()`: \+ case `"singleton"`
+		- `conversion.cpp`
+			- `to_hypergraph_c_type(preset, instance)`: \+ case `PresetType::cluster` [2 times] &rarr; `STATIC_HYPERGRAPH`
+			- `to_partition_c_type(preset, instance)`: \+ case `PresetType::cluster` [2 times: for hg and graphs - graphs are my ides ] &rarr; `MULTILEVEL_HYPERGRAPH_PARTITIONING`
+		- `partitioner_facade.cpp`:
+			- in `check_if_feature_is_enabled(mt_kahypar_partition_type_t type)`: \+ `#ifndef KAHYPAR_ENABLE_CLUSTERING_FEATURES`
+			- in lots of functions: \+ `#ifdef KAHYPAR_ENABLE_CLUSTERING_FEATURES: case MULTILEVEL_HYPERGRAPH_CLUSTERING` \
+			[in `partition(hg, contex, ..)`, `improve(phg, context, ..)`, `printPartitioningResults(phg, context, ..)`, `serializeCSV(phg, context, ..)`, `serializeResultLine(phg, context, ..)`, `writePartitionFile(phg, filename)]
+		- in `initial_partitioning/`: 
+			- \+ `singleton_initial_partitioner.h`,  `.cpp`
+			- `CMakeLists.txt`: \+ `singleton_initial_partitioner`
+		- in `registries/`:
+			- `register_initial_partitioning_algorithms.cpp`
+				- \+ `#include "../initial_partitioning/singleton_initial_partitioner.h"`
+				- \+ define `SingletonPartitionerDispatcher`
+				- in `register_initial_partitioning_algorithms()`: \+ register `SingletonPartitionerDispatcher`
+			- `register_refinement_algorithms.cpp`:
+				- in `getGraphAndGainTypesPolicy(part_type, gain_policy)`: \+ case `MULTILEVEL_HYPERGRAPH_CLUSTERING`
+		- in `coarsening/`:
+			- `multilevel_uncoarsener.cpp`:
+				- in `rebalancingImpl()`: never rebalance by `PresetType::cluster`
+	- in `io/`:
+		- `command_line_options.cpp`: 
+			- add mentioning of preset type cluster: `" - cluster"` 
+			- by `"i-enabled-ip-algos"` add singleton IP to the example
+		- `presets.cpp`:
+			- in `load_large_k_preset()`: by`// main -> initial_partitioning` add entry for `singleton` (`"0"`) 
+			- \+ `load_clustering_preset()`: uses `"multilevel_coarsener"`, `"1" // singleton" IP`, no IP refinement, refinement until no improvement by label propagation anf fm (but no flows)
+			- in `loadPreset(preset)`: add case `PresetType::cluster` to call `load_clustering_preset()`
+		- `partitioning_output.cpp`: [adjust output for `PresetType::cluster`]
+			- in `printPartWeightsAndSizes(hg, context)`:
+				- \+ `PartitionID num_clusters`: all not-0-weight clusters
+				- print `"Num. of clusters = "` for `PresetType::cluster`
+				- adjust twice `bool is_imbalanced` to be `false` by `PresetType::cluster`
+				- print red `"Number of Imbalanced Blocks = "` only if not `PresetType::cluster`
+	- in `utils/`:
+		- `cast.h`:
+			- in `typeToString(mt_kahypar_partition_type_t)`: add case `MULTILEVEL_HYPERGRAPH_CLUSTERING`
+		- `delete.h`:
+			- in `delete_partitioned_hypergraph(phg)`: add case `MULTILEVEL_HYPERGRAPH_CLUSTERING` with `ENABLE_CLUSTERING(..)` around it [last: **my idea**] 
+	- in `macros.h`:
+		- \+ define `ENABLE_CLUSTERING(X) X` if `KAHYPAR_ENABLE_CLUSTERING_FEATURES` defined
+
+- in `include/`:
+	- `mtkahypartypes.h`:
+		- in `enum mt_kahypar_partition_type_t`: \+ `MULTILEVEL_HYPERGRAPH_CLUSTERING`
+		- in `enum mt_kahypar_preset_type_t`: \+ `CLUSTER` - "computes multilevel hypergraph clustering"
+	- `lib_helper_functions.h`:
+		- `is_compatible(phg, preset)`: \+ case `CLUSTER`	
+		- `get_instance_type(phg)`: \+ case `MULTILEVEL_HYPERGRAPH_CLUSTERING`
+		- `getget_preset_c_type(preset)`: \+ case `PresetTupe::cluster`
+		- `incompatibility_description(phg)`:
+			- in case `MULTILEVEL_HYPERGRAPH_PARTITIONING`: \+ compatible with preset `CLUSTER`
+			- \+ case `MULTILEVEL_HYPERGRAPH_CLUSTERING`
+		- `create_hypergraph(context,...)`: \+ case `PresetType::cluster` [**my idea**, as `mt_kahypar_create_hypergraph(preset, ...)` from `lib/mtkahypar.cpp` was refactored and uses `context` instead of `preset` now] \
+		analog.: `create_graph(context, ..)`, `create_partitioned_hypergraph(hg, context, ...)`, : add case `cluster` [**my idea**]
+	- `lib_generic_impls.h`:
+		- `switch_phg(phg, f)` add case `MULTILEVEL_HYPERGRAPH_CLUSTERING` \ 
+		[**my idea**: to inlude `clustering` in refactored `mtkahypar.cpp` `mt_kahypar_write_partition_to_file(partition, ...)`, `mt_kahypar_get_partition(..)`, `mt_kahypar_get_block_weights(..)`, `imbalance(..)`, `mt_kahypar_cut(phg)`, `mt_kahypar_km1(phg)`, `mt_kahypar_soed(phg)`, `mt_kahypar_steiner_tree(..)`]
+- in `lib/`:
+	- `CMakeLists.txt`: ~~\+ add `target_compile_definitions(mtkahypar PUBLIC KAHYPAR_ENABLE_CLUSTERING_FEATURES)`~~ [not nere now] &rarr; done in `../CMakeLists.txt`
+	- `mtkahypar.cpp`:
+		- `to_preset_type(preset)`: \+ case `CLUSTER`
+		- `mt_kahypar_create_hypergraph(context, ...)`: do nothing here &rarr; add case `cluster` to `create_hypergraph(context, ..)` in `include/lib_helper_functions.h` \
+		analog.: `mt_kahypar_create_graph(context, ...)`, `mt_kahypar_create_partitioned_hypergraph(hg, context, ...)`\
+		analog. but solved by adding case `MULTILEVEL_HYPERGRAPH_CLUSTERING` to `switch_phg(phg, f)`in `include/lib_generic_impls.h`: \
+		`mt_kahypar_write_partition_to_file(partition, ...)`, `mt_kahypar_get_partition(..)`, `mt_kahypar_get_block_weights(..)`, `imbalance(..)`, `mt_kahypar_cut(phg)`, `mt_kahypar_km1(phg)`, `mt_kahypar_soed(phg)`, `mt_kahypar_steiner_tree(..)`
+		[**my idea**]
+
+- in `python/`:
+	- `CMakeLists.txt`: ~~add `target_compile_definitions(.. KAHYPAR_ENABLE_CLUSTERING_FEATURES)`~~ [`target_link_libraries(mtkahypar_python PRIVATE MtKaHyPar-LibraryBuildSources)` is already used instead &rArr; should be ok, as in global `CMakeLists.txt` a library `MtKaHyPar-LibraryBuildSources` with `KAHYPAR_ENABLE_CLUSTERING_FEATURES` is defined]
+
+##### Setting up k = numNodes() for singleton IP
+
+- in `mt-kahypar/datastructures/`:
+	- `partitioned_hypergraph.h`:
+		- \+ `setK(k, init_num_hyperedges)`: resets `_part_weights`, `_part_volumes`, `_part_cut_weights`, `con_info` [needs `init_num_hyperedges` to reset `con_info`]&rArr; to be called before assigning part_id's
+	- `partitioned_graph.h`:
+		- \+ `setK(k)`: to be called before assigning part_id's
+- in `mt-kahypar/partition/`:
+	- `context.cpp`:
+		- `setupPartWeights(total_hg_weight)`: \
+			if `partition.preset_type == PresetType::cluster` and not `partition.use_individual_part_weights`, set all `context.partition.perfect_balance_part_weights` and `context.partition.max_part_weights` to `std::ceil(total_hypergraph_weight)`
+	- `multilevel.cpp`:
+		- `multilevel_partitioning(hg, context, ..)`:
+			- make `Context& context` argument non-const to be able to change `k` in case of `PresetType::cluster`
+			- before `## Coarsening ##` get `HyperedgeID input_he_count = hypergraph.initialNumEdges();`
+			- in `## Initial partitioning ##` set `k = phg.initialNumNodes()` in `context` and `phg`
+		- in methods of `Multilevel<TypeTraits>` that call `multilevel_partitioning()` (or call methods that call it, etc.): 
+			- make `Context& context` argument non-const to be able to call `multilevel_partitioning(hg, context)`, etc. &rArr; change declaration in `.h` \
+			[`Multilevel<TypeTraits>::partition(hg, context, ..)`, `Multilevel<TypeTraits>::partition(phg, context, ..)`, `Multilevel<TypeTraits>::partitionVCycle(hg, phg, context, ..)`]
+	- `multilevel.h`:
+		- make `Context& context` argument non-const to correspond `.cpp` \
+			[`partition(hg, context, ..)`, `partition(phg, context, ..)`, `partitionVCycle(hg, phg, context, ..)`]
+	- `partitioner.cpp`:
+		- `setupContext(hg, context, ..)`: if `PresetType::cluster`, set `context.partition.k = 2` and `context.partition.epsilon = std::numeric_limits<double>::max();` \ 
+			[Adil: this determines how the part weights and contraction limits are defined]
+
+
+STOPPED HERE
+
+
++ Idea: never remove single-pin nets -> conductance is always right

@@ -3,7 +3,6 @@
  *
  * This file is part of Mt-KaHyPar.
  *
- * Copyright (C) 2019 Lars Gottesbüren <lars.gottesbueren@kit.edu>
  * Copyright (C) 2019 Tobias Heuer <tobias.heuer@kit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,36 +26,43 @@
 
 #pragma once
 
-#include "mt-kahypar/partition/context.h"
+#include "mt-kahypar/partition/initial_partitioning/i_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
 
 namespace mt_kahypar {
 
-// Forward Declaration
-class TargetGraph;
-
 template<typename TypeTraits>
-class Multilevel {
+class SingletonInitialPartitioner : public IInitialPartitioner {
 
-  using Hypergraph = typename TypeTraits::Hypergraph;
+  static constexpr bool debug = false;
+
   using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
 
- public:
-  // ! Partitions a hypergraph using the multilevel paradigm.
-  static PartitionedHypergraph partition(Hypergraph& hypergraph,
-                                         Context& context,
-                                         const TargetGraph* target_graph = nullptr);
+public:
+  SingletonInitialPartitioner(const InitialPartitioningAlgorithm,
+                           ip_data_container_t* ip_data,
+                           const Context& context,
+                           const int seed, const int tag) :
+    _ip_data(ip::to_reference<TypeTraits>(ip_data)),
+    _context(context),
+    _rng(seed),
+    _tag(tag) { }
 
-  // ! Partitions a hypergraph using the multilevel paradigm.
-  static void partition(PartitionedHypergraph& partitioned_hg,
-                        Context& context,
-                        const TargetGraph* target_graph = nullptr);
+private:
+  void partitionImpl() final;
 
-  // ! Improves an existing partition using the iterated multilevel cycle technique
-  // ! (also called V-cycle).
-  static void partitionVCycle(Hypergraph& hypergraph,
-                              PartitionedHypergraph& partitioned_hg,
-                              Context& context,
-                              const TargetGraph* target_graph = nullptr);
+  bool fitsIntoBlock(PartitionedHypergraph& hypergraph,
+                     const HypernodeID hn,
+                     const PartitionID block) const {
+    ASSERT(block != kInvalidPartition && block < _context.partition.k);
+    return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
+                        _context.partition.perfect_balance_part_weights[block];
+  }
+
+  InitialPartitioningDataContainer<TypeTraits>& _ip_data;
+  const Context& _context;
+  std::mt19937 _rng;
+  const int _tag;
 };
 
-}  // namespace mt_kahypar
+} // namespace mt_kahypar
