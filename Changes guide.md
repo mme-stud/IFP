@@ -22,6 +22,7 @@
 ### TODO: 
 - change `sync_update` to contain info for calculating concuctance gain (1-st and 2-nd max cond cuts; total val; ...)
     - &rarr; **Problem**: conductance gain depends on both whole parts, not just the edge
+- disable single pin removal for objective conductance (`Objective::conductance_local`,`Objective::conductance_global`) &rArr; check assertions / tests that assure that all single pin nets are removed at coarsening stares etc.
 
 ### Next steps:
 - implement `_total_volume`, weighted degrees + "their" functions in `static_hypergraph.h/.cpp`: *done*
@@ -421,7 +422,7 @@ Update of `_conductance_pq` (if enabled):
 		- `nonCutEdgeMultiplier = 1`: otherwise it would change edge weights... Note: in `deep_multilevel.cpp` only `bipartition_each_block(..)` calls `adaptWeightsOfNonCutEdges(..)` and a partitioned hypergraph is built later &rArr; we could recalculate weighted degrees and total volume in the constructor of a partitioned hypergraph **???** &rarr; **no...**: `recursive_bipartitioning.cpp` changes edge weights of a given partitioned hypergraph...
 9. \+ `partition/refinement/gains/conductance_local`, `partition/refinement/gains/conductance_global` - folders to that we will later add all relevant gain computation techniques.	
 
-### Part 2.2 Guide: Initial Partitioning
+### Part 2.2 ~~Guide:~~ Initial Partitioning
 
 **Problem**: Recursive bipartitioning's invariant 
 >  the cut of all bipartitions sum up to the objective value of the initial k-way partition
@@ -557,8 +558,7 @@ Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context 
 		- `setupContext(hg, context, ..)`: if `PresetType::cluster`, set `context.partition.k = 2` and `context.partition.epsilon = std::numeric_limits<double>::max();` \ 
 			[Adil: this determines how the part weights and contraction limits are defined]
 
+Sanity check: compiles, passes the test suite
 
-STOPPED HERE
 
-
-+ Idea: never remove single-pin nets -> conductance is always right
++ Idea: never remove single-pin nets -> conductance is always right &rArr; TODO...
