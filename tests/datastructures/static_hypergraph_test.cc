@@ -571,7 +571,7 @@ TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledSinglePinNetRemoval1) 
   verifyIncidentNets(c_hypergraph, 0, { 0, 1 });
   verifyIncidentNets(c_hypergraph, 1, { 1 });
   verifyIncidentNets(c_hypergraph, 2, { 1, 2 });
-  verifyPins(c_hypergraph, { 0 }, { {0}, {0, 1, 2}, {2} });
+  verifyPins(c_hypergraph, { 0, 1, 2 }, { {0}, {0, 1, 2}, {2} });
 }
 
 TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledSinglePinNetRemoval2) {

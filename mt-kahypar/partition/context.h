@@ -121,7 +121,7 @@ struct CoarseningParameters {
   double maximum_shrink_factor = std::numeric_limits<double>::max();
   size_t vertex_degree_sampling_threshold = std::numeric_limits<size_t>::max();
   size_t num_sub_rounds_deterministic = 16;
-  
+
   // needed for preserving conductance
   bool disable_single_pin_nets_removal = false; 
 
