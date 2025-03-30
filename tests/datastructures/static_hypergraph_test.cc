@@ -568,9 +568,9 @@ TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledSinglePinNetRemoval1) 
   ASSERT_EQ(2, c_hypergraph.edgeWeight(1));
 
   // Verify Hypergraph Structure
-  verifyIncidentNets(c_hypergraph, 0, { 0 });
-  verifyIncidentNets(c_hypergraph, 1, { 0 });
-  verifyIncidentNets(c_hypergraph, 2, { 0 });
+  verifyIncidentNets(c_hypergraph, 0, { 0, 1 });
+  verifyIncidentNets(c_hypergraph, 1, { 1 });
+  verifyIncidentNets(c_hypergraph, 2, { 1, 2 });
   verifyPins(c_hypergraph, { 0 }, { {0}, {0, 1, 2}, {2} });
 }
 

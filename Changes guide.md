@@ -658,6 +658,11 @@ Mirroring interfaces in `partitioned_graph.h`:`
 	- `fillRatingMap(hg, u, tmp_ratings)`: `ASSERT(edge_size > 1)`:
 		- `ScorePolicy::score(edge_weight, edge_size)` needs `edge_size != 1` &rArr; adjust assertion and skip single-pin nets
 
+#### Serialization of hg, context
+`/mt-kahypar/io/sql_plottools_serializer.cpp`:
+- \+ write out `context.coarsening.disable_single_pin_nets_removal` to serialize `context` correctly \
+	[debug: needed in `mt-kahypar/tests/io/sql_plottools_serializer_test.cc` `ASqlPlotSerializerTest.ChecksIfSomeParametersFromContextAreMissing`]
+
 Also done:
 - in `mt-kahypar/partition/context.cpp`:
 	- `sanityCheck(..)`: if conductance `Objective`, but not `PresetType::cluster`, throw an `UncupportedOperationException`. 
