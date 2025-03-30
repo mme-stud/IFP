@@ -121,6 +121,9 @@ struct CoarseningParameters {
   double maximum_shrink_factor = std::numeric_limits<double>::max();
   size_t vertex_degree_sampling_threshold = std::numeric_limits<size_t>::max();
   size_t num_sub_rounds_deterministic = 16;
+  
+  // needed for preserving conductance
+  bool disable_single_pin_nets_removal = false; 
 
   // Those will be determined dynamically
   HypernodeWeight max_allowed_node_weight = 0;
@@ -293,14 +296,18 @@ class Context {
 
   bool forceGainCacheUpdates() const;
 
+  bool disableSinglePinNetsRemoval() const;
+  
+  void setupSinglePinNetsRemoval();
+
   void setupPartWeights(const HypernodeWeight total_hypergraph_weight);
 
   void setupContractionLimit(const HypernodeWeight total_hypergraph_weight);
 
   void setupMaximumAllowedNodeWeight(const HypernodeWeight total_hypergraph_weight);
-
+  
   void setupThreadsPerFlowSearch();
-
+  
   void setupGainPolicy();
 
   void sanityCheck(const TargetGraph* target_graph);

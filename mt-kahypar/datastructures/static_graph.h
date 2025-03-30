@@ -882,6 +882,21 @@ class StaticGraph {
     return false;
   }
 
+  // ################# Single-pin Nets Removal Support ==================
+
+  // ! Disable single-pin nets removal 
+  // ! (not supported in static graphs)
+  void disableSinglePinNetsRemoval() {
+    throw UnsupportedOperationException(
+      "disableSinglePinNetsRemoval() not supported in static graph");
+  }
+
+  // ! Check if single-pin nets removal is disabled
+  // ! (always false in static graphs)
+  bool isSinglePinNetsRemovalDisabled() const {
+    return false;
+  }
+
  private:
   friend class StaticGraphFactory;
   template<typename Hypergraph>

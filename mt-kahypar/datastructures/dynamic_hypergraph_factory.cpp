@@ -46,7 +46,7 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
         const HyperedgeWeight* hyperedge_weight,
         const HypernodeWeight* hypernode_weight,
         const bool) {
-  /// [debug] std::cerr << "construct(num_hypernodes, num_hyperedges, edge_vector, hyperedge_weight, hypernode_weight)" << std::endl;
+  /// [debug] std::cerr << "DynamicHypergraphFactory::construct(num_hypernodes, num_hyperedges, edge_vector, hyperedge_weight, hypernode_weight)" << std::endl;
   DynamicHypergraph hypergraph;
   hypergraph._num_hypernodes = num_hypernodes;
   hypergraph._num_hyperedges = num_hyperedges;
@@ -151,7 +151,7 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
  */
 std::pair<DynamicHypergraph, parallel::scalable_vector<HypernodeID> >
 DynamicHypergraphFactory::compactify(const DynamicHypergraph& hypergraph) {
-  /// [debug] std::cerr << "compactify(hypergraph)" << std::endl;
+  /// [debug] std::cerr << "DynamicHypergraphFactory::compactify(hypergraph)" << std::endl;
   HypernodeID num_hypernodes = 0;
   HyperedgeID num_hyperedges = 0;
   parallel::scalable_vector<HypernodeID> hn_mapping;

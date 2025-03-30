@@ -115,6 +115,7 @@ namespace mt_kahypar {
     str << "  Maximum Shrink Factor:              " << params.maximum_shrink_factor << std::endl;
     str << "  Vertex Degree Sampling Threshold:   " << params.vertex_degree_sampling_threshold << std::endl;
     str << "  Number of subrounds (deterministic):" << params.num_sub_rounds_deterministic << std::endl;
+    str << "  Single-pin Nets Removal:            " << (params.disable_single_pin_nets_removal ? "disabled" : "enabled") << std::endl;
     str << std::endl << params.rating;
     return str;
   }
@@ -268,6 +269,22 @@ namespace mt_kahypar {
       refinement.refine_until_no_improvement;
   }
 
+  bool Context::disableSinglePinNetsRemoval() const {
+    return coarsening.disable_single_pin_nets_removal;
+  }
+
+  // ! \brief This function sets up the single pin nets removal flag in the context
+  // !        based on the partitioning objective.
+  void Context::setupSinglePinNetsRemoval() {
+    switch (partition.objective) {
+      case Objective::conductance_local:
+      case Objective::conductance_global:
+        coarsening.disable_single_pin_nets_removal = true; break;
+      default:
+        coarsening.disable_single_pin_nets_removal = false; break;
+    }
+  }
+
   void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight) {
     if (partition.use_individual_part_weights) {
       ASSERT(static_cast<size_t>(partition.k) == partition.max_part_weights.size());
@@ -413,6 +430,13 @@ namespace mt_kahypar {
       }
     }
 
+    if ( partition.objective == Objective::conductance_local ||
+         partition.objective == Objective::conductance_global ) {
+      if ( partition.preset_type != PresetType::cluster ) {
+        throw UnsupportedOperationException(
+          "Conductance objective functions are only supported for cluster preset type.");
+      }
+    }
 
     shared_memory.static_balancing_work_packages = std::clamp(shared_memory.static_balancing_work_packages, UL(4), UL(256));
 

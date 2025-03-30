@@ -100,6 +100,10 @@ int main(int argc, char* argv[]) {
     hwloc_bitmap_free(cpuset);
   #endif
 
+  // To set disable_single_pin_nets_removal
+  // in the context, we need to know the Objective
+  context.setupSinglePinNetsRemoval();
+
   // Read Hypergraph
   utils::Timer& timer =
     utils::Utilities::instance().getTimer(context.utility_id);
@@ -107,7 +111,8 @@ int main(int argc, char* argv[]) {
   mt_kahypar_hypergraph_t hypergraph = io::readInputFile(
       context.partition.graph_filename, context.partition.preset_type,
       context.partition.instance_type, context.partition.file_format,
-      context.preprocessing.stable_construction_of_incident_edges);
+      context.preprocessing.stable_construction_of_incident_edges, 
+      !context.coarsening.disable_single_pin_nets_removal);
   timer.stop_timer("io_hypergraph");
 
   // Read Target Graph

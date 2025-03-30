@@ -288,6 +288,36 @@ TEST_F(AStaticHypergraph, ComparesStatsIfCopiedSequential) {
   ASSERT_EQ(hypergraph.maxEdgeSize(), copy_hg.maxEdgeSize());
 }
 
+TEST_F(AStaticHypergraph, ComparesSinglePinNetsRemovalOptionIfCopiedParallel1) {
+  ASSERT_FALSE(hypergraph.isSinglePinNetsRemovalDisabled());
+  StaticHypergraph copy_hg = hypergraph.copy(parallel_tag_t());
+  ASSERT_FALSE(hypergraph.isSinglePinNetsRemovalDisabled());
+  ASSERT_FALSE(copy_hg.isSinglePinNetsRemovalDisabled());
+}
+
+TEST_F(AStaticHypergraph, ComparesSinglePinNetsRemovalOptionIfCopiedParallel2) {
+  hypergraph.disableSinglePinNetsRemoval();
+  ASSERT_TRUE(hypergraph.isSinglePinNetsRemovalDisabled());
+  StaticHypergraph copy_hg = hypergraph.copy(parallel_tag_t());
+  ASSERT_TRUE(hypergraph.isSinglePinNetsRemovalDisabled());
+  ASSERT_TRUE(copy_hg.isSinglePinNetsRemovalDisabled());
+}
+
+TEST_F(AStaticHypergraph, ComparesSinglePinNetsRemovalOptionIfCopiedSequential1) {
+  ASSERT_FALSE(hypergraph.isSinglePinNetsRemovalDisabled());
+  StaticHypergraph copy_hg = hypergraph.copy();
+  ASSERT_FALSE(hypergraph.isSinglePinNetsRemovalDisabled());
+  ASSERT_FALSE(copy_hg.isSinglePinNetsRemovalDisabled());
+}
+
+TEST_F(AStaticHypergraph, ComparesSinglePinNetsRemovalOptionIfCopiedSequential2) {
+  hypergraph.disableSinglePinNetsRemoval();
+  ASSERT_TRUE(hypergraph.isSinglePinNetsRemovalDisabled());
+  StaticHypergraph copy_hg = hypergraph.copy();
+  ASSERT_TRUE(hypergraph.isSinglePinNetsRemovalDisabled());
+  ASSERT_TRUE(copy_hg.isSinglePinNetsRemovalDisabled());
+}
+
 TEST_F(AStaticHypergraph, ComparesIncidentNetsIfCopiedParallel) {
   StaticHypergraph copy_hg = hypergraph.copy(parallel_tag_t());
   verifyIncidentNets(copy_hg, 0, { 0, 1 });
@@ -501,6 +531,144 @@ TEST_F(AStaticHypergraph, ContractsCommunities3) {
   verifyPins(c_hypergraph, { 0, 1, 2, 3 },
     { {0, 2}, {2, 3}, {1, 3}, {0, 1} });
 }
+
+TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledSinglePinNetRemoval1) {
+  parallel::scalable_vector<HypernodeID> c_mapping = {1, 4, 1, 5, 5, 4, 5};
+  hypergraph.disableSinglePinNetsRemoval();
+  StaticHypergraph c_hypergraph = hypergraph.contract(c_mapping);
+
+  // Verify Mapping
+  ASSERT_EQ(0, c_mapping[0]);
+  ASSERT_EQ(1, c_mapping[1]);
+  ASSERT_EQ(0, c_mapping[2]);
+  ASSERT_EQ(2, c_mapping[3]);
+  ASSERT_EQ(2, c_mapping[4]);
+  ASSERT_EQ(1, c_mapping[5]);
+  ASSERT_EQ(2, c_mapping[6]);
+
+  // Verify Stats
+  ASSERT_EQ(3, c_hypergraph.initialNumNodes());
+  ASSERT_EQ(3, c_hypergraph.initialNumEdges());
+  ASSERT_EQ(5, c_hypergraph.initialNumPins());
+  ASSERT_EQ(7, c_hypergraph.totalWeight());
+  ASSERT_EQ(8, c_hypergraph.totalVolume());
+  ASSERT_EQ(3, c_hypergraph.maxEdgeSize());
+
+  // Verify Vertex Weights
+  ASSERT_EQ(2, c_hypergraph.nodeWeight(0));
+  ASSERT_EQ(2, c_hypergraph.nodeWeight(1));
+  ASSERT_EQ(3, c_hypergraph.nodeWeight(2));
+
+  // Verify Vertex Weighted Degrees
+  ASSERT_EQ(3, c_hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(3, c_hypergraph.nodeWeightedDegree(2));
+  
+  // Verify Hyperedge Weights
+  ASSERT_EQ(2, c_hypergraph.edgeWeight(1));
+
+  // Verify Hypergraph Structure
+  verifyIncidentNets(c_hypergraph, 0, { 0 });
+  verifyIncidentNets(c_hypergraph, 1, { 0 });
+  verifyIncidentNets(c_hypergraph, 2, { 0 });
+  verifyPins(c_hypergraph, { 0 }, { {0}, {0, 1, 2}, {2} });
+}
+
+TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledSinglePinNetRemoval2) {
+  hypergraph.disableSinglePinNetsRemoval();
+  parallel::scalable_vector<HypernodeID> c_mapping = {1, 4, 1, 5, 5, 6, 5};
+  StaticHypergraph c_hypergraph = hypergraph.contract(c_mapping);
+
+  // Verify Mapping
+  ASSERT_EQ(0, c_mapping[0]);
+  ASSERT_EQ(1, c_mapping[1]);
+  ASSERT_EQ(0, c_mapping[2]);
+  ASSERT_EQ(2, c_mapping[3]);
+  ASSERT_EQ(2, c_mapping[4]);
+  ASSERT_EQ(3, c_mapping[5]);
+  ASSERT_EQ(2, c_mapping[6]);
+
+  // Verify Stats
+  ASSERT_EQ(4, c_hypergraph.initialNumNodes());
+  ASSERT_EQ(4, c_hypergraph.initialNumEdges());
+  ASSERT_EQ(8, c_hypergraph.initialNumPins());
+  ASSERT_EQ(7, c_hypergraph.totalWeight());
+  ASSERT_EQ(8, c_hypergraph.totalVolume());
+  ASSERT_EQ(3, c_hypergraph.maxEdgeSize());
+
+  // Verify Vertex Weights
+  ASSERT_EQ(2, c_hypergraph.nodeWeight(0));
+  ASSERT_EQ(1, c_hypergraph.nodeWeight(1));
+  ASSERT_EQ(3, c_hypergraph.nodeWeight(2));
+  ASSERT_EQ(1, c_hypergraph.nodeWeight(3));
+
+  // Verify Vertex Weighted Degrees
+  ASSERT_EQ(3, c_hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(1, c_hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(3, c_hypergraph.nodeWeightedDegree(2));
+  ASSERT_EQ(1, c_hypergraph.nodeWeightedDegree(3));
+
+  // Verify Hyperedge Weights
+  ASSERT_EQ(1, c_hypergraph.edgeWeight(1));
+  ASSERT_EQ(1, c_hypergraph.edgeWeight(2));
+
+  // Verify Hypergraph Structure
+  verifyIncidentNets(c_hypergraph, 0, { 0, 1, 3 });
+  verifyIncidentNets(c_hypergraph, 1, { 1 });
+  verifyIncidentNets(c_hypergraph, 2, { 1, 2, 3 });
+  verifyIncidentNets(c_hypergraph, 3, { 3 });
+  verifyPins(c_hypergraph, { 0, 1, 2, 3 }, { {0}, {0, 1, 2}, {2}, {0, 2, 3} });
+}
+
+TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledSinglePinNetRemoval3) {
+  hypergraph.disableSinglePinNetsRemoval();
+  parallel::scalable_vector<HypernodeID> c_mapping = {2, 2, 0, 5, 5, 1, 1};
+  StaticHypergraph c_hypergraph = hypergraph.contract(c_mapping);
+
+  // Verify Mapping
+  ASSERT_EQ(2, c_mapping[0]);
+  ASSERT_EQ(2, c_mapping[1]);
+  ASSERT_EQ(0, c_mapping[2]);
+  ASSERT_EQ(3, c_mapping[3]);
+  ASSERT_EQ(3, c_mapping[4]);
+  ASSERT_EQ(1, c_mapping[5]);
+  ASSERT_EQ(1, c_mapping[6]);
+
+  // Verify Stats
+  ASSERT_EQ(4, c_hypergraph.initialNumNodes());
+  ASSERT_EQ(4, c_hypergraph.initialNumEdges());
+  ASSERT_EQ(8, c_hypergraph.initialNumPins());
+  ASSERT_EQ(7, c_hypergraph.totalWeight());
+  ASSERT_EQ(8, c_hypergraph.totalVolume());
+  ASSERT_EQ(2, c_hypergraph.maxEdgeSize());
+
+  // Verify Vertex Weights
+  ASSERT_EQ(1, c_hypergraph.nodeWeight(0));
+  ASSERT_EQ(2, c_hypergraph.nodeWeight(1));
+  ASSERT_EQ(2, c_hypergraph.nodeWeight(2));
+  ASSERT_EQ(2, c_hypergraph.nodeWeight(3));
+
+  // Verify Vertex Weighted Degrees
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(0));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(1));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(2));
+  ASSERT_EQ(2, c_hypergraph.nodeWeightedDegree(3));
+
+  // Verify Hyperedge Weights
+  ASSERT_EQ(1, c_hypergraph.edgeWeight(0));
+  ASSERT_EQ(1, c_hypergraph.edgeWeight(1));
+  ASSERT_EQ(1, c_hypergraph.edgeWeight(2));
+  ASSERT_EQ(1, c_hypergraph.edgeWeight(3));
+
+  // Verify Hypergraph Structure
+  verifyIncidentNets(c_hypergraph, 0, { 0, 3 });
+  verifyIncidentNets(c_hypergraph, 1, { 2, 3 });
+  verifyIncidentNets(c_hypergraph, 2, { 0, 1 });
+  verifyIncidentNets(c_hypergraph, 3, { 1, 2 });
+  verifyPins(c_hypergraph, { 0, 1, 2, 3 },
+    { {0, 2}, {2, 3}, {1, 3}, {0, 1} });
+}
+
 
 TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledHypernodes) {
   hypergraph.disableHypernode(0);

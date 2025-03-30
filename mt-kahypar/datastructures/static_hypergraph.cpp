@@ -51,10 +51,11 @@ namespace mt_kahypar::ds {
 
   /*!
    * Contracts a given community structure. All vertices with the same label
-   * are collapsed into the same vertex. The resulting single-pin and parallel
-   * hyperedges are removed from the contracted graph. The function returns
-   * the contracted hypergraph and a mapping which specifies a mapping from
-   * community label (given in 'communities') to a vertex in the coarse hypergraph.
+   * are collapsed into the same vertex. The resulting single-pin (if single-pin 
+   * nets removal isn't disabled) and parallel hyperedges are removed from the 
+   * contracted graph. The function returns the contracted hypergraph and a 
+   * mapping which specifies a mapping from community label (given in 'communities') 
+   * to a vertex in the coarse hypergraph.
    *
    * \param communities Community structure that should be contracted
    */
@@ -144,6 +145,7 @@ namespace mt_kahypar::ds {
     // graph are also aggregate in a consecutive memory range and duplicates are removed. Note
     // that parallel and single-pin hyperedges are not removed from the incident nets (will be done
     // in a postprocessing step).
+    // !!! (New) If single-pin nets removal is disabled, we do not invalidate single-pin hyperedges
     auto cs2 = [](const HypernodeID x) { return x * x; };
     ConcurrentBucketMap<ContractedHyperedgeInformation> hyperedge_hash_map;
     hyperedge_hash_map.reserve_for_estimated_number_of_insertions(_num_hyperedges);
@@ -181,7 +183,7 @@ namespace mt_kahypar::ds {
           tmp_hyperedges[he].setSize(contracted_size);
 
 
-          if ( contracted_size > 1 ) {
+          if ( contracted_size > 1 || _disable_single_pin_nets_removal) {
             // Compute hash of contracted hyperedge
             size_t footprint = kEdgeHashSeed;
             for ( size_t pos = incidence_array_start; pos < incidence_array_start + contracted_size; ++pos ) {
@@ -191,6 +193,7 @@ namespace mt_kahypar::ds {
                                       ContractedHyperedgeInformation{ he, footprint, contracted_size, true });
           } else {
             // Hyperedge becomes a single-pin hyperedge
+            // single-pin nets removal is not disabled
             valid_hyperedges[he] = 0;
             tmp_hyperedges[he].disable();
           }
@@ -528,6 +531,7 @@ namespace mt_kahypar::ds {
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
     hypergraph._total_volume = _total_volume;
+    hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
 
     tbb::parallel_invoke([&] {
       hypergraph._hypernodes.resize(_hypernodes.size());
@@ -570,6 +574,7 @@ namespace mt_kahypar::ds {
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
     hypergraph._total_volume = _total_volume;
+    hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
 
     hypergraph._hypernodes.resize(_hypernodes.size());
     memcpy(hypergraph._hypernodes.data(), _hypernodes.data(),

@@ -558,7 +558,158 @@ Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context 
 		- `setupContext(hg, context, ..)`: if `PresetType::cluster`, set `context.partition.k = 2` and `context.partition.epsilon = std::numeric_limits<double>::max();` \ 
 			[Adil: this determines how the part weights and contraction limits are defined]
 
-Sanity check: compiles, passes the test suite
+**Sanity check**: compiles, passes the test suite
+
+### Part 2.2.1 Side trip: Disabling single-pin removal
+#### Rationale
+
+**Problem**: removal of single-pin net(s) changes weighted degrees, volumes &rArr; conductances
+
+&rarr; **Idea** *[Adil]*: never remove single-pin nets &rArr; conductance is always right
+
+**Solution structure**: add a member `bool disable_single_pin_net_removal` in `context` and in `StaticHypergraph`, `DynamicHypergraph`
+
+#### ToDo
+- new members in `context` (set according to the `Objective`) and hypergraphs (set by `Factory` and internal methods for testing)
+- adjust `removeSinglePinAndParallelNets(..)` and ``restoreSinglePinAndParallelNets(..)` (at least an asserting is needed)
+- adjust assertions for success of removal (they should be somewhere)
+- write (and potentially adjust) tests :(
+- debug..
+
+#### Hypergraphs
+##### Static Hypergraph
+- `mt-kahypar/datastructures`:
+	- `static_hypergraph.h`:
+		- \+ `void disableSinglePinNetsRemoval()`
+		- \+ `bool isSinglePinNetsRemovalDisabled() const`
+		- \+ `private bool _disable_single_pin_nets_removal = false`
+		- &rArr; adjust ~~copy and~~ move constructor and `operator=` [copy is deleted]
+		- `uncontract(..)`: not supported &rArr; do noting :)
+	- `static_hypergraph.cpp`:
+		- `contract(communities, deterministic)`: [removes single-pin nets from contracted hg] adjust to disable single-pin nets removal: \
+			`## Stage 2 ##`: treat single-pin as `size > 1` if single-pin nets removal is disabled
+		- `copy()`, `copy(parallel_tag_t)`: copy `_disable_single_pin_nets_removal`
+	- `static_hypergraph_factory.h / .cpp`: `copmactify(SHg)` is not supported &rArr; no changes
+##### Dynamic Hypergraph
+- `mt-kahypar/datastructures/`:
+	- `dynamic_hypergraph.h`:
+		- \+ `bool isSinglePinNetsRemovalDisabled() const`
+		- \+ `void disableSinglePinNetsRemoval()`
+		- \+ `private bool _disable_single_pin_nets_removal = false`
+		- &rArr; adjust ~~copy and~~ move constructor and `operator=` [copy is deleted]
+	- `dynamic_hypergraph.cpp`:
+		- `removeSinglePinAndParallelHyperedges()`: 
+			- single-pin nets are not removed if removal disabled
+			- but could be removed if are parallel 
+		- `restoreSinglePinAndParallelets()`:
+			- add an assertion to ensure that only parallel single-pin nets are removed 
+			if single-pin nets removal is disabled
+		- `copy()`, `copy(parallel_tag_t)`: copy `_disable_single_pin_nets_removal`
+	- `hynamic_hypergraph_factory.h / .cpp`: nothing to do
+
+##### Partitioned Hypergraph
+- `mt-kahypar/datastructures/`:
+	- `partitioned_hypergraph.h`:
+		- \+ `bool isSinglePinNetsRemovalDisabled() const`
+		- `restoreSinglePinAndParallelNets(hes_to_restore, gain_cache)`:
+			if single-pin nets removal is disabled, handle restored single-pin nets as parallel nets
+		- `extract(block, ..)`: 
+			- disable single-pin nets removal for `extracted_block.hg` if is desabled for `_hg`
+			- do not remove single-pinn nets (or s-p nets to be) from block!!!
+		- `extractAllBlocks(k, ..)`: 
+			- analog. to `extract(block, ..)` but in parallel for all blocks
+			- do not remove single-pinn nets (or s-p nets to be) from block!!!
+
+#### Graphs
+Mirroring interfaces in `static_graph.h`, `dynamic_graph.h`:
+- \+ `void disableSinglePinNetsRemoval()`: unsupported
+- \+ `bool isSinglePinNetsRemovalDisabled() const`: `false`
+
+Mirroring interfaces in `partitioned_graph.h`:`
+- \+ `bool isSinglePinNetsRemovalDisabled() const`: `false`
+
+#### Context
+**!!!** At the hypergraph input `hypergraph = io::readInputFile(..)`, single-pin nets are removed if the corresponding argument `bool remove_single_pin_nets = true` is not reset to `false`
+
+&rArr; call `context.setupSinglePinNetsRemoval()` as early as possible after setting `Objective`
+- `mt-kahypar/partition`:
+	- `context.h`:
+		- `CoarseningParameters`: 
+			- \+ attribute `bool disable_single_pin_nets_removal = false` 
+			- `operator<< (os, CoarseningParameters)`: print out if single-pin nets removal is enabled / disabled
+		- `Context`: 
+			- \+ `bool disableSinglePinNetsRemoval() const` - getter
+			- \+ `void setupSinglePinNetsRemoval()` - to be called after Objective is set up
+	- `partitioner.cpp`:
+		- `setupContext(&hg, &context, ..)`: 
+			- befor all other: if conductance `Objective`, disable single-pin nets in `context`
+			- after setup calls [as `context.partition.instance_type` could be initializes there]: if `hypergaph` (*not graph*), disable single-pin nets in `hg`
+- `mt-kahypar/application/`:
+	- `mt_kahypar.cc`:
+		- `main(argc, argv)`:
+			- in `hypergraph = io::readInputFile(..)`: set option `bool remove_single_pin_nets = !context.coarsening.disable_single_pin_nets_removal` (is `true` by default)
+			- before that call `context.setupSinglePinNetsRemoval()` 
+- `mt-kahypar/io/`:
+	- `command_line_options.cpp`: 
+		- in `processComandLineInput(&context, ..)` call `context.setupsetupSinglePinNetsRemoval()` after `context.partition.objective = objectiveFromString(s);`
+
+#### Assertions about edge size
+- `mt-kahypar/partition/coarsening/multilevel_vertex_pair_rater.h`: - used in by `multilevel_coarsener.h`
+	- `fillRatingMap(hg, u, tmp_ratings)`: `ASSERT(edge_size > 1)`:
+		- `ScorePolicy::score(edge_weight, edge_size)` needs `edge_size != 1` &rArr; adjust assertion and skip single-pin nets
+
+Also done:
+- in `mt-kahypar/partition/context.cpp`:
+	- `sanityCheck(..)`: if conductance `Objective`, but not `PresetType::cluster`, throw an `UncupportedOperationException`. 
+
+- *Call hierarchy*:
+		- `Context::sanityCheck(..)`
+		- &rarr; `partitioner.cpp setupContext(hg, context, ..)`
+		- &rarr; `partitioner.cpp Partitioner<TypeTraits>::partition(hg, context, ..)`
+		- &rarr; `partitioner_facade.cpp internal::partition(hg, context, ..)`
+		- &rarr; `partitioner_facade.cpp partition(hg, context, ..)`
+		- &rarr; `lib_helper_functions.h lib::partition_impl(hg, context, ..)`
+		- ... &rArr; should be the right place to set `disable_single_pin_nets_removal`..
 
 
-+ Idea: never remove single-pin nets -> conductance is always right &rArr; TODO...
+#### Notes:
+- `mt-kahypar/partition/refinement/fm/global_rollback.cpp`: 
+	- `recalculateGainForGraphEdgeViaAttributedGains(phg, FMSharedData, e)` ignores single-pin net `e`
+
+#### Tests 
+**ToDo**:
+- Dynamic, static hg: remove single <..> with disabled removal, copy test
+- static: contract
+- partitioned: extract block, all blocks
+- + run a smoke test with disabled SPNR to catch failed assertions
+
+- `static_hypergraph_test.cc`:
+	- \+ `ComparesSinglePinNetsRemovalOptionIfCopiedParallel1 , 2` and `ComparesSinglePinNetsRemovalOptionIfCopiedSequential1 , 2`: tests `desable` + `copy`
+	- \+ `ContractsCommunitiesWithDisabledSinglePinNetRemoval1 .. 3`: tests `desable` + `contract`
+
+- `dynamic_hypergraph_test.cc`:
+	- \+ `ComparesSinglePinNetsRemovalOptionIfCopiedParallel1 , 2` and `ComparesSinglePinNetsRemovalOptionIfCopiedSequential1 , 2`: tests `desable` + `copy`
+	- \+ `RemovesOnlyParallelNets1 , 2`: tests `disable` + `removeSPNandPN`
+	- \+ `RestoresOnlyParallelNets1 , 2`: tests `disable` + `restoreSPNandPN`
+
+- `dynamic_partitioned_hypergraph_test.cc`:
+	- \+ `ComputesPinCountsCorrectlyIfWeRestoreOnlyParallelNets`: `disable` + `removeSPNandPN` + `initializeGainCache` + `restorePNandPN`
+
+- `partitioned_hypergraph_test.cc`:
+	- \+ `ExtractBlockZeroWithCutNetSplittingAndSinglePinNets`, `ExtractBlockOneWithCutNetSplittingAndSinglePinNets`, `ExtractBlockTwoWithCutNetSplittingAndSinglePinNets`: `extract` + `disable`
+	- \+ `ExtractAllBlockBlocksWithCutNetSplittingAndSinlePinNets`: `extractAll` + `disable`
+
+### Problem: volumes are still not preserved
+Contraction of 2 nodes decreases volume by the sum of weights of their shared nets
+
+#### Solution Proposal:
+1) introduce `lost_weighted_degree` of a node to `hg`:
+	- increase by removal of a single-pin net, contraction;
+	- decrease by restoration of single-pin net, uncontraction;
+2) introduce `lost_part_volume` to `phg`:
+	- decrease by restoration of single-pin net, uncontraction;
+	- adjust by changeNodePartition, setNodePartition
+3) adjust `conductance_pg`:
+	- use `part_volume + lost_part_volume`
+	- add assertion by updateTotalVolume, globalUpdate (?)
+4) tests...

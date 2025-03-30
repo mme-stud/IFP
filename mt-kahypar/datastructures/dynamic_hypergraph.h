@@ -462,7 +462,8 @@ class DynamicHypergraph {
     _failed_hyperedge_contractions(std::move(other._failed_hyperedge_contractions)),
     _he_bitset(std::move(other._he_bitset)),
     _removable_single_pin_and_parallel_nets(std::move(other._removable_single_pin_and_parallel_nets)),
-    _fixed_vertices(std::move(other._fixed_vertices)) {
+    _fixed_vertices(std::move(other._fixed_vertices)),
+    _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal) {
       /// [debug] std::cerr << "DynamicHypergraph(DynamicHypergraph&& other)" << std::endl;
     _fixed_vertices.setHypergraph(this);
     _total_volume.store(other._total_volume);
@@ -470,7 +471,7 @@ class DynamicHypergraph {
   }
 
   DynamicHypergraph & operator= (DynamicHypergraph&& other) {
-    /// [debug] std::cerr << "operator= (DynamicHypergraph&& other)" << std::endl;
+    /// [debug] std::cerr << "DynamicHypergraph::operator= (DynamicHypergraph&& other)" << std::endl;
     _num_hypernodes = other._num_hypernodes;
     _num_removed_hypernodes = other._num_removed_hypernodes;
     _num_hyperedges = other._num_hyperedges;
@@ -497,6 +498,7 @@ class DynamicHypergraph {
     _removable_single_pin_and_parallel_nets = std::move(other._removable_single_pin_and_parallel_nets);
     _fixed_vertices = std::move(other._fixed_vertices);
     _fixed_vertices.setHypergraph(this);
+    _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
     return *this;
   }
 
@@ -803,6 +805,20 @@ class DynamicHypergraph {
     return _fixed_vertices.copy();
   }
 
+  // ####################### Single-Pin Nets Removal #######################
+
+  // ! Disable single-pin nets removal before first contraction
+  // ! Needed for both Objective::conductance_local ans Objective::conductance_global
+  void disableSinglePinNetsRemoval() {
+    /// [debug] std::cerr << "DynamicHypergraph::disableSinglePinNetsRemoval()" << std::endl;
+    _disable_single_pin_nets_removal = true;
+  }
+
+  // ! Check if single-pin nets removal is disabled
+  bool isSinglePinNetsRemovalDisabled() const {
+    return _disable_single_pin_nets_removal;
+  }
+
   // ####################### Contract / Uncontract #######################
 
   DynamicHypergraph contract(parallel::scalable_vector<HypernodeID>&, bool deterministic = false) {
@@ -892,7 +908,7 @@ class DynamicHypergraph {
   * setting.
   */
   void removeEdge(const HyperedgeID he) {
-    /// [debug] std::cerr << "removeEdge(he)" << std::endl;
+    /// [debug] std::cerr << "DynamicHypergraph::removeEdge(he)" << std::endl;
     ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
     kahypar::ds::FastResetFlagArray<>& he_to_remove = _he_bitset.local();
     he_to_remove.set(he, true);
@@ -913,7 +929,7 @@ class DynamicHypergraph {
   * setting.
   */
   void removeLargeEdge(const HyperedgeID he) {
-    /// [debug] std::cerr << "removeLargeEdge(he)" << std::endl;
+    /// [debug] std::cerr << "DynamicHypergraph::removeLargeEdge(he)" << std::endl;
     ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
     const size_t incidence_array_start = hyperedge(he).firstEntry();
     const size_t incidence_array_end = hyperedge(he).firstInvalidEntry();
@@ -931,7 +947,7 @@ class DynamicHypergraph {
    * Restores a large hyperedge previously removed from the hypergraph.
    */
   void restoreLargeEdge(const HyperedgeID& he) {
-    /// [debug] std::cerr << "restoreLargeEdge(he)" << std::endl;
+    /// [debug] std::cerr << "DynamicHypergraph::restoreLargeEdge(he)" << std::endl;
     ASSERT(!edgeIsEnabled(he), "Hyperedge" << he << "is enabled");
     enableHyperedge(he);
     const size_t incidence_array_start = hyperedge(he).firstEntry();
@@ -944,9 +960,10 @@ class DynamicHypergraph {
   }
 
   /**
-   * Removes single-pin and parallel nets from the hypergraph. The weight
-   * of a set of identical nets is aggregated in one representative hyperedge
-   * and single-pin hyperedges are removed. Returns a vector of removed hyperedges.
+   * Removes single-pin (if single-pin nets removal is not disabled) and parallel nets 
+   * from the hypergraph. The weight of a set of identical nets is aggregated in one 
+   * representative hyperedge and single-pin hyperedges are removed (if --//--//--). 
+   * Returns a vector of removed hyperedges.
    */
   parallel::scalable_vector<ParallelHyperedge> removeSinglePinAndParallelHyperedges();
 
@@ -1201,6 +1218,9 @@ class DynamicHypergraph {
 
   // ! Fixed Vertex Support
   FixedVertexSupport<DynamicHypergraph> _fixed_vertices;
+
+  // ! Option for disabling the removal of single-pin nets
+  bool _disable_single_pin_nets_removal = false;
 };
 
 } // namespace ds

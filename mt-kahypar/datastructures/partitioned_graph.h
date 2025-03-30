@@ -824,6 +824,13 @@ private:
     return _hg->fixedVertexBlock(hn);
   }
 
+  // ####################### Single-Pin Nets Removal #######################
+
+  // ! Check if single-pin nets removal is disabled
+  bool isSinglePinNetsRemovalDisabled() const {
+    return _hg->isSinglePinNetsRemovalDisabled();
+  }
+
   // ####################### Memory Consumption #######################
 
   void memoryConsumption(utils::MemoryTreeNode* parent) const {

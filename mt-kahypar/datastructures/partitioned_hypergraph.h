@@ -659,6 +659,8 @@ class PartitionedHypergraph {
     // Compute pin counts of restored hyperedges and gain cache values of vertices contained
     // single-pin hyperedges. Note, that restoring parallel hyperedges does not change any
     // value in the gain cache, since it already contributes to the gain via its representative.
+    // (New) If single-pin nets removal is disabled, we need to restore the single-pin hyperedges
+    //       exactly the same way as the parallel nets (TODO: ).
     tls_enumerable_thread_specific< vec<HypernodeID> > ets_pin_count_in_part(_k, 0);
     // TODO: ets_pin_count_in_part - unused???
     // also compute additional volumes for all parts: only single-pin nets bring new volume
@@ -668,7 +670,7 @@ class PartitionedHypergraph {
       const HyperedgeID representative = hes_to_restore[i].representative;
       ASSERT(edgeIsEnabled(he));
       const bool is_single_pin_he = edgeSize(he) == 1;
-      if ( is_single_pin_he ) {
+      if ( is_single_pin_he && ( !isSinglePinNetsRemovalDisabled()) ) {
         // Restore single-pin net
         HypernodeID single_vertex_of_he = kInvalidHypernode;
         for ( const HypernodeID& pin : pins(he) ) {
@@ -709,7 +711,8 @@ class PartitionedHypergraph {
     if (hasConductancePriorityQueue()) {
       /*  Only if the total volume of the hypergraph has changed, 
        * we need to update the conductance priority queue
-       * (<=> if at least one single-pin net was restored).
+       * (<=> if at least one single-pin net was restored 
+       *      and single-pin nets removal is not disabled).
        */
       if (totalVolume() != old_total_volume) {
         _conductance_pq.globalUpdate(*this);
@@ -1132,6 +1135,13 @@ class PartitionedHypergraph {
     return _hg->fixedVertexBlock(hn);
   }
 
+  // ####################### Single-Pin Nets Removal #######################
+
+  // ! Check if single-pin nets removal is disabled
+  bool isSinglePinNetsRemovalDisabled() const {
+    return _hg->isSinglePinNetsRemovalDisabled();
+  }
+
   // ####################### Memory Consumption #######################
 
   // ! No info about the memory consumption of the conductance priority queue
@@ -1181,8 +1191,9 @@ class PartitionedHypergraph {
       }
     }, [&] {
       for ( const HyperedgeID& he : edges() ) {
-        if ( pinCountInPart(he, block) > 1 &&
-             (cut_net_splitting || connectivity(he) == 1) ) {
+        if ( (pinCountInPart(he, block) > 1 
+             || (pinCountInPart(he, block) == 1 && isSinglePinNetsRemovalDisabled())) 
+            && (cut_net_splitting || connectivity(he) == 1) ) {
           he_mapping[he] = num_hyperedges++;
         }
       }
@@ -1198,8 +1209,9 @@ class PartitionedHypergraph {
       edge_vector.resize(num_hyperedges);
       hyperedge_weight.resize(num_hyperedges);
       doParallelForAllEdges([&](const HyperedgeID he) {
-        if ( pinCountInPart(he, block) > 1 &&
-             (cut_net_splitting || connectivity(he) == 1) ) {
+        if ( (pinCountInPart(he, block) > 1 
+              || (pinCountInPart(he, block) == 1 && isSinglePinNetsRemovalDisabled())) 
+             && (cut_net_splitting || connectivity(he) == 1) ) {
           ASSERT(he_mapping[he] < num_hyperedges);
           hyperedge_weight[he_mapping[he]] = edgeWeight(he);
           for ( const HypernodeID& pin : pins(he) ) {
@@ -1232,7 +1244,11 @@ class PartitionedHypergraph {
     // Construct hypergraph
     extracted_block.hg = HypergraphFactory::construct(num_hypernodes, num_hyperedges,
       edge_vector, hyperedge_weight.data(), hypernode_weight.data(), stable_construction_of_incident_edges);
-
+    // disable single-pin nets removal if was disabled
+    if (isSinglePinNetsRemovalDisabled()) {
+      extracted_block.hg.disableSinglePinNetsRemoval();
+    }
+    
     // Set community ids
     doParallelForAllNodes([&](const HypernodeID& hn) {
       if ( partID(hn) == block ) {
@@ -1273,8 +1289,9 @@ class PartitionedHypergraph {
         // Get hyperedges contained in each block
         for ( const HyperedgeID& he : edges() ) {
           for ( const PartitionID& block : connectivitySet(he) ) {
-            if ( pinCountInPart(he, block) > 1 &&
-                (cut_net_splitting || connectivity(he) == 1) ) {
+            if ( (pinCountInPart(he, block) > 1 
+                  || (pinCountInPart(he, block) == 1 && isSinglePinNetsRemovalDisabled())) 
+                && (cut_net_splitting || connectivity(he) == 1) ) {
               hes2block[block].push_back(he);
             }
           }
@@ -1294,8 +1311,9 @@ class PartitionedHypergraph {
         // Get hyperedges contained in each block
         doParallelForAllEdges([&](const HyperedgeID& he) {
           for ( const PartitionID& block : connectivitySet(he) ) {
-            if ( pinCountInPart(he, block) > 1 &&
-                (cut_net_splitting || connectivity(he) == 1) ) {
+            if ( (pinCountInPart(he, block) > 1 
+                  || (pinCountInPart(he, block) == 1 && isSinglePinNetsRemovalDisabled())) 
+                && (cut_net_splitting || connectivity(he) == 1) ) {
               hes2block_stream[block].stream(he);
             }
           }
@@ -1369,6 +1387,10 @@ class PartitionedHypergraph {
       extracted_blocks[p].hg = HypergraphFactory::construct(num_nodes, num_hyperedges,
         edge_vector[p], he_weight[p].data(), hn_weight[p].data(),
         stable_construction_of_incident_edges);
+      // disable single-pin nets removal if was disabled
+      if (isSinglePinNetsRemovalDisabled()) {
+        extracted_blocks[p].hg.disableSinglePinNetsRemoval();
+      }
     });
 
     // Set community ids

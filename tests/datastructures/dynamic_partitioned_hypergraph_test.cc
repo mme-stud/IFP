@@ -211,6 +211,27 @@ TEST_F(ADynamicPartitionedHypergraph, ComputesPinCountsCorrectlyIfWeRestoreSingl
   verifyPartitionPinCounts(3, { 1, 0, 1 });
 }
 
+TEST_F(ADynamicPartitionedHypergraph, ComputesPinCountsCorrectlyIfWeRestoreOnlyParallelNets) {
+  hypergraph.disableSinglePinNetsRemoval();
+  partitioned_hypergraph.resetPartition();
+  hypergraph.registerContraction(1, 2);
+  hypergraph.registerContraction(0, 1);
+  hypergraph.registerContraction(4, 5);
+  hypergraph.registerContraction(3, 4);
+  hypergraph.registerContraction(6, 3);
+  hypergraph.contract(2);
+  hypergraph.contract(5);
+  auto removed_hyperedges = hypergraph.removeSinglePinAndParallelHyperedges();
+
+  initializePartition();
+  Km1GainCache gain_cache;
+  partitioned_hypergraph.restoreSinglePinAndParallelNets(removed_hyperedges, gain_cache);
+  verifyPartitionPinCounts(0, { 1, 0, 0 });
+  verifyPartitionPinCounts(1, { 1, 0, 1 });
+  verifyPartitionPinCounts(2, { 0, 0, 1 });
+  verifyPartitionPinCounts(3, { 1, 0, 1 });
+}
+
 TEST_F(ADynamicPartitionedHypergraph, UpdatesGainCacheCorrectlyIfWeRestoreSinglePinAndParallelNets1) {
   partitioned_hypergraph.resetPartition();
   hypergraph.registerContraction(0, 2);

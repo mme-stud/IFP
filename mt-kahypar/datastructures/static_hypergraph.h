@@ -447,7 +447,8 @@ class StaticHypergraph {
     _weighted_degrees(std::move(other._weighted_degrees)),
     _community_ids(std::move(other._community_ids)),
     _fixed_vertices(std::move(other._fixed_vertices)),
-    _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)) {
+    _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)),
+    _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal) {
     _fixed_vertices.setHypergraph(this);
     other._tmp_contraction_buffer = nullptr;
   }
@@ -472,6 +473,7 @@ class StaticHypergraph {
     _fixed_vertices = std::move(other._fixed_vertices);
     _fixed_vertices.setHypergraph(this);
     _tmp_contraction_buffer = std::move(other._tmp_contraction_buffer);
+    _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
     other._tmp_contraction_buffer = nullptr;
     return *this;
   }
@@ -756,14 +758,29 @@ class StaticHypergraph {
     return _fixed_vertices.copy();
   }
 
+  // ####################### Single-Pin Nets Removal #######################
+
+  // ! Disable single-pin nets removal before first contraction
+  // ! Needed for both Objective::conductance_local ans Objective::conductance_global
+  void disableSinglePinNetsRemoval() {
+    /// [debug] std::cerr << "StaticHypergraph::disableSinglePinNetsRemoval()" << std::endl;
+    _disable_single_pin_nets_removal = true;
+  }
+
+  // ! Check if single-pin nets removal is disabled
+  bool isSinglePinNetsRemovalDisabled() const {
+    return _disable_single_pin_nets_removal;
+  }
+
   // ####################### Contract / Uncontract #######################
 
   /*!
    * Contracts a given community structure. All vertices with the same label
-   * are collapsed into the same vertex. The resulting single-pin and parallel
-   * hyperedges are removed from the contracted graph. The function returns
-   * the contracted hypergraph and a mapping which specifies a mapping from
-   * community label (given in 'communities') to a vertex in the coarse hypergraph.
+   * are collapsed into the same vertex. The resulting single-pin (if single-pin 
+   * nets removal isn't disabled) and parallel hyperedges are removed from the 
+   * contracted graph. The function returns the contracted hypergraph and a 
+   * mapping which specifies a mapping from community label (given in 'communities') 
+   * to a vertex in the coarse hypergraph.
    *
    * \param communities Community structure that should be contracted
    */
@@ -1049,6 +1066,9 @@ class StaticHypergraph {
   // ! Data that is reused throughout the multilevel hierarchy
   // ! to contract the hypergraph and to prevent expensive allocations
   TmpContractionBuffer* _tmp_contraction_buffer;
+
+  // ! Option for disabling the removal of single-pin nets
+  bool _disable_single_pin_nets_removal = false;
 };
 
 } // namespace ds

@@ -678,6 +678,21 @@ class DynamicGraph {
     return _fixed_vertices.copy();
   }
 
+  // ################# Single-pin Nets Removal Support ==================
+
+  // ! Disable single-pin nets removal 
+  // ! (not supported in dynamic graphs)
+  void disableSinglePinNetsRemoval() {
+    throw UnsupportedOperationException(
+      "disableSinglePinNetsRemoval() not supported in dynamic graph");
+  }
+
+  // ! Check if single-pin nets removal is disabled
+  // ! (always false in dynamic graphs)
+  bool isSinglePinNetsRemovalDisabled() const {
+    return false;
+  }
+
   // ####################### Contract / Uncontract #######################
 
   DynamicGraph contract(parallel::scalable_vector<HypernodeID>&, bool deterministic = false) {

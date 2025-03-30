@@ -232,7 +232,11 @@ class MultilevelVertexPairRater {
       kahypar::ds::FastResetFlagArray<>& bloom_filter = _local_bloom_filter.local();
       for ( const HyperedgeID& he : hypergraph.incidentEdges(u) ) {
         HypernodeID edge_size = hypergraph.edgeSize(he);
-        ASSERT(edge_size > 1, V(he));
+        ASSERT(edge_size > 1 || hypergraph.isSinglePinNetsRemovalDisabled(), V(he));
+        if (edge_size == 1) {
+          // ScorePolicty::score(..) returns edge_weight / (edge_size - 1) => undefined for single pin nets
+          continue;
+        }
         if ( edge_size < _context.partition.ignore_hyperedge_size_threshold ) {
           edge_size = _context.coarsening.use_adaptive_edge_size ?
             std::max(adaptiveEdgeSize(hypergraph, he, bloom_filter, cluster_ids), ID(2)) : edge_size;

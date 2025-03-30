@@ -60,12 +60,20 @@ namespace mt_kahypar {
       // this determines how the part weights and contraction limits are defined
     }
 
+    // Should be called as early as possible, but after setting Objective
+    context.setupSinglePinNetsRemoval();
+
     context.partition.large_hyperedge_size_threshold = std::max(hypergraph.initialNumNodes() *
                                                                 context.partition.large_hyperedge_size_threshold_factor, 100.0);
-    context.sanityCheck(target_graph);
+    context.sanityCheck(target_graph); // also sets context.partition.instance_type
     context.setupPartWeights(hypergraph.totalWeight());
     context.setupContractionLimit(hypergraph.totalWeight());
     context.setupThreadsPerFlowSearch();
+
+    if (context.partition.instance_type == InstanceType::hypergraph
+      && context.disableSinglePinNetsRemoval()) {
+        hypergraph.disableSinglePinNetsRemoval();   
+    }
 
     if ( context.partition.gain_policy == GainPolicy::steiner_tree ) {
       const PartitionID k = target_graph ? target_graph->numBlocks() : 1;
