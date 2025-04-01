@@ -215,7 +215,7 @@ public:
   // ! Updates PQ after total volume of the hypergraph has changed
   // ! changes pq => uses a lock
   void updateTotalVolume(const HyperedgeWeight& new_total_volume, bool synchronized = true) {
-    ASSERT(!_use_original_stats);
+    ASSERT(!_uses_original_stats);
     lock(synchronized);
     for (PartitionID p = 0; p < _size; ++p) {
       ConductanceFraction f = SuperPQ::getKey(p);
