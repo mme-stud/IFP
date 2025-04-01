@@ -849,7 +849,8 @@ TEST_F(AStaticHypergraph, ContractsCommunitiesWithDisabledHyperedges) {
   // Verify Vertex Original Weighted Degrees
   ASSERT_EQ(5, c_hypergraph.nodeOriginalWeightedDegree(0));
   ASSERT_EQ(4, c_hypergraph.nodeOriginalWeightedDegree(1));
-  ASSERT_EQ(3, c_hypergraph.nodeOriginalWeightedDegree(2));
+  ASSERT_EQ(1, c_hypergraph.nodeOriginalWeightedDegree(2));
+  ASSERT_EQ(2, c_hypergraph.nodeOriginalWeightedDegree(3));
 
   // Verify Hyperedge Weights
   ASSERT_EQ(1, c_hypergraph.edgeWeight(0));
