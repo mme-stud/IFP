@@ -463,6 +463,7 @@ DynamicHypergraph DynamicHypergraph::copy(parallel_tag_t) const {
   hypergraph._total_degree = _total_degree;
   hypergraph._total_weight = _total_weight;
   hypergraph._total_volume.store(_total_volume);
+  hypergraph._original_total_volume = _original_total_volume;
   hypergraph._version = _version;
   hypergraph._contraction_index.store(_contraction_index.load());
   hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
@@ -525,6 +526,7 @@ DynamicHypergraph DynamicHypergraph::copy() const {
   hypergraph._total_degree = _total_degree;
   hypergraph._total_weight = _total_weight;
   hypergraph._total_volume.store(_total_volume);
+  hypergraph._original_total_volume = _original_total_volume;
   hypergraph._version = _version;
   hypergraph._contraction_index.store(_contraction_index.load());
   hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;

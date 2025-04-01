@@ -98,21 +98,37 @@ public:
     _complement_val_bits(),
     _initialized(false)
     { }
+
+  // ! Makes ConductancePriorityQueue use current _total_volume and _part_volumes
+  // ! instead of the original (inherited from old versions of hg) ones
+  // ! To be used before initialization
+  void disableUsageOfOriginalHGStats() {
+    ASSERT(!_initialized, "ConductancePriorityQueue is already initialized");
+    _uses_original_stats = false;
+  }
+
+  // ! Makes ConductancePriorityQueue use original _total_volume and _part_volumes
+  // ! instead of the current ones
+  // ! To be used before initialization
+  void enableUsageOfOriginalHGStats() {
+    ASSERT(!_initialized, "ConductancePriorityQueue is already initialized");
+    _uses_original_stats = true;
+  }
   
   // ! Initializes the priority queue with the partitions of the hypergraph
   void initialize(const PartitionedHypergraph& hg, bool synchronized = false) {
     lock(synchronized);
     ASSERT(!_initialized);
     _initialized = true;
-    _total_volume = hg.totalVolume();
+    _total_volume = getHGTotalVolume(hg);
     _size = hg.k();
     _complement_val_bits.resize(_size);
     SuperPQ::clear();
     SuperPQ::resize(_size);
     SuperPQ::heap.resize(_size);
     tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
-      HyperedgeWeight cut_weight = hg.partCutWeight(p);
-      HyperedgeWeight volume = hg.partVolume(p);
+      HyperedgeWeight cut_weight = getHGPartCutWeight(hg, p);
+      HyperedgeWeight volume = getHGPartVolume(hg, p);
       _complement_val_bits[p] = (volume > _total_volume - volume);
       ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
       SuperPQ::heap[p].id = p; 
@@ -139,14 +155,22 @@ public:
     unlock(synchronized);
   }
 
+  // ! Returns an approximate memory consumption of the conductance priority queue in bytes
+  size_t memoryConsumption() const {
+    return SuperPQ::memoryConsumption() + _complement_val_bits.size() * sizeof(bool);
+  }
+
   // ! Updates the priority queue after global changes in partition
   void globalUpdate(const PartitionedHypergraph& hg, bool synchronized = false) {
     lock(synchronized);
     ASSERT(_initialized && _size == hg.k());
-    _total_volume = hg.totalVolume();
+    if (_uses_original_stats) {
+      ASSERT(_total_volume == hg.originalTotalVolume());
+    }
+    _total_volume = getHGTotalVolume(hg);
     tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
-      HyperedgeWeight cut_weight = hg.partCutWeight(p);
-      HyperedgeWeight volume = hg.partVolume(p);
+      HyperedgeWeight cut_weight = getHGPartCutWeight(hg, p);
+      HyperedgeWeight volume = getHGPartVolume(hg, p);
       _complement_val_bits[p] = (volume > _total_volume - volume);
       ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
       SuperPQ::heap[SuperPQ::positions[p]].key = f;
@@ -159,9 +183,9 @@ public:
   bool check(const PartitionedHypergraph& hg) const {
     ASSERT(_initialized && _size == hg.k());
     bool correct = true;
-    if (_total_volume != hg.totalVolume()) {
+    if (_total_volume != getHGTotalVolume(hg)) {
       correct = false;
-      LOG << "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << hg.totalVolume();
+      LOG << "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << getHGTotalVolume(hg);
     }
     for (PartitionID p = 0; p < _size; ++p) {
       ConductanceFraction f = SuperPQ::getKey(p);
@@ -170,13 +194,13 @@ public:
       if (_complement_val_bits[p]) {
         volume = _total_volume - volume;
       }
-      if (volume != hg.partVolume(p)) {
+      if (volume != getHGPartVolume(hg, p)) {
         correct = false;
-        LOG << "Volume of partition in ConductancePriorityQueue" << p << "is" << volume << ", but should be" << hg.partVolume(p);
+        LOG << "Volume of partition in ConductancePriorityQueue" << p << "is" << volume << ", but should be" << getHGPartVolume(hg, p);
       }
-      if (cut_weight != hg.partCutWeight(p)) {
+      if (cut_weight != getHGPartCutWeight(hg, p)) {
         correct = false;
-        LOG << "Cut weight of partition in ConductancePriorityQueue" << p << "is" << cut_weight << ", but should be" << hg.partCutWeight(p);
+        LOG << "Cut weight of partition in ConductancePriorityQueue" << p << "is" << cut_weight << ", but should be" << getHGPartCutWeight(hg, p);
       }
     }
     correct = correct && SuperPQ::isHeap() && SuperPQ::positionsMatch();
@@ -207,6 +231,7 @@ public:
   // ! Updates PQ after total volume of the hypergraph has changed
   // ! changes pq => uses a lock
   void updateTotalVolume(const HyperedgeWeight& new_total_volume, bool synchronized = true) {
+    ASSERT(!_use_original_stats);
     lock(synchronized);
     for (PartitionID p = 0; p < _size; ++p) {
       ConductanceFraction f = SuperPQ::getKey(p);
@@ -293,6 +318,33 @@ private:
       SuperPQ::siftDown(p);
     }
     ASSERT(SuperPQ::isHeap() && SuperPQ::positionsMatch());
+  }
+
+  // ################### COMMUNICATION WITH THE HG ######################
+  // ! Get needed kind of total volume
+  // ! (original or current)
+  HyperedgeWeight getHGTotalVolume(Hypergraph& hg) {
+    if (_uses_original_stats) {
+      return hg.totalOriginalVolume();
+    } else {
+      return hg.totalVolume();
+    }
+  }
+  
+  // ! Get needed kind of part volume
+  // ! (original or current)
+  HyperedgeWeight getHGPartVolume(Hypergraph& hg, const PartitionID p) {
+    if (_uses_original_stats) {
+      return hg.partOriginalVolume(p);
+    } else {
+      return hg.partVolume(p);
+    }
+  }
+
+  // ! Get needed kind of cut weight
+  // ! (only one kind of cut weight for now)
+  HyperedgeWeight getHGPartCutWeight(Hypergraph& hg, const PartitionID p) {
+    return hg.partCutWeight(p);
   }
 
   // #################### POTENTIALLY USELESS PART ######################
@@ -387,6 +439,7 @@ private:
   HyperedgeWeight _total_volume;
   PartitionID _size;
   vec<bool> _complement_val_bits;
+  bool _uses_original_stats = true;
   bool _initialized;
 };
 

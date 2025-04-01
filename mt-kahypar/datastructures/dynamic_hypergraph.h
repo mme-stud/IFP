@@ -420,6 +420,7 @@ class DynamicHypergraph {
     _total_degree(0),
     _total_weight(0),
     _total_volume(0),
+    _original_total_volume(0),
     _version(0),
     _contraction_index(0),
     _hypernodes(),
@@ -449,6 +450,7 @@ class DynamicHypergraph {
     _total_degree(other._total_degree),
     _total_weight(other._total_weight),
     _total_volume(0), // other._total_volume is copied in body
+    _original_total_volume(other._original_total_volume),
     _version(other._version),
     _contraction_index(0),
     _hypernodes(std::move(other._hypernodes)),
@@ -482,6 +484,7 @@ class DynamicHypergraph {
     _total_degree = other._total_degree;
     _total_weight = other._total_weight;
     _total_volume.store(other._total_volume);
+    _original_total_volume = other._original_total_volume;
     _version = other._version;
     _contraction_index.store(other._contraction_index.load());
     _hypernodes = std::move(other._hypernodes);
@@ -556,6 +559,11 @@ class DynamicHypergraph {
   // ! Total volume of hypergraph
   HypernodeWeight totalVolume() const {
     return _total_volume;
+  }
+
+  // ! Original total volume of hypergraph
+  HypernodeWeight originalTotalVolume() const {
+    return _original_total_volume;
   }
 
   // ! Recomputes the total weight of the hypergraph (parallel)
@@ -663,10 +671,22 @@ class DynamicHypergraph {
     return _incident_nets.nodeWeightedDegree(u);
   }
 
+  // ! Original weighted degree of a hypernode
+  HyperedgeID nodeOriginalWeightedDegree(const HypernodeID u) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    return _incident_nets.nodeOriginalWeightedDegree(u);
+  }
+
   // ! Decrease weighted degree of a hypernode
   void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     _incident_nets.decreaseNodeWeightedDegree(u, w);
+  }
+
+  // ! Set original weighted degree of a hypernode
+  void setNodeOriginalWeightedDegree(const HypernodeID u, HyperedgeWeight d) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    _incident_nets.setNodeOriginalWeightedDegree(u, d);
   }
 
   // ! Returns, whether a hypernode is enabled or not
@@ -1184,6 +1204,8 @@ class DynamicHypergraph {
   HypernodeWeight _total_weight;
   // ! Total volume of hypergraph
   std::atomic<HypernodeWeight> _total_volume;
+  // ! Original total volume of hypergraph
+  HyperedgeWeight _original_total_volume;
   // ! Version of the hypergraph, each time we remove a single-pin and parallel nets,
   // ! we create a new version
   size_t _version;

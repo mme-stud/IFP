@@ -209,6 +209,20 @@ void verifyBlockVolumes(HyperGraph& hypergraph,
   }
 }
 
+
+template <typename HyperGraph>
+void verifyBlockOriginalVolumes(HyperGraph& hypergraph,
+                         const PartitionID k) {
+  std::vector<HyperedgeWeight> block_original_volume(k, 0);
+  for (const HypernodeID& hn : hypergraph.nodes()) {
+    block_original_volume[hypergraph.partID(hn)] += hypergraph.nodeOriginalWeightedDegree(hn);
+  }
+
+  for (PartitionID i = 0; i < k; ++i) {
+    ASSERT_EQ(block_original_volume[i], hypergraph.partOriginalVolume(i));
+  }
+}
+
 template <typename HyperGraph>
 void verifyBlockCutWeights(HyperGraph& hypergraph,
                            const PartitionID k) {
@@ -297,6 +311,11 @@ TYPED_TEST(AConcurrentHypergraph, VerifyBlockVolumesSmokeTest) {
   verifyBlockVolumes(this->hypergraph, this->k);
 }
 
+TYPED_TEST(AConcurrentHypergraph, VerifyBlockOriginalVolumesSmokeTest) {
+  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+  verifyBlockOriginalVolumes(this->hypergraph, this->k);
+}
+
 TYPED_TEST(AConcurrentHypergraph, VerifyBlockCutWeightsSmokeTest) {
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
   verifyBlockCutWeights(this->hypergraph, this->k);
@@ -312,7 +331,16 @@ TYPED_TEST(AConcurrentHypergraph, VerifyConnectivitySetSmokeTest) {
   verifyConnectivitySet(this->hypergraph, this->k);
 }
 
-TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueSmokeTest) {
+// TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueSmokeTest) {
+TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueWithOriginalStatsSmokeTest) {
+  ASSERT_TRUE(this->hypergraph.conductancePriorityQueueUsesOriginalStats());
+  moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
+  verifyConductancePriorityQueue(this->hypergraph);
+}
+
+TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueWithCurrentStatsSmokeTest) {
+  this->hypergraph.disableUsageOfOriginalStatsByConductancePriorityQueue();
+  ASSERT_FALSE(this->hypergraph.conductancePriorityQueueUsesOriginalStats());
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
   verifyConductancePriorityQueue(this->hypergraph);
 }

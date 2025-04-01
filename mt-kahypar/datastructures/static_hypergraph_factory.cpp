@@ -48,6 +48,7 @@ namespace mt_kahypar::ds {
     hypergraph._hypernodes.resize(num_hypernodes + 1);
     hypergraph._hyperedges.resize(num_hyperedges + 1);
     hypergraph._weighted_degrees.resize(num_hypernodes, 0);
+    hypergraph._original_weighted_degrees.resize(num_hypernodes, 0);
 
     ASSERT(edge_vector.size() == num_hyperedges);
 
@@ -95,6 +96,10 @@ namespace mt_kahypar::ds {
         hypergraph._weighted_degrees[pos] += c[pos];
       });
     }
+    // Assign the original weighted degrees as cut=rrent weighted degrees
+    tbb::parallel_for(ID(0), num_hypernodes, [&](const size_t pos) {
+      hypergraph._original_weighted_degrees[pos] = hypergraph._weighted_degrees[pos];
+    });
 
     // Compute prefix sum over the number of pins per hyperedge and the
     // number of incident nets per vertex. The prefix sum is used than as
@@ -177,6 +182,7 @@ namespace mt_kahypar::ds {
 
     hypergraph.computeAndSetTotalNodeWeight(parallel_tag_t());
     hypergraph.computeAndSetTotalVolume(parallel_tag_t());
+    hypergraph._original_total_volume = hypergraph._total_volume;
     return hypergraph;
   }
 

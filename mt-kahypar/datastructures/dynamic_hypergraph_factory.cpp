@@ -142,6 +142,7 @@ DynamicHypergraph DynamicHypergraphFactory::construct(
   
   // Compute total volume of hypergraph
   hypergraph.updateTotalVolume(parallel_tag_t());
+  hypergraph._original_total_volume = hypergraph._total_volume.load();
   return hypergraph;
 }
 
@@ -212,12 +213,14 @@ DynamicHypergraphFactory::compactify(const DynamicHypergraph& hypergraph) {
     num_hypernodes, num_hyperedges, edge_vector, hyperedge_weights.data(), hypernode_weights.data());
   compactified_hypergraph._removed_degree_zero_hn_weight = hypergraph._removed_degree_zero_hn_weight;
   compactified_hypergraph._total_weight += hypergraph._removed_degree_zero_hn_weight;
+  compactified_hypergraph._original_total_volume = hypergraph._original_total_volume;
 
   tbb::parallel_invoke([&] {
-    // Set community ids
+    // Set community ids and original weighted degrees
     hypergraph.doParallelForAllNodes([&](const HypernodeID& hn) {
       const HypernodeID mapped_hn = hn_mapping[hn];
       compactified_hypergraph.setCommunityID(mapped_hn, hypergraph.communityID(hn));
+      compactified_hypergraph.setNodeOriginalWeightedDegree(mapped_hn, hypergraph.nodeOriginalWeightedDegree(hn));
     });
   }, [&] {
     if ( hypergraph.hasFixedVertices() ) {

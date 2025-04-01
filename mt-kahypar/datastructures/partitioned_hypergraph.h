@@ -110,7 +110,8 @@ class PartitionedHypergraph {
     _target_graph(nullptr),
     _conductance_pq(),
     _part_weights(k, CAtomic<HypernodeWeight>(0)),
-    _part_volumes(k, CAtomic<HypernodeWeight>(0)),
+    _part_volumes(k, CAtomic<HyperedgeWeight>(0)),
+    _part_original_volumes(k, CAtomic<HyperedgeWeight>(0)),
     _part_cut_weights(k, CAtomic<HypernodeWeight>(0)),
     _part_ids(
         "Refinement", "part_ids", hypergraph.initialNumNodes(), false, false),
@@ -131,7 +132,8 @@ class PartitionedHypergraph {
     _target_graph(nullptr),
     _conductance_pq(),
     _part_weights(k, CAtomic<HypernodeWeight>(0)),
-    _part_volumes(k, CAtomic<HypernodeWeight>(0)),
+    _part_volumes(k, CAtomic<HyperedgeWeight>(0)),
+    _part_original_volumes(k, CAtomic<HyperedgeWeight>(0)),
     _part_cut_weights(k, CAtomic<HypernodeWeight>(0)),
     _part_ids(),
     _con_info(),
@@ -172,6 +174,8 @@ class PartitionedHypergraph {
       for (auto& x : _part_weights) x.store(0, std::memory_order_relaxed);
     }, [&] {
       for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
+    }, [&] {
+      for (auto& x : _part_original_volumes) x.store(0, std::memory_order_relaxed);
     }, [&] {
       for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
     }, [&] {
@@ -243,6 +247,11 @@ class PartitionedHypergraph {
     return _hg->totalVolume();
   }
 
+  // ! Original total volume of hypergraph
+  HypernodeWeight originalTotalVolume() const {
+    return _hg->originalTotalVolume();
+  }
+
   // ! Number of blocks this hypergraph is partitioned into
   PartitionID k() const {
     return _k;
@@ -292,12 +301,26 @@ class PartitionedHypergraph {
   double_t conductance(const PartitionID p) const {
     /// [debug] std::cerr << "PartitionedHypergraph::conductance(p)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypernodeWeight cut_weight = partCutWeight(p);
-    const HypernodeWeight volume = partVolume(p);
-    if (volume == 0) {
+    const HyperedgeWeight cut_weight = partCutWeight(p);
+    const HyperedgeWeight part_volume = partVolume(p);
+    part_volume = std::min(part_volume, totalVolume() - part_volume);
+    if (part_volume == 0) {
       return -1;
     }
-    return static_cast<double_t>(cut_weight) / static_cast<double_t>(volume);
+    return static_cast<double_t>(cut_weight) / static_cast<double_t>(part_volume);
+  }
+
+  // ! Returns the conductance of a block according to the original weighted degrees
+  double_t originalConductance(const PartitionID p) const {
+    /// [debug] std::cerr << "PartitionedHypergraph::originalConductance(p)" << std::endl;
+    ASSERT(p != kInvalidPartition && p < _k);
+    const HyperedgeWeight cut_weight = partCutWeight(p);
+    const HyperedgeWeight original_part_volume = partOriginalVolume(p);
+    original_part_volume = std::min(original_part_volume, totalVolume() - original_part_volume);
+    if (original_part_volume == 0) {
+      return -1;
+    }
+    return static_cast<double_t>(cut_weight) / static_cast<double_t>(original_part_volume);
   }
 
   // ! Enables the conductance priority queue
@@ -309,6 +332,33 @@ class PartitionedHypergraph {
   bool hasConductancePriorityQueue() const {
     /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
     return _conductance_pq.initialized();
+  }
+
+  // ! Tells if the conductance priority queue uses original stats 
+  // ! (i.e. original part volumes, original total volume)
+  bool conductancePriorityQueueUsesOriginalStats() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::usesOriginalWeightedDegrees()" << std::endl;
+    return _conductance_pq.usesOriginalStats();
+  }
+
+  // ! Used for testing
+  void disableUsageOfOriginalStatsByConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::disableUsageOfOriginalStatsByConductancePriorityQueue()" << std::endl;
+    ASSERT(conductancePriorityQueueUsesOriginalStats());
+    _conductance_pq.reset();
+    _conductance_pq.disableUsageOfOriginalHGStats();
+    enableConductancePriorityQueue();
+    ASSERT_FALSE(conductancePriorityQueueUsesOriginalStats());
+  }
+
+  // ! Used for testing
+  void enableUsageOfOriginalStatsByConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableUsageOfOriginalStatsByConductancePriorityQueue()" << std::endl;
+    ASSERT(!conductancePriorityQueueUsesOriginalStats());
+    _conductance_pq.reset();
+    _conductance_pq.enableUsageOfOriginalHGStats();
+    enableConductancePriorityQueue();
+    ASSERT(conductancePriorityQueueUsesOriginalStats());
   }
 
   // ! Get the partition with the hightes conductance
@@ -442,6 +492,11 @@ class PartitionedHypergraph {
     return _hg->nodeWeightedDegree(u);
   }
 
+  // ! Original weighted degree of a hypernode
+  HyperedgeWeight nodeOriginalWeightedDegree(const HypernodeID u) const {
+    return _hg->nodeOriginalWeightedDegree(u);
+  }
+
   // ! Returns, whether a hypernode is enabled or not
   bool nodeIsEnabled(const HypernodeID u) const {
     return _hg->nodeIsEnabled(u);
@@ -571,10 +626,10 @@ class PartitionedHypergraph {
       incrementVolumeOfBlock(part_id, nodeWeightedDegree(memento.u) + nodeWeightedDegree(memento.v));
     });
 
-    // update _conductance_pq if enabled  
+    // update _conductance_pq if enabled and uses current stats instead of the original ones
     // after this the gain cache should be updated (?)
     // => ConductanceGainCache::initializes_gain_cache_entry_after_batch_uncontractions = true ?
-    if (hasConductancePriorityQueue()) {
+    if (hasConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
       _conductance_pq.globalUpdate(*this);
     }
 
@@ -636,8 +691,9 @@ class PartitionedHypergraph {
       }
     }
 
-    // update _conductance_pq for changed partitions (if enabled)
-    if (hasConductancePriorityQueue()) {
+    // update _conductance_pq for changed partitions 
+    // (if enabled and uses current stats instead of the original ones)
+    if (hasConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
       _conductance_pq.globalUpdate(*this, he);
     }
   }
@@ -707,8 +763,8 @@ class PartitionedHypergraph {
       }
     });
 
-    // update _conductance_pq (if enabled)
-    if (hasConductancePriorityQueue()) {
+    // update _conductance_pq (if enabled and uses current stats instead of the original ones)
+    if (hasConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
       /*  Only if the total volume of the hypergraph has changed, 
        * we need to update the conductance priority queue
        * (<=> if at least one single-pin net was restored 
@@ -759,6 +815,7 @@ class PartitionedHypergraph {
     /// [debug] std::cerr << "PartitionedHypergraph::setNodePart(u, p)" << std::endl;
     setOnlyNodePart(u, p);
     _part_weights[p].fetch_add(nodeWeight(u), std::memory_order_relaxed);
+    incrementOriginalVolumeOfBlock(p, nodeOriginalWeightedDegree(u));
     incrementVolumeOfBlock(p, nodeWeightedDegree(u));
     for (HyperedgeID he : incidentEdges(u)) {
       const PartitionID old_connectivity = connectivity(he);
@@ -805,6 +862,9 @@ class PartitionedHypergraph {
       // update _part_volumes
       decrementVolumeOfBlock(from, nodeWeightedDegree(u));
       incrementVolumeOfBlock(to, nodeWeightedDegree(u));
+      // update _part_original_volumes
+      decrementOriginalVolumeOfBlock(from, nodeOriginalWeightedDegree(u));
+      incrementOriginalVolumeOfBlock(to, nodeOriginalWeightedDegree(u));
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
@@ -818,8 +878,14 @@ class PartitionedHypergraph {
       }
       // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
       if (hasConductancePriorityQueue()) {
-        _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from));
-        _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to));
+        if (conductancePriorityQueueUsesOriginalStats()) {
+          _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from));
+          _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to));
+        } else {
+          // uses current stats
+          _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from));
+          _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to));
+        }
       }
       return true;
     } else {
@@ -882,6 +948,12 @@ class PartitionedHypergraph {
   HyperedgeWeight partVolume(const PartitionID p) const {
     ASSERT(p != kInvalidPartition && p < _k);
     return _part_volumes[p].load(std::memory_order_relaxed);
+  }
+
+  // ! Original volume of a block
+  HyperedgeWeight partOriginalVolume(const PartitionID p) const {
+    ASSERT(p != kInvalidPartition && p < _k);
+    return _part_original_volumes[p].load(std::memory_order_relaxed);
   }
 
   // ! Cut weight of a block 
@@ -955,6 +1027,7 @@ class PartitionedHypergraph {
     tbb::parallel_invoke(
             [&] { initializeBlockWeights(); },
             [&] { initializeBlockVolumes(); },
+            [&] { initializeBlockOriginalVolumes(); },
             [&] { 
               initializePinCountInPart();
               initializeBlockCutWeights(); // must be called after initializePinCountInPart()
@@ -968,6 +1041,7 @@ class PartitionedHypergraph {
     _part_ids.assign(_part_ids.size(), kInvalidPartition, false);
     for (auto& x : _part_weights) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
+    for (auto& x : _part_original_volumes) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
     _conductance_pq.reset();
 
@@ -998,6 +1072,18 @@ class PartitionedHypergraph {
       for (const HyperedgeID& e : incidentEdges(u)) {
         _part_volumes[ partID(u) ] += edgeWeight(e);
       }
+    }
+  }
+
+  // ! Only for testing
+  void recomputePartOriginalVolumes() {
+    /// [debug] std::cerr << "PartitionedHypergraph::recomputePartOriginalVolumes()" << std::endl;
+    for (PartitionID p = 0; p < _k; ++p) {
+      _part_original_volumes[p].store(0);
+    }
+
+    for (HypernodeID u : nodes()) {
+      _part_original_volumes[ partID(u) ] += nodeOriginalWeightedDegree(u);
     }
   }
 
@@ -1154,8 +1240,12 @@ class PartitionedHypergraph {
     _con_info.memoryConsumption(connectivity_info_node);
 
     parent->addChild("Part Weights", sizeof(CAtomic<HypernodeWeight>) * _k);
+    parent->addChild("Part Volumes", sizeof(CAtomic<HyperedgeWeight>) * _k);
+    parent->addChild("Part Original Volumes", sizeof(CAtomic<HyperedgeWeight>) * _k);
+    parent->addChild("Part Cut Weights", sizeof(CAtomic<HypernodeWeight>) * _k);
     parent->addChild("Part IDs", sizeof(PartitionID) * _hg->initialNumNodes());
     parent->addChild("HE Ownership", sizeof(SpinLock) * _hg->initialNumNodes());
+    parent->addChild("Conductance PQ", _conductance_pq.memoryConsumption());
   }
 
   // ####################### Extract Block #######################
@@ -1434,6 +1524,13 @@ class PartitionedHypergraph {
     }
   }
 
+  void applyPartOriginalVolumeUpdates(vec<HyperedgeWeight>& part_original_volume_deltas) {
+    /// [debug] std::cerr << "PartitionedHypergraph::applyPartOriginalVolumeUpdates(part_original_volume_deltas)" << std::endl;
+    for (PartitionID p = 0; p < _k; ++p) {
+      _part_original_volumes[p].fetch_add(part_original_volume_deltas[p], std::memory_order_relaxed);
+    }
+  }
+
   void applyPartCutWeightUpdates(vec<HyperedgeWeight>& part_cut_weight_deltas) {
     /// [debug] std::cerr << "PartitionedHypergraph::applyPartCutWeightUpdates(part_cut_weight_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
@@ -1474,6 +1571,27 @@ class PartitionedHypergraph {
         }
       }
       applyPartVolumeUpdates(pvs);
+    };
+
+    tbb::parallel_for(tbb::blocked_range<HypernodeID>(HypernodeID(0), initialNumNodes()),
+                      accumulate,
+                      tbb::static_partitioner()
+    );
+  }
+
+  void initializeBlockOriginalVolumes() {
+    /// [debug] std::cerr << "PartitionedHypergraph::initializeBlockOriginalVolumes()" << std::endl;
+    
+    auto accumulate = [&](tbb::blocked_range<HypernodeID>& r) {
+      vec<HyperedgeWeight> povs(_k, 0);  // this is not enumerable_thread_specific because of the static partitioner
+      for (HypernodeID u = r.begin(); u < r.end(); ++u) {
+        if ( nodeIsEnabled(u) ) {
+          const PartitionID pu = partID( u );
+          const HyperedgeWeight uOWDeg = nodeOriginalWeightedDegree( u ); 
+          povs[pu] += uOWDeg;
+        }
+      }
+      applyPartOriginalVolumeUpdates(povs);
     };
 
     tbb::parallel_for(tbb::blocked_range<HypernodeID>(HypernodeID(0), initialNumNodes()),
@@ -1643,6 +1761,22 @@ class PartitionedHypergraph {
     return volume_after;
   }
 
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
+  HyperedgeWeight decrementOriginalVolumeOfBlock(const PartitionID p, const HyperedgeWeight w) {
+    /// [debug] std::cerr << "PartitionedHypergraph::decrementVolumeOfBlock(p, w)" << std::endl;
+    ASSERT(p != kInvalidPartition && p < _k);
+    const HyperedgeWeight part_original_volume_after = _part_original_volumes[p].fetch_sub(w, std::memory_order_relaxed);
+    return part_original_volume_after;
+  }
+
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
+  HyperedgeWeight incrementOriginalVolumeOfBlock(const PartitionID p, const HyperedgeWeight w) {
+    /// [debug] std::cerr << "PartitionedHypergraph::incrementCutWeightOfBlock(p, w)" << std::endl;
+    ASSERT(p != kInvalidPartition && p < _k);
+    const HyperedgeWeight part_original_volume_after = _part_original_volumes[p].fetch_add(w, std::memory_order_relaxed);
+    return part_original_volume_after;
+  }
+
   // ! Number of nodes of the top level hypergraph
   HypernodeID _input_num_nodes = 0;
 
@@ -1664,11 +1798,16 @@ class PartitionedHypergraph {
   // ! Weight and information for all blocks.
   vec< CAtomic<HypernodeWeight> > _part_weights;
   
-  // ! Volume and information for all blocks.
-  vec< CAtomic<HypernodeWeight> > _part_volumes;
+  // ! Volume for all blocks.
+  vec< CAtomic<HyperedgeWeight> > _part_volumes;
+
+  // ! Original volume for all blocks
+  // ! = Volume according to the original weighted degrees for all blocks.
+  // ! (should be used for the conductance priority queue)
+  vec< CAtomic<HyperedgeWeight> > _part_original_volumes;
   
   // ! Sum of weights of cutting edges for all blocks.
-  vec< CAtomic<HypernodeWeight> > _part_cut_weights;
+  vec< CAtomic<HyperedgeWeight> > _part_cut_weights;
 
   // ! Current block IDs of the vertices
   Array< PartitionID > _part_ids;

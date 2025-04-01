@@ -335,6 +335,11 @@ public:
     }
   }
 
+  // ! Returns an approximate memory consumption of the exclusive handle heap in bytes
+  size_t memoryConsumption() const {
+    return HeapT::size_in_bytes() + this->handles.capacity() * sizeof(PosT);
+  }
+
   // ################ MOVE, COPY, = OPERATORS ################
   // needed for assigning / moving PartitionedHypergraph
 

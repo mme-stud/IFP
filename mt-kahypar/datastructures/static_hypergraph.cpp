@@ -385,6 +385,8 @@ namespace mt_kahypar::ds {
       hypergraph._hypernodes.resize(num_hypernodes);
     }, [&] {
       hypergraph._weighted_degrees.resize(num_hypernodes, 0);
+    }, [&] {
+      hypergraph._original_weighted_degrees.resize(num_hypernodes, 0);
     });
 
     const HyperedgeID num_hyperedges = he_mapping.total_sum();
@@ -511,7 +513,21 @@ namespace mt_kahypar::ds {
       hypergraph.addFixedVertexSupport(std::move(coarse_fixed_vertices));
     }
 
+    // (new) Accumulates original weighted degrees of contracted hypernodes
+    tbb::enumerable_thread_specific<vec<HyperedgeWeight>> local_original_weighted_degrees(num_hypernodes, HyperedgeWeight(0));
+    doParallelForAllNodes([&](const HypernodeID& fine_hn) {
+      ASSERT(nodeIsEnabled(fine_hn), "StaticHypergraph::contract: fine_hn is not enabled");
+      const HypernodeID coarse_hn = map_to_coarse_hypergraph(fine_hn);
+      local_original_weighted_degrees.local()[coarse_hn] += nodeOriginalWeightedDegree(fine_hn);
+    });
+    for (vec<HyperedgeWeight>& c : local_original_weighted_degrees) {
+      tbb::parallel_for(ID(0), num_hypernodes, [&](const HypernodeID& coarse_hn) {    
+        hypergraph._original_weighted_degrees[coarse_hn] += c[coarse_hn];
+      });
+    }
+
     hypergraph._total_weight = _total_weight;   // didn't lose any vertices
+    hypergraph._original_total_volume = _original_total_volume;
     hypergraph._tmp_contraction_buffer = _tmp_contraction_buffer;
     _tmp_contraction_buffer = nullptr;
     return hypergraph;
@@ -531,6 +547,7 @@ namespace mt_kahypar::ds {
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
     hypergraph._total_volume = _total_volume;
+    hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
 
     tbb::parallel_invoke([&] {
@@ -554,6 +571,10 @@ namespace mt_kahypar::ds {
       memcpy(hypergraph._weighted_degrees.data(), _weighted_degrees.data(),
              sizeof(HyperedgeWeight) * _weighted_degrees.size());
     }, [&] {
+      hypergraph._original_weighted_degrees.resize(_original_weighted_degrees.size());
+      memcpy(hypergraph._original_weighted_degrees.data(), _original_weighted_degrees.data(),
+             sizeof(HyperedgeWeight) * _original_weighted_degrees.size());
+    }, [&] {
       hypergraph._community_ids = _community_ids;
     }, [&] {
       hypergraph.addFixedVertexSupport(_fixed_vertices.copy());
@@ -574,6 +595,7 @@ namespace mt_kahypar::ds {
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
     hypergraph._total_volume = _total_volume;
+    hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
 
     hypergraph._hypernodes.resize(_hypernodes.size());
@@ -592,6 +614,9 @@ namespace mt_kahypar::ds {
     hypergraph._weighted_degrees.resize(_weighted_degrees.size());
     memcpy(hypergraph._weighted_degrees.data(), _weighted_degrees.data(),
            sizeof(HyperedgeWeight) * _weighted_degrees.size());
+    hypergraph._original_weighted_degrees.resize(_original_weighted_degrees.size());
+    memcpy(hypergraph._original_weighted_degrees.data(), _original_weighted_degrees.data(),
+           sizeof(HyperedgeWeight) * _original_weighted_degrees.size());
 
     hypergraph._community_ids = _community_ids;
     hypergraph.addFixedVertexSupport(_fixed_vertices.copy());
@@ -606,6 +631,7 @@ namespace mt_kahypar::ds {
     parent->addChild("Hyperedges", sizeof(Hyperedge) * _hyperedges.size());
     parent->addChild("Incidence Array", sizeof(HypernodeID) * _incidence_array.size());
     parent->addChild("Weighted Degrees", sizeof(HyperedgeWeight) * _weighted_degrees.size());
+    parent->addChild("Original Weighted Degrees", sizeof(HyperedgeWeight) * _original_weighted_degrees.size());
     parent->addChild("Communities", sizeof(PartitionID) * _community_ids.capacity());
     if ( hasFixedVertices() ) {
       parent->addChild("Fixed Vertex Support", _fixed_vertices.size_in_bytes());

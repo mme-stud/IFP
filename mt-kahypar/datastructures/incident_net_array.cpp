@@ -128,6 +128,7 @@ void IncidentNetArray::contract(const HypernodeID u,
   append(u, v);
   header(u)->degree += header(v)->degree;
   header(u)->weighted_degree += header(v)->weighted_degree;
+  header(u)->original_weighted_degree += header(v)->original_weighted_degree;
   ASSERT(verifyIteratorPointers(u), "Iterator pointers of vertex" << u << "are corrupted");
   release_lock(u);
 }
@@ -165,6 +166,7 @@ void IncidentNetArray::uncontract(const HypernodeID u,
   splice(u, v);
   header(u)->degree -= head_v->degree;
   header(u)->weighted_degree -= head_v->weighted_degree;
+  header(u)->original_weighted_degree -= head_v->original_weighted_degree;
   ASSERT(verifyIteratorPointers(u), "Iterator pointers of vertex" << u << "are corrupted");
   release_lock(u);
 
@@ -470,6 +472,7 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
     head->degree = head->size;
     // weighted degree is calculated later if _hypergraph_ptr is not nullptr
     head->weighted_degree.store(0);
+    head->original_weighted_degree = 0;
     head->current_version = 0;
     head->is_head = true;
   });
@@ -480,6 +483,10 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
         header(pos)->weighted_degree += c[pos];
       });
     }
+    // Assign the original weighted degrees as current weighted degrees
+    tbb::parallel_for(ID(0), _num_hypernodes, [&](const HypernodeID pos) {
+      header(pos)->original_weighted_degree = header(pos)->weighted_degree.load();
+    });
   }
 }
 

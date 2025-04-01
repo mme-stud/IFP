@@ -1,6 +1,7 @@
 # Guide to my code changes
 ### Notes:
 - `HyperedgeWeight` has to be positive (or at least non-negative). Hence, `NonnegativeFraction`.
+- `partitioned_hypergraph.h`: `extract(..[4])`, `extractAllBlocks(..[4])`: an extracted hypergraph has no original weighted degrees, original total value **!!!** (could be solved by adding public methods `setNodeOriginalWeightedDegree(u, d)`, `setOriginalTotalVolume(w)` in hypergraphs -- not needed for now, as blocks are used by `recursive_bipartitioning.cpp`)
 
 ### Potential problems:
 - uncontraction in relative contraction order?: reversed 
@@ -214,6 +215,7 @@ Access to new hypergraph infos:
 	update `_part_volume[p] += nodeWeightedDegree(u)`
 - `changeNodePart(u, from, to, ...)`: update `_part_volumes` for `from` and `to`
 - `resetPartition()`: reset `_paer_volumes` analog. to `_part_weights` 
+- `memoryConsumption()`: add child for `_part_weights`
 - **???** `freeInternalData()` : used by destructor for external memory usages (connectivity...) \
 	&rArr; nothing changed
 
@@ -249,6 +251,7 @@ Access to new hypergraph infos:
 	uses `_pin_count_update_ownership[he]` lock to ensure thread-safety! \
 	&rarr; update `_part_cut_weights` for `from` and `to`
 - `resetPartition()`: reset `_paer_volumes` analog. to `_part_weights`
+- `memoryConsumption(parent)`: add child for `_part_cut_weights` 
 - **???** `freeInternalData()` : used by destructor for external memory usages (connectivity...) \
 	&rArr; nothing changed
 
@@ -307,7 +310,7 @@ TODO: write a TODO list for this section :)
 
 **TODO** Mark most methods as *inline* (?)
 
-#### Implementation of PQ
+#### Implementation of The ConductancePriority Queue
 \+ `conductance_pq.h`:
 - \+ class `NonnegativeFraction<Numerator, Denominator>` with `operator< , ==, >`, `double_t value()` and getters \+ setters
 	- ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
@@ -330,6 +333,11 @@ TODO: write a TODO list for this section :)
 		+ `insert(p, cut_weight, vol, sync)`, `remove(p, sync)`, `deleteTop(sync)` - shouldn't be used if `k = const` 
 		+ `topFraction(sync)`, `secondTopFraction(sync)`, `topConductance(sync)`, `secondTopConductance(sync)` - can be emulated witt their `PartitionID` versions + `getCutWeight()`, `getVolume()` from `PartitionedHypergraph`
 		+ `getFraction(p, sync)`, `getConductance(p, sync)` shuldn't be used as this information could be obtained from `PartitionedHypergraph`. That way, there will be less syncronization problems withthe underlying pq.
+	- \+ `memoryConsumption()`: uses `SuperPQ::memoryConsumption()` and size of `_complement_val_bits`
+
+&rArr; `priority_queue.h`:
++ \+ `ExclusiveHandleHeap<HeapT>::memoryConsumption` - uses `HeapT::size_in_bytes()` of `Heap` (which should be always used as `HeapT`)
+
 
 &rarr; `priority_queue.h`: 
 - `ExclusiveHandleHeap`:
@@ -375,8 +383,9 @@ Update of `_conductance_pq` (if enabled):
 - `initializePartition()` - not touched for now \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
 - `resetPartition()`: `_conductance_pq.reset()`
-- `memoryConsumption`: no info about memory consumption from `priority_queue.h` \
-	&rarr; **!!!** for now no info about `ConductancePQ` (TODO **???**)
+- `memoryConsumption(parent)`: no info about memory consumption from `priority_queue.h` \
+	&rarr; **!!!** for now no info about `ConductancePQ` (TODO **???**) \
+	&rarr; done with `PriorityQueue::memoryConsumption()`
 
 ### Part 2.1 Guide: Setup
 
@@ -661,7 +670,7 @@ Mirroring interfaces in `partitioned_graph.h`:`
 #### Serialization of hg, context
 `/mt-kahypar/io/sql_plottools_serializer.cpp`:
 - \+ write out `context.coarsening.disable_single_pin_nets_removal` to serialize `context` correctly \
-	[debug: needed in `mt-kahypar/tests/io/sql_plottools_serializer_test.cc` `ASqlPlotSerializerTest.ChecksIfSomeParametersFromContextAreMissing`]
+	[debug: needed in `mt-kahypar/tests/io/sql_plottools_serializer_test.cc` `ASqlPlotSerializerTest.ChecksIfSomeParametersFromContextAreMissing`, removed whitespaces in empty line in `context.h` - they break serialization!]
 
 Also done:
 - in `mt-kahypar/partition/context.cpp`:
@@ -707,14 +716,146 @@ Also done:
 ### Problem: volumes are still not preserved
 Contraction of 2 nodes decreases volume by the sum of weights of their shared nets
 
-#### Solution Proposal:
-1) introduce `lost_weighted_degree` of a node to `hg`:
-	- increase by removal of a single-pin net, contraction;
-	- decrease by restoration of single-pin net, uncontraction;
-2) introduce `lost_part_volume` to `phg`:
-	- decrease by restoration of single-pin net, uncontraction;
-	- adjust by changeNodePartition, setNodePartition
-3) adjust `conductance_pg`:
-	- use `part_volume + lost_part_volume`
-	- add assertion by updateTotalVolume, globalUpdate (?)
+#### Solution:
+1) introduce `_original_weighted_degrees` of a node and `_original_total_volume` to `static_hypergraph.h / .cpp`, `dynamic_hypergraph.h / .cpp`:
+	- not changed by removal / restoration of a single-pin net;
+	- summed by contraction, subtracted by uncontraction;
+2) introduce `_part_original_volumes` to `partitioned_hypergraph.h`:
+	- not changed by restoration of single-pin net;
+	- ~~substracted (?) by uncontractiion~~
+	- adjust by `changeNodePartition(..)`, `setNodePartition(..)`
+3) adjust `conductance_pq.h / .cpp`:
+	- use per default `_part_original_volumes`, `_original_total_volume`
+	- add assertion by `updateTotalVolume(..)`, `globalUpdate` (?)
+	- leave a possibility to use current `_part_volumes` and `_total_volume`
 4) tests...
+
+#### Original Weighted Degree and Original Total Volume in Hypergraph
+##### StaticHypergraph
+- `static_hypergraph.h`:
+	+ \+ `Array<HyperedgeWeight> _original_weighted_degrees`
+	+ \+ `nodeOriginalWeightedDegree(u)` - getter
+	+ \+ `HyperedgeWeight _original_total_volume`
+	+ \+ `otiginalTotalVolume()` - getter
+	- adjust constructor, move constructor and move assigment operator
+	- in `removeEdge(he)`, `removeLargeEdge(he)`, `restoreEdge(he)` and `restoreLargeEdge(he)`: **not** adjust `_original_weighted_degree[pin]` and `_original_total_volume` (used only in tests)
+- `static_hypergraph.cpp`:
+	- in `contarct(communities, ..)`, stage 4: 
+		1) resize `hypergraph._original_weighted_degrees` analog. to `hypergraph._weighted_degrees`
+		2) accumulate `hypergraph._original_weighted_degrees` as sum of original weighted degrees of the contracted nodes
+		3) `hypergraph._original_total_volume = _original_total_volume`
+	- in `copy(parallel_tag_t)`, `copy()`: 
+		- copy `_original_total_volume`
+		- copy `_original_weighted_degrees` analog. to `_weighted_degrees` [in parallel version: in parallel]
+	- in `memoryConsumption(parent)`: analog. to `_weighted_degrees`, add child `"Original Weighted Degrees"` 
+- `static_hypergraph_factory.cpp`:
+	- in `construct(..)`:
+		1) resize `_original_weighted_degrees` at the beginning
+		2) after computing weighted degrees, copy it in parallel to `_original_weighted_degrees`
+		3) set `_original_total_volume` after calling `computeAndSetTotalVolume()`	
+
+##### DynamicHypergraph
+- `incident_net_array.h`:
+	- \+ `HyperedgeWeight Header::original_weighted_degree` - not atomic!!!
+	- \+ `nodeOriginalWeightedDegree()`
+	- \+ `setOriginalWeightedDegree()` - for `DynamicHypergaph::compactify(..)`
+- `incident_net_array.cpp`:
+	- `contract(u, v, ..[3])`: sum up original weighted degrees of contracted nodes
+	- `uncontract(u, v, ..[4])`: subtract the original weighted degree of returning hn `v` from the original weighted degree of `u`
+	- `construct(edge_vector, hyperedge_weight_ptr)`: assign `original_weighted_degrees` in parallel after calculating `weighted_degrees`
+	- **no more changes here!!!**
+
+- `dynamic_hypergraph.h`:
+	+ \+ `HyperedgeWeight originalTotalVolume` - not atomic as constant
+	+ \+ `originalTotalVolume()` - getter
+	+ ~~\+ `setOriginalTotalVolume(original_total_volume)` - setter: **!!!** only for `DynamicHypergraphFactory::compactufy(hypergraph)`~~ `DynamicHypergraphFactory` is a *friend* class &rarr; no need :)
+	+ \+ `nodeOriginalWeightedDegree(u)`, `setNodeOriginalWeightedDegree(u, w)` - calling the corresponding methods of `InsidentNetArray`
+	- in constructor, move constructor, move assigment operator set `_original_total_volume`
+- `dynamic_hypergraph.cpp`:
+	- `copy(parallel_tag_t)`, `copy()`: copy `_original_total_volume`
+- `dynamic_hypergraph_factory.cpp`:
+	- `construct(..[5])`: assign `original_total_volume` after calling `updateTotalVolume(parallel_tag_t())`
+	- `compactify(hypergraph)`: 
+		- `setNodeOriginalWeightedDegree(..)` analog. to `setComunityID(..)` after constructing `compactified_hypergraph`
+		- set the `_original_total_volume`
+
+##### Partitioned hypergraph
+- `partitioned_hypergraph.h`:
+	+ \+ `nodeOriginalWeightedDegree(u)`
+	+ \+ `originalTotalVolume()`
+
+#### Original Part Volumes
+##### Partitioned Hypergraph
+- `partitioned_hypergraph.h`:
+	+ \+ `vec< CAtomic<HyperedgeWeight> > _part_original_volumes` - volume according to the original weighted degrees for all blocks
+	+ \+ `partOriginalVolume(p)`
+	+ \+ `recomputePartOriginalVolume()` - uses weighted degrees, method is used for testing
+	+ \+ `incrementOriginalVolumeOfBlock(p, w)`, `decrementOriginalVolumeOfBlock(p, w)` - analog. to `incrementVolumeOfBlock(p, w)`...
+	+ \+ `initializeBlockOriginalVolumes()`
+	+ \+ `applyPartOriginalVolumeUpdates(vec<HyperedgeWeight>&)` - for now, needed only for `initializeBlockOriginalVolumes()`
+	+ \+ `double_t originalConductance(p)`
+	+ \+ `conductancePriorityQueueUsesOriginalStats()`
+	+ \+ `disableUsageOfOriginalStatsByConductancePriorityQueue()`, `enableUsageOfOriginalStatsByConductancePriorityQueue()`
+	- set in 2 constructors, reset in `resetData()` 
+	- `uncontract(batch, gain_cache)`, `restoreLargeEdge(he)`, `restoreSinglePinAndParallelNets(..)`: 
+		- no update of `_part_original_volume` needed
+		- if **not** `conductancePriorityQueueUsesOriginalStats()`: run `conductance_pq.globalUpdate()`
+	- `setnodePart(u, p)`: increment`_part_original_volumes[p]` by `originalWeightedDegree(u)` by calling the corresponding method
+	- `changeNodePart(u, from, to, ..)`: adjust `_part_original_volumes[from \ to]` analog. to `_part_volumes`, adjust keys in `_conductance_pq` according to `conductancePriorityQueueUsesOriginalStats()`
+	- `initializePartition()`: call `initializeBlockOriginalVolumes()` in parallel
+	- `resetPartition()`: reset `_part_original_volumes`
+	- `memoryConsumption(parent)`: add child for `_part_original_volumes` and volumes - TODO
+	- `extract(..[4])`, `extractAllBlocks(..[4])`: no changes for now &rArr; an extracted hypergraph has no original weighted degrees, original total value **!!!** (could be solved by adding public methods `setNodeOriginalWeightedDegree(u, d)`, `setOriginalTotalVolume(w)` in hypergraphs -- not needed for now, as blocks are used by `recursive_bipartitioning.cpp`)
+
+##### Conductance Priority Queue
+- `conductance_pq.h`:
+	+ \+ `_uses_original_stats = true` per default
+	+ \+ `disableUsageOfOriginalHGStats()`, `enableUsageOfOriginalHGStats()`
+	+ \+ `private getHGTotalVolume(&hg)`, `private getHGPartVolume(&hg, p)` to get original / current stats from `hg`
+	+ \+ `private getHGPartCutWeight(&hg, p)` - for uniform communication with the hypergraph
+	
+	- `initialize(hg, sync)`: use `getHG..` to get total volume, part volumes, part cut weights
+	- `reset(sync)`: **doesn't** reset `_uses_original_stats` to `true`
+	- `globalUpdate(sync)`: 
+		- add an assertion: if uses original stats, original total volume shouldn't have changed
+		- use `getHG..` to get total volume, part volumes, part cut weights
+	- `check(hg)`: use `getHG..` to get total volume, part volumes, part cut weights
+	- `updateTotalVolume(new_total_volume, sync)`: add an assertion, that original stats are not used
+
+#### Tests
+- `static_hypergraph_test.cc`:
+	- `HasCorrectStats`: check `originalTotalVolume()`
+	+ \+ `VerifiesVertexOriginalWeightedDegrees()`: at the begining the same as weighted degrees [analog. to `VerifiesVertexWeightedDegrees`]
+	- `RemovesAHyperedgeFromTheHypergraph1 .. 4`: checks unchanged original weighted degrees, original total volume
+	- `ComparesStatsIfCopiedParallel`, `ComparesStatsIfCopiedSequential`: checks unchanged original total volume
+	- `ComparesWeightedDegreesIfCopiedParallel`, `ComparesWeightedDegreesIfCopiedSequential`: checks unchanged original weighted degrees
+	- `ContractsCommunities1 .. 3` : checks unchanged original total volume, recalculated original weighted degrees
+	- `ContractsCommunitiesWithDisabledSinglePinNetRemoval1 .. 3`: checks unchanged original total volume, recalculated original weighted degrees
+	- `ContractsCommunitiesWithDisabledHypernodes`, `ContractsCommunitiesWithDisabledHyperedges`: checks **unchanged** original total volume (nodes are disabled in contraction, edges - in removal of parallel / single pin nets &rArr; original total volume shouldn't be changed) and recalculated original weighted degrees (with no *accomodation* for disabled nodes / edges...) 
+
+- `dynamic_hypergraph_test.cc`:
+	- `HasCorrectStats`: check original total volume
+	+ \+ `VerifiesVertexOriginalWeightedDegrees` analog. to `VerifiesVertexWeightedDegrees`
+	- `ComparesStatsIfCopiedParallel`, `ComparesStatsIfCopiedSequential`, : check unchanged original total volume
+	- `PerformsAContraction1 .. 5`, `PerformAContractionsInParallel1 .. 3`: check unchanged original total volume, summed original weighted degrees
+	- `verifyEqualityOfDynamicHypergraphs(..)`: check equality of original total volumes and original weighted degrees
+	- `RemovesSinglePinAndParallelNets1 .. 2`, `RemovesOnlyParallelNets1`: check unchanged original total volumes and the same way recalculated original weighted degrees
+	- `RestoreSinglePinAndParallelNets1 .. 2`, `RestoreOnlyParallelNets1 .. 2`: check unchanged original total volumes and the same way recalculated original weighted degrees
+	- `GeneratesACompactifiedHypergraph1 ..`: check unchanged original total volumes and the same way recalculated original weighted degrees
+
+- `partitioned_hypergraph_test.cc`:
+	+ \+ `HasCorrectPartOriginalVolumes`, `HasCorrectPartOriginalVolumesIfOnlyOneThreadPerformsModifications`
+	- `PerformsConcurrentMovesWhereAllSucceed`: check unchanged original part original volumes 
+	+ \+ `ChecksConductancePQWithOriginalStatsAfterConcurrentMoves`, `ChecksConductancePQWithCurrentStatsAfterConcurrentMoves`
+	- `ComputesPartInfoCorrectIfNodePartsAreSetOnly`: check part original volumes 
+
+- `dynamic_partitioned_hypergraph_test.cc`:
+	- no changed tests
+
+- `partitioned_hypergraph_smoke_test.cc`:
+	+ \+ `verifyBlockOriginalVolumes`: analog. to `verifyBlockVolumes`
+	+ \+ `VerifyBlockOriginalVolumesSmokeTest`: analog. to `VerifyBlockVolumesSmokeTest`
+	- `VerifyConductancePriorityQueueSmokeTest`: 
+		- **rename** to `VerifyConductancePriorityQueueWithOriginalStatsSmokeTest`
+		- add assertion about using original stats
+	+ \+ `VerifyConductancePriorityQueueWithCurrentStatsSmokeTest`

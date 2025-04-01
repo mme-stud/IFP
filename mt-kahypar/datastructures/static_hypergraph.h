@@ -417,11 +417,13 @@ class StaticHypergraph {
     _total_degree(0),
     _total_weight(0),
     _total_volume(0),
+    _original_total_volume(0),
     _hypernodes(),
     _incident_nets(),
     _hyperedges(),
     _incidence_array(),
     _weighted_degrees(),
+    _original_weighted_degrees(),
     _community_ids(0),
     _fixed_vertices(),
     _tmp_contraction_buffer(nullptr) { }
@@ -440,11 +442,13 @@ class StaticHypergraph {
     _total_degree(other._total_degree),
     _total_weight(other._total_weight),
     _total_volume(other._total_volume),
+    _original_total_volume(other._original_total_volume),
     _hypernodes(std::move(other._hypernodes)),
     _incident_nets(std::move(other._incident_nets)),
     _hyperedges(std::move(other._hyperedges)),
     _incidence_array(std::move(other._incidence_array)),
     _weighted_degrees(std::move(other._weighted_degrees)),
+    _original_weighted_degrees(std::move(other._original_weighted_degrees)),
     _community_ids(std::move(other._community_ids)),
     _fixed_vertices(std::move(other._fixed_vertices)),
     _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)),
@@ -464,11 +468,13 @@ class StaticHypergraph {
     _total_degree = other._total_degree;
     _total_weight = other._total_weight;
     _total_volume = other._total_volume;
+    _original_total_volume = other._original_total_volume;
     _hypernodes = std::move(other._hypernodes);
     _incident_nets = std::move(other._incident_nets);
     _hyperedges = std::move(other._hyperedges);
     _incidence_array = std::move(other._incidence_array);
     _weighted_degrees = std::move(other._weighted_degrees);
+    _original_weighted_degrees = std::move(other._original_weighted_degrees);
     _community_ids = std::move(other._community_ids);
     _fixed_vertices = std::move(other._fixed_vertices);
     _fixed_vertices.setHypergraph(this);
@@ -536,6 +542,11 @@ class StaticHypergraph {
   // ! Total volume of hypergraph
   HyperedgeWeight totalVolume() const {
     return _total_volume;
+  }
+
+  // ! Original total volume of hypergraph
+  HyperedgeWeight originalTotalVolume() const {
+    return _original_total_volume;
   }
 
   // ! Computes the total node weight of the hypergraph
@@ -619,21 +630,28 @@ class StaticHypergraph {
     return hypernode(u).size();
   }
 
-    // ! Weighted degree of a hypernode
-    HyperedgeID nodeWeightedDegree(const HypernodeID u) const {
-      ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
-      return _weighted_degrees[u];
-    }
-  
-    // ! Decrease weighted degree of a hypernode
-    // ! (Not supported)
-    void decreaseNodeWeightedDegree(const HypernodeID u, const HyperedgeWeight w) const {
-      unused(u);
-      unused(w);
-      throw UnsupportedOperationException(
-        "decreaseNodeWeightedDegree(u, w) is not supported in static hypergraph");
-    }
+  // ! Weighted degree of a hypernode
+  HyperedgeWeight nodeWeightedDegree(const HypernodeID u) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    return _weighted_degrees[u];
+  }
 
+  // ! Decrease weighted degree of a hypernode
+  // ! (Not supported)
+  void decreaseNodeWeightedDegree(const HypernodeID u, const HyperedgeWeight w) const {
+    unused(u);
+    unused(w);
+    throw UnsupportedOperationException(
+      "decreaseNodeWeightedDegree(u, w) is not supported in static hypergraph");
+  }
+
+  // ! Original weighted degree of a hypernode
+  // ! (during dontractions and single-pin nets removal)
+  HyperedgeWeight nodeOriginalWeightedDegree(const HypernodeID u) const {
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    return _original_weighted_degrees[u];
+  }
+  
   // ! Returns, whether a hypernode is enabled or not
   bool nodeIsEnabled(const HypernodeID u) const {
     return !hypernode(u).isDisabled();
@@ -1045,6 +1063,8 @@ class StaticHypergraph {
   HypernodeWeight _total_weight;
   // ! Total volume of hypergraph
   HyperedgeWeight _total_volume;
+  // ! Original total volume of hypergraph
+  HyperedgeWeight _original_total_volume;
 
   // ! Hypernodes
   Array<Hypernode> _hypernodes;
@@ -1056,6 +1076,9 @@ class StaticHypergraph {
   IncidenceArray _incidence_array;
   // ! Weighted degrees of hypernodes
   Array<HyperedgeWeight> _weighted_degrees;
+  // ! Original Weighted degrees of hypernodes
+  // ! (are lost during contractions, removal of single-pin nets)
+  Array<HyperedgeWeight> _original_weighted_degrees;
 
   // ! Communities
   ds::Clustering _community_ids;

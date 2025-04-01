@@ -173,6 +173,20 @@ TYPED_TEST(APartitionedHypergraph, HasCorrectPartVolumesIfOnlyOneThreadPerformsM
   ASSERT_EQ(3, this->partitioned_hypergraph.partVolume(2));  
 }
 
+TYPED_TEST(APartitionedHypergraph, HasCorrectPartOriginalVolumes) {
+  ASSERT_EQ(5, this->partitioned_hypergraph.partOriginalVolume(0));
+  ASSERT_EQ(4, this->partitioned_hypergraph.partOriginalVolume(1));
+  ASSERT_EQ(3, this->partitioned_hypergraph.partOriginalVolume(2));  
+}
+
+TYPED_TEST(APartitionedHypergraph, HasCorrectPartOriginalVolumesIfOnlyOneThreadPerformsModifications) {
+  ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(0, 0, 1));
+
+  ASSERT_EQ(3, this->partitioned_hypergraph.partOriginalVolume(0));
+  ASSERT_EQ(6, this->partitioned_hypergraph.partOriginalVolume(1));
+  ASSERT_EQ(3, this->partitioned_hypergraph.partOriginalVolume(2));  
+}
+
 TYPED_TEST(APartitionedHypergraph, HasCorrectPartCutWeights) {
   ASSERT_EQ(2, this->partitioned_hypergraph.partCutWeight(0));
   ASSERT_EQ(2, this->partitioned_hypergraph.partCutWeight(1));
@@ -206,6 +220,10 @@ TYPED_TEST(APartitionedHypergraph, PerformsConcurrentMovesWhereAllSucceed) {
   ASSERT_EQ(3, this->partitioned_hypergraph.partVolume(1));
   ASSERT_EQ(6, this->partitioned_hypergraph.partVolume(2));  
 
+  ASSERT_EQ(3, this->partitioned_hypergraph.partOriginalVolume(0)); // 1 + 2 [hn 1 + hn 6]
+  ASSERT_EQ(3, this->partitioned_hypergraph.partOriginalVolume(1)); // 2 + 1 [hn 0 + hn 5]
+  ASSERT_EQ(6, this->partitioned_hypergraph.partOriginalVolume(2)); // 2 + 2 + 2 [hn 2 + hn 3 + hn 4]
+
   ASSERT_EQ(3, this->partitioned_hypergraph.partCutWeight(0));
   ASSERT_EQ(3, this->partitioned_hypergraph.partCutWeight(1));
   ASSERT_EQ(4, this->partitioned_hypergraph.partCutWeight(2));
@@ -213,6 +231,38 @@ TYPED_TEST(APartitionedHypergraph, PerformsConcurrentMovesWhereAllSucceed) {
   ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue());
 }
 
+TYPED_TEST(APartitionedHypergraph, ChecksConductancePQWithOriginalStatsAfterConcurrentMoves) {
+  ASSERT_TRUE(this->partitioned_hypergraph.conductancePriorityQueueUsesOriginalStats());
+  executeConcurrent([&] {
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(0, 0, 1));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(3, 1, 2));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(2, 0, 2));
+  }, [&] {
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(5, 2, 1));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(6, 2, 0));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(4, 1, 2));
+  });
+
+  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue())
+}
+
+TYPED_TEST(APartitionedHypergraph, ChecksConductancePQWithCurrentStatsAfterConcurrentMoves) {
+  // only not initialized conductance_pq can change mode of used stats
+  this->partitioned_hypergraph.disableUsageOfOriginalStatsByConductancePriorityQueue();
+  ASSERT_FALSE(this->partitioned_hypergraph.conductancePriorityQueueUsesOriginalStats());
+  
+  executeConcurrent([&] {
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(0, 0, 1));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(3, 1, 2));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(2, 0, 2));
+  }, [&] {
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(5, 2, 1));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(6, 2, 0));
+    ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(4, 1, 2));
+  });
+
+  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue())
+}
 
 
 TYPED_TEST(APartitionedHypergraph, HasCorrectInitialPartitionPinCounts) {
@@ -884,6 +934,10 @@ TYPED_TEST(APartitionedHypergraph, ComputesPartInfoCorrectIfNodePartsAreSetOnly)
   ASSERT_EQ(5, this->partitioned_hypergraph.partVolume(0));
   ASSERT_EQ(4, this->partitioned_hypergraph.partVolume(1));
   ASSERT_EQ(3, this->partitioned_hypergraph.partVolume(2));
+
+  ASSERT_EQ(5, this->partitioned_hypergraph.partOriginalVolume(0));
+  ASSERT_EQ(4, this->partitioned_hypergraph.partOriginalVolume(1));
+  ASSERT_EQ(3, this->partitioned_hypergraph.partOriginalVolume(2));
 
   ASSERT_EQ(2, this->partitioned_hypergraph.partCutWeight(0));
   ASSERT_EQ(2, this->partitioned_hypergraph.partCutWeight(1));

@@ -128,6 +128,7 @@ class IncidentNetArray {
       size(0),
       degree(0),
       weighted_degree(0),
+      original_weighted_degree(0),
       current_version(0),
       is_head(true) { }
 
@@ -150,6 +151,9 @@ class IncidentNetArray {
     // ! Weighted degree of the vertex (calculated only if _hypergraph_ref for the
     // ! incident net array is not nullptr)
     CAtomic<HyperedgeWeight> weighted_degree;
+    // ! COriginal weighted degree of the vertex (calculated only if _hypergraph_ref for the
+    // ! incident net array is not nullptr)
+    HyperedgeWeight original_weighted_degree;
     // ! Current version of the incident net list
     HypernodeID current_version;
     // ! True, if the vertex is the head of a incident net list
@@ -195,6 +199,14 @@ class IncidentNetArray {
     return header(u)->weighted_degree.load();
   }
 
+  // ! Original weighted degree of the vertex
+  HyperedgeWeight nodeOriginalWeightedDegree(const HypernodeID u) const {
+    /// [debug] std::cerr << "nodeOriginalWeightedDegree(u)" << std::endl;
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    ASSERT(_hypergraph_ptr, "Hypergraph pointer is nullptr");
+    return header(u)->original_weighted_degree;
+  }
+
   // ! Decrease weighted degree of the vertex (for updating weighted degrees)
   void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
     /// [debug] std::cerr << "decreaseNodeWeightedDegree(u, w)" << std::endl;
@@ -202,6 +214,14 @@ class IncidentNetArray {
     // header(u)->weighted_degree -= w;
     Header* headerU = reinterpret_cast<Header*>(_incident_net_array.get() + _index_array[u]);
     headerU->weighted_degree -= w;
+  }
+  
+  // ! Set original weighted degree of the vertex (for updating weighted degrees)
+  void setNodeOriginalWeightedDegree(const HypernodeID u, HyperedgeWeight d) const {
+    /// [debug] std::cerr << "setNodeOriginalWeightedDegree(u, w)" << std::endl;
+    ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
+    Header* headerU = reinterpret_cast<Header*>(_incident_net_array.get() + _index_array[u]);
+    headerU->original_weighted_degree = d;
   }
 
   // ! Returns a range to loop over the incident nets of hypernode u.
@@ -345,7 +365,7 @@ class IncidentNetArray {
   size_t _size_in_bytes;
   Array<size_t> _index_array;
   parallel::tbb_unique_ptr<char> _incident_net_array;
-  DynamicHypergraph* _hypergraph_ptr; // to calculate weighted_degrees
+  DynamicHypergraph* _hypergraph_ptr; // to calculate weighted_degrees, original_weighted_degrees
 };
 
 }  // namespace ds
