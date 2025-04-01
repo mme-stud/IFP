@@ -98,22 +98,6 @@ public:
     _complement_val_bits(),
     _initialized(false)
     { }
-
-  // ! Makes ConductancePriorityQueue use current _total_volume and _part_volumes
-  // ! instead of the original (inherited from old versions of hg) ones
-  // ! To be used before initialization
-  void disableUsageOfOriginalHGStats() {
-    ASSERT(!_initialized, "ConductancePriorityQueue is already initialized");
-    _uses_original_stats = false;
-  }
-
-  // ! Makes ConductancePriorityQueue use original _total_volume and _part_volumes
-  // ! instead of the current ones
-  // ! To be used before initialization
-  void enableUsageOfOriginalHGStats() {
-    ASSERT(!_initialized, "ConductancePriorityQueue is already initialized");
-    _uses_original_stats = true;
-  }
   
   // ! Initializes the priority queue with the partitions of the hypergraph
   void initialize(const PartitionedHypergraph& hg, bool synchronized = false) {
@@ -308,6 +292,29 @@ public:
     return _size;
   }
 
+  // ################## USAGE OF ORIGINAL PHG STATS #################
+
+  // ! Uses the original stats of the hypergraph
+  bool usesOriginalStats() const {
+    return _uses_original_stats;
+  }
+  
+  // ! Makes ConductancePriorityQueue use current _total_volume and _part_volumes
+  // ! instead of the original (inherited from old versions of hg) ones
+  // ! To be used before initialization
+  void disableUsageOfOriginalHGStats() {
+    ASSERT(!_initialized, "ConductancePriorityQueue is already initialized");
+    _uses_original_stats = false;
+  }
+
+  // ! Makes ConductancePriorityQueue use original _total_volume and _part_volumes
+  // ! instead of the current ones
+  // ! To be used before initialization
+  void enableUsageOfOriginalHGStats() {
+    ASSERT(!_initialized, "ConductancePriorityQueue is already initialized");
+    _uses_original_stats = true;
+  }
+
 private:
   // ! Builds the heap in O(_size) time
   // ! no built in lock
@@ -323,9 +330,9 @@ private:
   // ################### COMMUNICATION WITH THE HG ######################
   // ! Get needed kind of total volume
   // ! (original or current)
-  HyperedgeWeight getHGTotalVolume(Hypergraph& hg) {
+  HyperedgeWeight getHGTotalVolume(const PartitionedHypergraph& hg) {
     if (_uses_original_stats) {
-      return hg.totalOriginalVolume();
+      return hg.originalTotalVolume();
     } else {
       return hg.totalVolume();
     }
@@ -333,7 +340,7 @@ private:
   
   // ! Get needed kind of part volume
   // ! (original or current)
-  HyperedgeWeight getHGPartVolume(Hypergraph& hg, const PartitionID p) {
+  HyperedgeWeight getHGPartVolume(const PartitionedHypergraph& hg, const PartitionID p) {
     if (_uses_original_stats) {
       return hg.partOriginalVolume(p);
     } else {
@@ -343,7 +350,7 @@ private:
 
   // ! Get needed kind of cut weight
   // ! (only one kind of cut weight for now)
-  HyperedgeWeight getHGPartCutWeight(Hypergraph& hg, const PartitionID p) {
+  HyperedgeWeight getHGPartCutWeight(const PartitionedHypergraph& hg, const PartitionID p) {
     return hg.partCutWeight(p);
   }
 
