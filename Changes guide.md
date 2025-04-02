@@ -2,6 +2,7 @@
 ### Notes:
 - `HyperedgeWeight` has to be positive (or at least non-negative). Hence, `NonnegativeFraction`. Denominator could be 0: in that case, the `value` is `std::numeric_limits<double_t>::max()`
 - `partitioned_hypergraph.h`: `extract(..[4])`, `extractAllBlocks(..[4])`: an extracted hypergraph has no original weighted degrees, original total value **!!!** (could be solved by adding public methods `setNodeOriginalWeightedDegree(u, d)`, `setOriginalTotalVolume(w)` in hypergraphs -- not needed for now, as blocks are used by `recursive_bipartitioning.cpp`)
+- `using HypergraphVolume = uint64_t` (defined in `../datastructures/hypergraph_common.h`)
 
 ### Potential problems:
 - uncontraction in relative contraction order?: reversed 
@@ -62,7 +63,7 @@ For partitioned hypergraph:
 **For ``DynamicHypergraph``**:
 
 `dynamic_hypergraph.h`:
-+ \+ `total_volume` - `std::atomic<HyperedgeWeight>` due to changes (analog. to `_contraction_index`)
++ \+ `total_volume` - `std::atomic<HypergraphVolume>` due to changes (analog. to `_contraction_index`)
 + \+ `totalVolume()`, `updateTotalVolume()`, `updateTotalVolume(par_tag)` : analog. to `_total_weight, totalWeight`
 + `removeEdge(he)`, `removeLargeEdge(he)`: update `_total_volume`
 + `restoreLargeEdge(he)`: update `_total_volume` \
@@ -95,7 +96,7 @@ For partitioned hypergraph:
 
 **For ``StaticHypergraph``**:
 `static_hypergraph.h`:
-- \+ `_total_volume`: `HyperedgeWeight` &rarr; think: better unsigned long long?
+- \+ `_total_volume`: `HypergraphVolume` &rarr; think: better unsigned long long?
 - \+ `totalVolume()`: analog. to `_total_weight`, `totalWeight`
 - `removeEdge(he)`, `remmoveLargeEdge(he)`: update `_total_volume` (used only for testing)
 - `restoreLargeEdge(he)`: update `_total_volume` (used only for testing)
@@ -122,7 +123,7 @@ For partitioned hypergraph:
 - move constructor, move assigment: call `adjustHypergraphPtr(this)` for `_incident_nets` [debug]
 
 &rarr; `incident_net_array.h'
-- \+ `CAtomic<HyperedgeWeight> weighted_degree` of a node in `Header` of its incident_net's list (analog. to `IncidentNetArray::Header::degree`)
+- \+ `CAtomic<HypergraphVolume> weighted_degree` of a node in `Header` of its incident_net's list (analog. to `IncidentNetArray::Header::degree`)
 	- **!!!**  \+ `decreaseNodeWeightedDegree(u, w)`: for dealing with single-pin he (`remove...`, `restore...`)
 	- `CAtomic`, as it is potentially changed simultaniously by `DynamicHypergraph::removeSinglePinAndParallelHyperedges()` through `decreaseNodeWeightedDegree(..)`
 - \+ `nodeWeightedDegree(u)` : asserts `_hypergraph_ptr != nullptr`
@@ -150,7 +151,7 @@ For partitioned hypergraph:
     - **!!!** \+ `bool update_weighted_degrees = true` option for correct `removeSinglePinAndParallelHyperedges`
 - `construct(...)`: calculate `weighted_degree` analog. to degree (`.local()` etc) \
     **!!!** for degree,  `ThreadLocalCounter = tbb::enumerable_thread_specific< parallel::scalable_vector< size_t >` is used \
-    &rarr; for weighted degree, I use `tbb::enumerable_thread_specific< parallel::scalable_vector<HyperedgeWeight> >` \
+    &rarr; for weighted degree, I use `tbb::enumerable_thread_specific< parallel::scalable_vector<HypergraphVolume> >` \
     [analog. to `IncidentNetArray::Header::degree`] \
 	**!!!** if `hyperedge_weight_ptr` is passed on from `construct(..)` in `DynamicHypergraphFactory`, we should use it, else use weight=1 for all he instead of `_hypergraph_ptr`, as **the hypergraph is constructed in parallel to its incident net array.** \
 	**!!!** Initialize weighted degree to 0 in header(p) as **no `Header` constructor is called** due to pointer tricks with `static_cast` *[debug]*
@@ -158,7 +159,7 @@ For partitioned hypergraph:
 ##### For ``StaticHypergraph``
 
 `static_hypergraph.h`:
-- \+ `_weighted_degrees = Array<HyperedgeWeight>`
+- \+ `_weighted_degrees = Array<HypergraphVolume>`
 - \+ `nodeWeightedDegree(u)` trivial 
 - \+ `decreaseNodeWeightedDegree(u, w)`: trivial (to ensure same interface)
 - `removeEdge(he)`, `remmoveLargeEdge(he)`: update `_weighted_degrees` (used only for testing)
@@ -178,7 +179,7 @@ For partitioned hypergraph:
 	- resize `_weighted_degrees`
 	- compute `_weighted_degrees`: `hyperedge_weight`is a ptr \
 		&rArr; `hyperedge_weight ? hyperedge_weight[pos] : 1;` \
-		**!!!** use thread-local storage `tbb::enumerable_thread_specific< parallel::scalable_vector < HyperedgeWeight> > local_weighted_degree_per_vertex(num_hypernodes, 0);` analog. to `num_incident_nets_per_vertex` [debug]
+		**!!!** use thread-local storage `tbb::enumerable_thread_specific< parallel::scalable_vector < HypergraphVolume> > local_weighted_degree_per_vertex(num_hypernodes, 0);` analog. to `num_incident_nets_per_vertex` [debug]
 
 ### Part 1.2: Partitioned hypergraph stats (access to hgInfo, number of pins, volumes, cut weights)
 
@@ -316,7 +317,8 @@ TODO: write a TODO list for this section :)
 	- ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
 	- &rarr; default versions are perfect (and are generated as only the trivial constructor is defined)
 	- `denominator` could be 0: in that case, `value() = std::numeric_limits<double_t>::max()`
-- `ConductanceFraction := NonnegativeFraction<HyperedgeWeight>`
+	- comparing with heuristics (0;  n > n' && d < d';  ceil(d/n) < ceil (d'/n')), only else convert n * d'and d * n' to `uintmax_t`
+- `ConductanceFraction := NonnegativeFraction<HypergraphVolume>`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
 	- \+ `initialize(partitioned_hg, sync)`: initializes underlying `MaxHeap` with `build()` \
@@ -330,6 +332,7 @@ TODO: write a TODO list for this section :)
 	- \+ `adjustKey(p, cut_weight, volume, sync)`, `size()`, `bool empty()` - standard pq methods
 	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
 	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
+	- \+ `bool isHeap() const` - version with hushed log
 	- \+ `check(phg, sync)` - to check correctness with respect to the phg
 	- \+ [potentially useless methods]:
 		+ `insert(p, cut_weight, vol, sync)`, `remove(p, sync)`, `deleteTop(sync)` - shouldn't be used if `k = const` 
@@ -358,11 +361,14 @@ Update of `_conductance_pq` (if enabled):
 
 `partitioned_hypergraph.h`:
 + \+ `#include "conductance_pq.h"`
-+ \+ `private bool _has_conductance_pq = true` - if set false, `_conductance_pq` is not initialized (except for explicitly) 
 + \+ `ConductancePriorityQueue<Self> _conductance_pq` - attribute
-+ \+ `bool needsConductancePriorityQueue()` - initializes pq, if it should be done, but wasnt done yet
++ \+ `private bool _has_conductance_pq = fasle` - is set to `true` **at the end** of initialization, `_conductance_pq` 
++ \+ `private bool _uses_conductance_pq = true` - if set to `false`, no conductance priority queue is not maintained
++ \+ `bool needsConductancePriorityQueue()` - initializes pq, if it should be done, but wasnt done yet:
+	- ~~ **!!!** Called at the end of `partitionImpl()` for all defined partitioners!~~ \
+	[undone, because `multilevel.cpp` uses `setOnlyNodePart()` + `initializePartition()` &rArr; `_conductance_pq` is initialized after setting all the `PartitionID`-s]
++ \+ `bool hasConductancePriorityQueue() const` - just returns `_has_conductance_pq`. Is called by all getters to conductance pq (top etc)
 + \+ `enableConductancePriorityQueue()` - initializes pq
-+ \+ `bool hasConductancePriorityQueue() const` - just returns `_has_conductance_pq`
 - \+ `double_t conductance(p)` - calculates conductance of a partition without using `_conductance_pq` \
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
 - \+ `bool checkConductancePriorityQueue()` - for testing. True if not initialized.
@@ -392,6 +398,11 @@ Update of `_conductance_pq` (if enabled):
 - `memoryConsumption(parent)`: no info about memory consumption from `priority_queue.h` \
 	&rarr; **!!!** for now no info about `ConductancePQ` (TODO **???**) \
 	&rarr; done with `PriorityQueue::memoryConsumption()`
+
+### External Support of ConductancePQ
+
+in `mt-kahypar/partition/multilevel.cpp`:
+- `multilevel_partitioning(..)` : in `## INITIAL PARTITIONING ##` after partitioning call `phg.initializePartition()` to ensure enabling and initializing og `_conductance_pq` [debug...]
 
 ### Part 2.1 Guide: Setup
 
@@ -551,7 +562,7 @@ Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context 
 
 - in `mt-kahypar/datastructures/`:
 	- `partitioned_hypergraph.h`:
-		- \+ `setK(k, init_num_hyperedges)`: resets `_part_weights`, `_part_volumes`, `_part_cut_weights`, `con_info` [needs `init_num_hyperedges` to reset `con_info`]&rArr; to be called before assigning part_id's
+		- \+ `setK(k, init_num_hyperedges)`: resets `_part_weights`, `_part_volumes`, `_part_cut_weights`, `part_original_volumes` [debug], `_conductance_pq` [debug], `con_info` [needs `init_num_hyperedges` to reset `con_info`]&rArr; to be called before assigning part_id's
 	- `partitioned_graph.h`:
 		- \+ `setK(k)`: to be called before assigning part_id's
 - in `mt-kahypar/partition/`:
@@ -739,9 +750,9 @@ Contraction of 2 nodes decreases volume by the sum of weights of their shared ne
 #### Original Weighted Degree and Original Total Volume in Hypergraph
 ##### StaticHypergraph
 - `static_hypergraph.h`:
-	+ \+ `Array<HyperedgeWeight> _original_weighted_degrees`
+	+ \+ `Array<HypergraphVolume> _original_weighted_degrees`
 	+ \+ `nodeOriginalWeightedDegree(u)` - getter
-	+ \+ `HyperedgeWeight _original_total_volume`
+	+ \+ `HypergraphVolume _original_total_volume`
 	+ \+ `otiginalTotalVolume()` - getter
 	- adjust constructor, move constructor and move assigment operator
 	- in `removeEdge(he)`, `removeLargeEdge(he)`, `restoreEdge(he)` and `restoreLargeEdge(he)`: **not** adjust `_original_weighted_degree[pin]` and `_original_total_volume` (used only in tests)
@@ -762,7 +773,7 @@ Contraction of 2 nodes decreases volume by the sum of weights of their shared ne
 
 ##### DynamicHypergraph
 - `incident_net_array.h`:
-	- \+ `HyperedgeWeight Header::original_weighted_degree` - not atomic!!!
+	- \+ `HypergraphVolume Header::original_weighted_degree` - not atomic!!!
 	- \+ `nodeOriginalWeightedDegree()`
 	- \+ `setOriginalWeightedDegree()` - for `DynamicHypergaph::compactify(..)`
 - `incident_net_array.cpp`:
@@ -772,7 +783,7 @@ Contraction of 2 nodes decreases volume by the sum of weights of their shared ne
 	- **no more changes here!!!**
 
 - `dynamic_hypergraph.h`:
-	+ \+ `HyperedgeWeight originalTotalVolume` - not atomic as constant
+	+ \+ `HypergraphVolume originalTotalVolume` - not atomic as constant
 	+ \+ `originalTotalVolume()` - getter
 	+ ~~\+ `setOriginalTotalVolume(original_total_volume)` - setter: **!!!** only for `DynamicHypergraphFactory::compactufy(hypergraph)`~~ `DynamicHypergraphFactory` is a *friend* class &rarr; no need :)
 	+ \+ `nodeOriginalWeightedDegree(u)`, `setNodeOriginalWeightedDegree(u, w)` - calling the corresponding methods of `InsidentNetArray`
@@ -793,16 +804,17 @@ Contraction of 2 nodes decreases volume by the sum of weights of their shared ne
 #### Original Part Volumes
 ##### Partitioned Hypergraph
 - `partitioned_hypergraph.h`:
-	+ \+ `vec< CAtomic<HyperedgeWeight> > _part_original_volumes` - volume according to the original weighted degrees for all blocks
+	+ \+ `vec< CAtomic<HypergraphVolume> > _part_original_volumes` - volume according to the original weighted degrees for all blocks
 	+ \+ `partOriginalVolume(p)`
 	+ \+ `recomputePartOriginalVolume()` - uses weighted degrees, method is used for testing
 	+ \+ `incrementOriginalVolumeOfBlock(p, w)`, `decrementOriginalVolumeOfBlock(p, w)` - analog. to `incrementVolumeOfBlock(p, w)`...
 	+ \+ `initializeBlockOriginalVolumes()`
-	+ \+ `applyPartOriginalVolumeUpdates(vec<HyperedgeWeight>&)` - for now, needed only for `initializeBlockOriginalVolumes()`
+	+ \+ `applyPartOriginalVolumeUpdates(vec<HypergraphVolume>&)` - for now, needed only for `initializeBlockOriginalVolumes()`
 	+ \+ `double_t originalConductance(p)`
 	+ \+ `conductancePriorityQueueUsesOriginalStats()`
 	+ \+ `disableUsageOfOriginalStatsByConductancePriorityQueue()`, `enableUsageOfOriginalStatsByConductancePriorityQueue()`
 	- set in 2 constructors, reset in `resetData()` 
+	- `setK(k, ..[1])` - resize `_part_original_volumes` !!! [debug]
 	- `uncontract(batch, gain_cache)`, `restoreLargeEdge(he)`, `restoreSinglePinAndParallelNets(..)`: 
 		- no update of `_part_original_volume` needed
 		- if **not** `conductancePriorityQueueUsesOriginalStats()`: run `conductance_pq.globalUpdate()`

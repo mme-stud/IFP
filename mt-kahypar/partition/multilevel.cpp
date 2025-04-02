@@ -172,6 +172,7 @@ namespace {
       }
       #endif
     }
+    phg.initializePartition(); // for conductance-pq 
 
     ASSERT([&] {
       bool success = true;

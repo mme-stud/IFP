@@ -72,8 +72,8 @@ void DynamicHypergraph::updateTotalWeight() {
 void DynamicHypergraph::updateTotalVolume(parallel_tag_t) {
   /// [debug] std::cerr << "DynamicHypergraph::updateTotalVolume(parallel_tag_t)" << std::endl;
   _total_volume = tbb::parallel_reduce(tbb::blocked_range<HyperedgeID>(ID(0), _num_hyperedges), 0,
-    [this](const tbb::blocked_range<HyperedgeID>& range, HyperedgeWeight init) {
-      HypernodeWeight volume = init;
+    [this](const tbb::blocked_range<HyperedgeID>& range, HypergraphVolume init) {
+      HypergraphVolume volume = init;
       for (HyperedgeID he = range.begin(); he < range.end(); ++he) {
         if ( edgeIsEnabled(he) ) {
           volume += edgeWeight(he) * edgeSize(he);
@@ -82,7 +82,7 @@ void DynamicHypergraph::updateTotalVolume(parallel_tag_t) {
         }
       }
       return volume;
-    }, std::plus<HyperedgeWeight>());
+    }, std::plus<HypergraphVolume>());
 }
 
 // ! Recomputes the total volume of the hypergraph (sequential)

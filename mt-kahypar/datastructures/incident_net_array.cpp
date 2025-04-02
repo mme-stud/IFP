@@ -399,7 +399,7 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
   const HyperedgeID num_hyperedges = edge_vector.size();
   ThreadLocalCounter local_incident_nets_per_vertex(_num_hypernodes + 1, 0);
   // ThreadLocalCounter local_weighted_degree_per_vertex(_num_hypernodes, 0);
-  tbb::enumerable_thread_specific< parallel::scalable_vector<HyperedgeWeight> > 
+  tbb::enumerable_thread_specific< parallel::scalable_vector<HypergraphVolume> > 
                      local_weighted_degree_per_vertex(_num_hypernodes, 0);
   AtomicCounter current_incident_net_pos;
   tbb::parallel_invoke([&] {
@@ -418,7 +418,7 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
   }, [&] {
     if (_hypergraph_ptr) { // _hypergraph_ptr is nullptr => not factory-constructed => no weighted deg !!!
       tbb::parallel_for(ID(0), num_hyperedges, [&](const size_t pos) {
-        parallel::scalable_vector<HyperedgeWeight>& weighted_degree_per_vertex =
+        parallel::scalable_vector<HypergraphVolume>& weighted_degree_per_vertex =
             local_weighted_degree_per_vertex.local();
         for ( const HypernodeID& pin : edge_vector[pos] ) {
           ASSERT(pin < _num_hypernodes, V(pin) << V(_num_hypernodes));
@@ -478,7 +478,7 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
   });
   // Compute weighted degree of each vertex if _hypergraph_ptr is not nullptr
   if (_hypergraph_ptr) { // can be nullptr!!!
-    for ( const parallel::scalable_vector<HyperedgeWeight>& c : local_weighted_degree_per_vertex ) {
+    for ( const parallel::scalable_vector<HypergraphVolume>& c : local_weighted_degree_per_vertex ) {
       tbb::parallel_for(ID(0), _num_hypernodes, [&](const HypernodeID pos) {
         header(pos)->weighted_degree += c[pos];
       });

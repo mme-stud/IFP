@@ -540,12 +540,12 @@ class StaticHypergraph {
   }
 
   // ! Total volume of hypergraph
-  HyperedgeWeight totalVolume() const {
+  HypergraphVolume totalVolume() const {
     return _total_volume;
   }
 
   // ! Original total volume of hypergraph
-  HyperedgeWeight originalTotalVolume() const {
+  HypergraphVolume originalTotalVolume() const {
     return _original_total_volume;
   }
 
@@ -631,14 +631,14 @@ class StaticHypergraph {
   }
 
   // ! Weighted degree of a hypernode
-  HyperedgeWeight nodeWeightedDegree(const HypernodeID u) const {
+  HypergraphVolume nodeWeightedDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return _weighted_degrees[u];
   }
 
   // ! Decrease weighted degree of a hypernode
   // ! (Not supported)
-  void decreaseNodeWeightedDegree(const HypernodeID u, const HyperedgeWeight w) const {
+  void decreaseNodeWeightedDegree(const HypernodeID u, const HypergraphVolume w) const {
     unused(u);
     unused(w);
     throw UnsupportedOperationException(
@@ -647,7 +647,7 @@ class StaticHypergraph {
 
   // ! Original weighted degree of a hypernode
   // ! (during dontractions and single-pin nets removal)
-  HyperedgeWeight nodeOriginalWeightedDegree(const HypernodeID u) const {
+  HypergraphVolume nodeOriginalWeightedDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return _original_weighted_degrees[u];
   }
@@ -1062,9 +1062,9 @@ class StaticHypergraph {
   // ! Total weight of hypergraph
   HypernodeWeight _total_weight;
   // ! Total volume of hypergraph
-  HyperedgeWeight _total_volume;
+  HypergraphVolume _total_volume;
   // ! Original total volume of hypergraph
-  HyperedgeWeight _original_total_volume;
+  HypergraphVolume _original_total_volume;
 
   // ! Hypernodes
   Array<Hypernode> _hypernodes;
@@ -1075,10 +1075,10 @@ class StaticHypergraph {
   // ! Incident nets of hypernodes
   IncidenceArray _incidence_array;
   // ! Weighted degrees of hypernodes
-  Array<HyperedgeWeight> _weighted_degrees;
+  Array<HypergraphVolume> _weighted_degrees;
   // ! Original Weighted degrees of hypernodes
   // ! (are lost during contractions, removal of single-pin nets)
-  Array<HyperedgeWeight> _original_weighted_degrees;
+  Array<HypergraphVolume> _original_weighted_degrees;
 
   // ! Communities
   ds::Clustering _community_ids;

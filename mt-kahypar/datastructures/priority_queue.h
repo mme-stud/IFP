@@ -101,6 +101,7 @@ public:
 
   // assumes semantics of comp = std::less, i.e. we have a MaxHeap and increaseKey moves the element up the tree. if comp = std::greater, increaseKey will still move the element up the tree
   void increaseKey(const IdT e, const KeyT newKey) {
+    /// [debug] std::cerr << "Heap::increaseKey(" << e << "," << newKey << ")" << std::endl;
     assert(contains(e));
     const PosT pos = positions[e];
     assert(comp(heap[pos].key, newKey));
@@ -110,6 +111,7 @@ public:
 
   // assumes semantics of comp = std::less, i.e. we have a MaxHeap and decreaseKey moves the element down the tree
   void decreaseKey(const IdT e, const KeyT newKey) {
+    /// [debug] std::cerr << "Heap::decreaseKey(" << e << "," << newKey << ")" << std::endl;
     assert(contains(e));
     const PosT pos = positions[e];
     assert(comp(newKey, heap[pos].key));
@@ -118,6 +120,7 @@ public:
   }
 
   void adjustKey(const IdT e, const KeyT newKey) {
+    /// [debug] std::cerr << "Heap::adjustKey(" << e << "," << newKey << ")" << std::endl;
     assert(contains(e));
     const PosT pos = positions[e];
     if (comp(heap[pos].key, newKey)) {
@@ -190,6 +193,7 @@ public:
 protected:
 
   bool isHeap() const {
+    /// [debug] std::cerr << "Heap::isHeap()" << std::endl;
     for (PosT i = 1; i < size(); ++i) {
       if (comp(heap[parent(i)].key, heap[i].key)) {
         LOG << "heap property violation" << V(i) << V(parent(i)) << V(arity) << V(heap[i].key) << V(heap[parent(i)].key);
@@ -200,6 +204,7 @@ protected:
   }
 
   bool positionsMatch() const {
+    /// [debug] std::cerr << "Heap::positionsMatch()" << std::endl;
     for (PosT i = 0; i < size(); ++i) {
       assert(size_t(heap[i].id) < positions_size);
       if (positions[heap[i].id] != i) {
@@ -223,6 +228,7 @@ protected:
   }
 
   void siftUp(PosT pos) {
+    /// [debug] std::cerr << "Heap::siftUp(" << pos << ")" << std::endl;
     const KeyT k = heap[pos].key;
     const IdT id = heap[pos].id;
 
@@ -242,6 +248,7 @@ protected:
   }
 
   void siftDown(PosT pos) {
+    /// [debug] std::cerr << "Heap::siftDown(" << pos << ")" << std::endl;
     const KeyT k = heap[pos].key;
     const IdT id = heap[pos].id;
     const PosT initial_pos = pos;

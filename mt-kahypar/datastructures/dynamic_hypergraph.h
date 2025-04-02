@@ -557,12 +557,12 @@ class DynamicHypergraph {
   }
   
   // ! Total volume of hypergraph
-  HypernodeWeight totalVolume() const {
+  HypergraphVolume totalVolume() const {
     return _total_volume;
   }
 
   // ! Original total volume of hypergraph
-  HypernodeWeight originalTotalVolume() const {
+  HypergraphVolume originalTotalVolume() const {
     return _original_total_volume;
   }
 
@@ -666,25 +666,25 @@ class DynamicHypergraph {
   }
 
   // ! Weighted degree of a hypernode
-  HyperedgeID nodeWeightedDegree(const HypernodeID u) const {
+  HypergraphVolume nodeWeightedDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return _incident_nets.nodeWeightedDegree(u);
   }
 
   // ! Original weighted degree of a hypernode
-  HyperedgeID nodeOriginalWeightedDegree(const HypernodeID u) const {
+  HypergraphVolume nodeOriginalWeightedDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return _incident_nets.nodeOriginalWeightedDegree(u);
   }
 
   // ! Decrease weighted degree of a hypernode
-  void decreaseNodeWeightedDegree(const HypernodeID u, HyperedgeWeight w) const {
+  void decreaseNodeWeightedDegree(const HypernodeID u, HypergraphVolume w) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     _incident_nets.decreaseNodeWeightedDegree(u, w);
   }
 
   // ! Set original weighted degree of a hypernode
-  void setNodeOriginalWeightedDegree(const HypernodeID u, HyperedgeWeight d) const {
+  void setNodeOriginalWeightedDegree(const HypernodeID u, HypergraphVolume d) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     _incident_nets.setNodeOriginalWeightedDegree(u, d);
   }
@@ -1203,9 +1203,9 @@ class DynamicHypergraph {
   // ! Total weight of hypergraph
   HypernodeWeight _total_weight;
   // ! Total volume of hypergraph
-  std::atomic<HypernodeWeight> _total_volume;
+  std::atomic<HypergraphVolume> _total_volume;
   // ! Original total volume of hypergraph
-  HyperedgeWeight _original_total_volume;
+  HypergraphVolume _original_total_volume;
   // ! Version of the hypergraph, each time we remove a single-pin and parallel nets,
   // ! we create a new version
   size_t _version;
