@@ -243,7 +243,7 @@ TYPED_TEST(APartitionedHypergraph, ChecksConductancePQWithOriginalStatsAfterConc
     ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(4, 1, 2));
   });
 
-  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue())
+  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue());
 }
 
 TYPED_TEST(APartitionedHypergraph, ChecksConductancePQWithCurrentStatsAfterConcurrentMoves) {
@@ -261,7 +261,7 @@ TYPED_TEST(APartitionedHypergraph, ChecksConductancePQWithCurrentStatsAfterConcu
     ASSERT_TRUE(this->partitioned_hypergraph.changeNodePart(4, 1, 2));
   });
 
-  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue())
+  ASSERT(this->partitioned_hypergraph.checkConductancePriorityQueue());
 }
 
 
