@@ -1031,8 +1031,10 @@ class PartitionedHypergraph {
             [&] { 
               initializePinCountInPart();
               initializeBlockCutWeights(); // must be called after initializePinCountInPart()
-            }
+            },
+            [&] { _conductance_pq.reset(); }
     );
+    enableConductancePriorityQueue();
   }
 
   // ! Reset partition (not thread-safe)

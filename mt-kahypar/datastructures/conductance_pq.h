@@ -330,7 +330,7 @@ private:
   // ################### COMMUNICATION WITH THE HG ######################
   // ! Get needed kind of total volume
   // ! (original or current)
-  HyperedgeWeight getHGTotalVolume(const PartitionedHypergraph& hg) {
+  HyperedgeWeight getHGTotalVolume(const PartitionedHypergraph& hg) const {
     if (_uses_original_stats) {
       return hg.originalTotalVolume();
     } else {
@@ -340,7 +340,7 @@ private:
   
   // ! Get needed kind of part volume
   // ! (original or current)
-  HyperedgeWeight getHGPartVolume(const PartitionedHypergraph& hg, const PartitionID p) {
+  HyperedgeWeight getHGPartVolume(const PartitionedHypergraph& hg, const PartitionID p) const {
     if (_uses_original_stats) {
       return hg.partOriginalVolume(p);
     } else {
@@ -350,7 +350,7 @@ private:
 
   // ! Get needed kind of cut weight
   // ! (only one kind of cut weight for now)
-  HyperedgeWeight getHGPartCutWeight(const PartitionedHypergraph& hg, const PartitionID p) {
+  HyperedgeWeight getHGPartCutWeight(const PartitionedHypergraph& hg, const PartitionID p) const {
     return hg.partCutWeight(p);
   }
 

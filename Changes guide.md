@@ -380,7 +380,7 @@ Update of `_conductance_pq` (if enabled):
 	&rArr; not touched
 - `changeNodePart(u, from, to, ...)`: call `adjustKey()` for `from` and `to` \
 	!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight
-- `initializePartition()` - not touched for now \
+- `initializePartition()` - for now initialized pq here--- \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
 - `resetPartition()`: `_conductance_pq.reset()`
 - `memoryConsumption(parent)`: no info about memory consumption from `priority_queue.h` \
