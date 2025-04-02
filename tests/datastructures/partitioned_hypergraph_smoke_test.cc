@@ -333,12 +333,15 @@ TYPED_TEST(AConcurrentHypergraph, VerifyConnectivitySetSmokeTest) {
 
 // TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueSmokeTest) {
 TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueWithOriginalStatsSmokeTest) {
+  ASSERT_TRUE(this->hypergraph.needsConductancePriorityQueue()); // initializes _conductance_pq
+  this->hypergraph.enableUsageOfOriginalStatsByConductancePriorityQueue();
   ASSERT_TRUE(this->hypergraph.conductancePriorityQueueUsesOriginalStats());
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);
   verifyConductancePriorityQueue(this->hypergraph);
 }
 
 TYPED_TEST(AConcurrentHypergraph, VerifyConductancePriorityQueueWithCurrentStatsSmokeTest) {
+  ASSERT_TRUE(this->hypergraph.needsConductancePriorityQueue()); // initializes _conductance_pq
   this->hypergraph.disableUsageOfOriginalStatsByConductancePriorityQueue();
   ASSERT_FALSE(this->hypergraph.conductancePriorityQueueUsesOriginalStats());
   moveAllNodesOfHypergraphRandom(this->hypergraph, this->k, this->objective, false);

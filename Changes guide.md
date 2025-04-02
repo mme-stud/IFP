@@ -1,6 +1,6 @@
 # Guide to my code changes
 ### Notes:
-- `HyperedgeWeight` has to be positive (or at least non-negative). Hence, `NonnegativeFraction`.
+- `HyperedgeWeight` has to be positive (or at least non-negative). Hence, `NonnegativeFraction`. Denominator could be 0: in that case, the `value` is `std::numeric_limits<double_t>::max()`
 - `partitioned_hypergraph.h`: `extract(..[4])`, `extractAllBlocks(..[4])`: an extracted hypergraph has no original weighted degrees, original total value **!!!** (could be solved by adding public methods `setNodeOriginalWeightedDegree(u, d)`, `setOriginalTotalVolume(w)` in hypergraphs -- not needed for now, as blocks are used by `recursive_bipartitioning.cpp`)
 
 ### Potential problems:
@@ -315,6 +315,7 @@ TODO: write a TODO list for this section :)
 - \+ class `NonnegativeFraction<Numerator, Denominator>` with `operator< , ==, >`, `double_t value()` and getters \+ setters
 	- ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
 	- &rarr; default versions are perfect (and are generated as only the trivial constructor is defined)
+	- `denominator` could be 0: in that case, `value() = std::numeric_limits<double_t>::max()`
 - `ConductanceFraction := NonnegativeFraction<HyperedgeWeight>`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
@@ -322,9 +323,10 @@ TODO: write a TODO list for this section :)
 		&rarr; \+ `bool initialized`, `bool initialized()` \
 		&rarr; \+ `reset(sync)` to return underlying heap to the uninitialized state
 	- \+ `globalUpdate(hg, sync)`: a version of `initialize` but for already initialized pq. Should be used after global changes in partitioned hg (e.g. `uncontract(batch, gain_cache)`)
-	- \+ *private* metods `lock(sync)`, `uplock(sync)` for a *private* `Spinlock _pq_lock`: \
+	- \+ **public** metods `lock(sync)`, `uplock(sync)` for a *private* `Spinlock _pq_lock`: \
 		Are used by all "sync"-versions of public methods, when the last parameter `bool synchronized` is set `true`. Per default it is set to `true` only by writing methods except `initialize`, `globalUpdate`, `reset` (These shouldn't be called in parallel). \
-		**Not used by normal - const - versions of getters**
+		**Not used by normal - const - versions of getters** \
+		used by `PartitionedHypergraph::changeNodePart(..)`
 	- \+ `adjustKey(p, cut_weight, volume, sync)`, `size()`, `bool empty()` - standard pq methods
 	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
 	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
@@ -355,14 +357,17 @@ Update of `_conductance_pq` (if enabled):
 
 
 `partitioned_hypergraph.h`:
-- \+ `#include "conductance_pq.h"`
-- \+ `ConductancePriorityQueue<Self> _conductance_pq` - optional attribute \
-	&rarr; \+ `bool hasConductancePriorityQueue()`, `enableConductancePriorityQueue()`
++ \+ `#include "conductance_pq.h"`
++ \+ `private bool _has_conductance_pq = true` - if set false, `_conductance_pq` is not initialized (except for explicitly) 
++ \+ `ConductancePriorityQueue<Self> _conductance_pq` - attribute
++ \+ `bool needsConductancePriorityQueue()` - initializes pq, if it should be done, but wasnt done yet
++ \+ `enableConductancePriorityQueue()` - initializes pq
++ \+ `bool hasConductancePriorityQueue() const` - just returns `_has_conductance_pq`
 - \+ `double_t conductance(p)` - calculates conductance of a partition without using `_conductance_pq` \
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
 - \+ `bool checkConductancePriorityQueue()` - for testing. True if not initialized.
 - \+ `recomputeConductancePriorityQueue()`: runs global update (only for testing (?))
-- \+ `topConductancePart()`, `secondTopConductancePart()`, `topThreeConductanceParts()` in `PartitionedHypergraph`
+- \+ `topConductancePart()`, `secondTopConductancePart()`, `topThreeConductanceParts()` in `PartitionedHypergraph` - initialize `_conductance_pq` if needed (via `needsConductancePriorityQueue()`)
 - \+ `conductancePriorityQueue()` to get a const pointer to `_conductance_pq`
 
 - in 2 constructors: `_conductance_pq()` &lArr; no `initialize()` **!!!**
@@ -379,7 +384,8 @@ Update of `_conductance_pq` (if enabled):
 	&rArr; `_conductance_pq` shouldn't be initialized yet \
 	&rArr; not touched
 - `changeNodePart(u, from, to, ...)`: call `adjustKey()` for `from` and `to` \
-	!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight
+	!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight \
+	**!!!** lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] 
 - `initializePartition()` - for now initialized pq here--- \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
 - `resetPartition()`: `_conductance_pq.reset()`

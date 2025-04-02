@@ -179,9 +179,7 @@ class PartitionedHypergraph {
     }, [&] {
       for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
     }, [&] {
-      if (_conductance_pq.initialized()) {
-        _conductance_pq.reset();
-      }
+      _conductance_pq.reset();
     });
   }
 
@@ -329,11 +327,28 @@ class PartitionedHypergraph {
     _conductance_pq.initialize(*this);
   }
 
+  // ! Returns if the conductance priority queue is maintained
   bool hasConductancePriorityQueue() const {
     /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
-    return _conductance_pq.initialized();
+    return _has_conductance_pq;
   }
 
+private:
+  // ! Initializes the conductance priority queue if not yet (and should be)
+  bool needsConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
+    if (!_has_conductance_pq) {
+      return false;
+    }
+    _conductance_pq.lock();
+    if (!_conductance_pq.initialized()) {
+      enableConductancePriorityQueue();
+    }
+    _conductance_pq.unlock();
+    return true;
+  }
+
+public:
   // ! Tells if the conductance priority queue uses original stats 
   // ! (i.e. original part volumes, original total volume)
   bool conductancePriorityQueueUsesOriginalStats() const {
@@ -344,7 +359,9 @@ class PartitionedHypergraph {
   // ! Used for testing
   void disableUsageOfOriginalStatsByConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::disableUsageOfOriginalStatsByConductancePriorityQueue()" << std::endl;
-    ASSERT(conductancePriorityQueueUsesOriginalStats());
+    if (!conductancePriorityQueueUsesOriginalStats()) {
+      return;
+    }
     _conductance_pq.reset();
     _conductance_pq.disableUsageOfOriginalHGStats();
     enableConductancePriorityQueue();
@@ -354,7 +371,9 @@ class PartitionedHypergraph {
   // ! Used for testing
   void enableUsageOfOriginalStatsByConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::enableUsageOfOriginalStatsByConductancePriorityQueue()" << std::endl;
-    ASSERT(!conductancePriorityQueueUsesOriginalStats());
+    if (conductancePriorityQueueUsesOriginalStats()) {
+      return;
+    }
     _conductance_pq.reset();
     _conductance_pq.enableUsageOfOriginalHGStats();
     enableConductancePriorityQueue();
@@ -364,28 +383,42 @@ class PartitionedHypergraph {
   // ! Get the partition with the hightes conductance
   PartitionID topConductancePart() const {
     /// [debug] std::cerr << "PartitionedHypergraph::topConductancePart()" << std::endl;
-    ASSERT(hasConductancePriorityQueue());
+    if (!needsConductancePriorityQueue()) { // initializes pq if needed
+      return kInvalidPartition;
+    }
     return _conductance_pq.top();
   }
 
   // ! Get the partition with the second hightes conductance
   PartitionID secondTopConductancePart() const {
     /// [debug] std::cerr << "PartitionedHypergraph::secondTopConductancePart()" << std::endl;
-    ASSERT(hasConductancePriorityQueue());
+    if (!needsConductancePriorityQueue()) { // initializes pq if needed
+      throw UnsupportedOperationException(
+        "Conductance priority queue is not maintained");
+      return kInvalidPartition;
+    }
     return _conductance_pq.secondTop();
   }
 
   // ! Get top 3 partitions with the highest conductance
   vec<PartitionID> topThreeConductanceParts() const {
     /// [debug] std::cerr << "PartitionedHypergraph::topThreeConductanceParts()" << std::endl;
-    ASSERT(hasConductancePriorityQueue());
+    if (!needsConductancePriorityQueue()) { // initializes pq if needed
+      throw UnsupportedOperationException(
+        "Conductance priority queue is not maintained");
+      return vec<PartitionID>(3, kInvalidPartition);
+    }
     return _conductance_pq.topThree();
   }
 
   // ! Get a pointer to the conductance priority queue
   ConductancePriorityQueue<Self>* conductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::conductancePriorityQueue()" << std::endl;
-    ASSERT(hasConductancePriorityQueue());
+    if (!needsConductancePriorityQueue()) { // initializes pq if needed
+      throw UnsupportedOperationException(
+        "Conductance priority queue is not maintained");
+      return nullptr;
+    }
     return &_conductance_pq;
   }
 
@@ -629,7 +662,7 @@ class PartitionedHypergraph {
     // update _conductance_pq if enabled and uses current stats instead of the original ones
     // after this the gain cache should be updated (?)
     // => ConductanceGainCache::initializes_gain_cache_entry_after_batch_uncontractions = true ?
-    if (hasConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
+    if (needsConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
       _conductance_pq.globalUpdate(*this);
     }
 
@@ -693,7 +726,7 @@ class PartitionedHypergraph {
 
     // update _conductance_pq for changed partitions 
     // (if enabled and uses current stats instead of the original ones)
-    if (hasConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
+    if (needsConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
       _conductance_pq.globalUpdate(*this, he);
     }
   }
@@ -764,7 +797,7 @@ class PartitionedHypergraph {
     });
 
     // update _conductance_pq (if enabled and uses current stats instead of the original ones)
-    if (hasConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
+    if (needsConductancePriorityQueue() && !conductancePriorityQueueUsesOriginalStats()) {
       /*  Only if the total volume of the hypergraph has changed, 
        * we need to update the conductance priority queue
        * (<=> if at least one single-pin net was restored 
@@ -859,12 +892,15 @@ class PartitionedHypergraph {
     if (to_weight_after <= max_weight_to) {
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
-      // update _part_volumes
-      decrementVolumeOfBlock(from, nodeWeightedDegree(u));
-      incrementVolumeOfBlock(to, nodeWeightedDegree(u));
-      // update _part_original_volumes
-      decrementOriginalVolumeOfBlock(from, nodeOriginalWeightedDegree(u));
-      incrementOriginalVolumeOfBlock(to, nodeOriginalWeightedDegree(u));
+      // To avoid simultanious changes in HG stats and conductance_pq
+      _conductance_pq.lock();
+        // update _part_volumes
+        decrementVolumeOfBlock(from, nodeWeightedDegree(u));
+        incrementVolumeOfBlock(to, nodeWeightedDegree(u));
+        // update _part_original_volumes
+        decrementOriginalVolumeOfBlock(from, nodeOriginalWeightedDegree(u));
+        incrementOriginalVolumeOfBlock(to, nodeOriginalWeightedDegree(u));
+      _conductance_pq.unlock();
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
@@ -877,7 +913,7 @@ class PartitionedHypergraph {
         // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
       }
       // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
-      if (hasConductancePriorityQueue()) {
+      if (needsConductancePriorityQueue()) { // initializes pq if needed
         if (conductancePriorityQueueUsesOriginalStats()) {
           _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from));
           _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to));
@@ -1034,7 +1070,7 @@ class PartitionedHypergraph {
             },
             [&] { _conductance_pq.reset(); }
     );
-    enableConductancePriorityQueue();
+    needsConductancePriorityQueue(); // initializes pq if needed
   }
 
   // ! Reset partition (not thread-safe)
@@ -1108,7 +1144,7 @@ class PartitionedHypergraph {
   // ! Only for testing
   void recomputeConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::recomputeConductancePriorityQueue()" << std::endl;
-    if (hasConductancePriorityQueue()) {
+    if (needsConductancePriorityQueue()) {
       _conductance_pq.globalUpdate(*this);
     }
   }
@@ -1116,10 +1152,14 @@ class PartitionedHypergraph {
   // ! Only for testing
   bool checkConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::checkConductancePriorityQueue()" << std::endl;
-    if (hasConductancePriorityQueue()) {
-      return _conductance_pq.check(*this);
+    if (!_has_conductance_pq) {
+      return true;
     }
-    return true;
+    if (!_conductance_pq.initialized()) {
+      LOG << "Conductance priority queue is not initialized, but should be";
+      return false;
+    }
+    return _conductance_pq.check(*this);
   }
 
   // ! Only for testing
@@ -1796,6 +1836,8 @@ class PartitionedHypergraph {
 
   // ! Conductance PQ (needs to be enabled)
   ConductancePriorityQueue<Self> _conductance_pq;
+  // ! Flag indicating whether the conductance priority queue is tracked
+  bool _has_conductance_pq = true;
 
   // ! Weight and information for all blocks.
   vec< CAtomic<HypernodeWeight> > _part_weights;

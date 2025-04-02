@@ -20,15 +20,16 @@ private:
   Numerator numerator;
   Denominator denominator;
 public:
+  // infinity per default
   NonnegativeFraction() :
-    numerator(0),
-    denominator(1) { }
+    numerator(1),
+    denominator(0) { }
 
   NonnegativeFraction(const Numerator& n, const Denominator& d) :
     numerator(n),
     denominator(d) { 
-      ASSERT(d > 0);
-      ASSERT(n > 0);
+      ASSERT(d >= 0);
+      ASSERT(n >= 0);
     }
 
   bool operator< (const NonnegativeFraction& other) const {
@@ -61,7 +62,7 @@ public:
   }
   // ! Denominator must be greater than 0
   void setDenominator(const Denominator& d) {
-    ASSERT(d > 0);
+    ASSERT(d >= 0);
     denominator = d;
   }
   Numerator getNumerator() const {
@@ -72,6 +73,9 @@ public:
   }
 
   double_t value() const {
+    if (denominator == 0) {
+      return std::numeric_limits<double_t>::max();
+    }
     return static_cast<double_t>(numerator) / static_cast<double_t>(denominator);
   }
 };
@@ -315,6 +319,18 @@ public:
     _uses_original_stats = true;
   }
 
+  // ################# MUTEX OPERATIONS FOR CHANGING PQ #################
+
+  // ! Exclude simultaneous synchronized access to the priority queue
+  // ! To be used when HG is changed and the priority queue is changed in parallel
+  void lock(bool synchronized = true) {
+    if (synchronized) _pq_lock.lock();
+  }
+
+  void unlock(bool synchronized = true) {
+    if (synchronized) _pq_lock.unlock();
+  }
+
 private:
   // ! Builds the heap in O(_size) time
   // ! no built in lock
@@ -429,16 +445,6 @@ private:
     ConductanceFraction f = SuperPQ::getKey(p);
     unlock(synchronized);
     return f.value();
-  }
-
-  // ################# MUTEX OPERATIONS FOR CHANGING PQ #################
-
-  void lock(bool synchronized) {
-    if (synchronized) _pq_lock.lock();
-  }
-
-  void unlock(bool synchronized) {
-    if (synchronized) _pq_lock.unlock();
   }
 
   // ################# MEMBER VARIABLES #################
