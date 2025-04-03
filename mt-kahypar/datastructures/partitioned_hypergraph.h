@@ -330,7 +330,7 @@ class PartitionedHypergraph {
     if (_has_conductance_pq) {
       return;
     }
-    _conductance_pq.initialize(*this, false /* synchronized */);
+    _conductance_pq.initialize(*this, false /* not synchronized */);
     _has_conductance_pq = true;
   }
 
@@ -351,6 +351,7 @@ class PartitionedHypergraph {
     if (!_conductance_pq.initialized()) {
       enableConductancePriorityQueue();
     }
+    _has_conductance_pq = true;    
     _conductance_pq.unlock(true /* synchronized */);
     return true;
   }
@@ -401,21 +402,21 @@ class PartitionedHypergraph {
   // ! Get the partition with the hightes conductance
   PartitionID topConductancePart() const {
     /// [debug] std::cerr << "PartitionedHypergraph::topConductancePart()" << std::endl;
-    ASSERT(!hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
+    ASSERT(hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
     return _conductance_pq.top();
   }
 
   // ! Get the partition with the second hightes conductance
   PartitionID secondTopConductancePart() const {
     /// [debug] std::cerr << "PartitionedHypergraph::secondTopConductancePart()" << std::endl;
-    ASSERT(!hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
+    ASSERT(hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
     return _conductance_pq.secondTop();
   }
 
   // ! Get top 3 partitions with the highest conductance
   vec<PartitionID> topThreeConductanceParts() const {
     /// [debug] std::cerr << "PartitionedHypergraph::topThreeConductanceParts()" << std::endl;
-    ASSERT(!hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
+    ASSERT(hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
     return _conductance_pq.topThree();
   }
 
@@ -1167,7 +1168,7 @@ class PartitionedHypergraph {
       LOG << "Conductance priority queue is not initialized, but should be";
       return false;
     }
-    return _conductance_pq.check(*this, true /* synchronized */);
+    return _conductance_pq.check(*this); // no sync option
   }
 
   // ! Only for testing
