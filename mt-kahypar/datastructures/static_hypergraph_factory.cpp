@@ -58,12 +58,12 @@ namespace mt_kahypar::ds {
     Counter num_pins_per_hyperedge(num_hyperedges, 0);
     ThreadLocalCounter local_incident_nets_per_vertex(num_hypernodes, 0);
     // _weighted_degrees are not atomic => collect local values and sum them up afterwards
-    tbb::enumerable_thread_specific< parallel::scalable_vector<HyperedgeWeight> > 
+    tbb::enumerable_thread_specific< parallel::scalable_vector<HypergraphVolume> > 
                      local_weighted_degree_per_vertex(num_hypernodes, 0);
     tbb::enumerable_thread_specific<size_t> local_max_edge_size(UL(0));
     tbb::parallel_for(ID(0), num_hyperedges, [&](const size_t pos) {
       Counter& num_incident_nets_per_vertex = local_incident_nets_per_vertex.local();
-      parallel::scalable_vector<HyperedgeWeight>& weighted_degree_per_vertex =
+      parallel::scalable_vector<HypergraphVolume>& weighted_degree_per_vertex =
                      local_weighted_degree_per_vertex.local();
       num_pins_per_hyperedge[pos] = edge_vector[pos].size();
       local_max_edge_size.local() = std::max(
@@ -91,7 +91,7 @@ namespace mt_kahypar::ds {
       });
     }
     // Analog. to num_incident_nets_per_vertex: compute weighted degrees
-    for ( const parallel::scalable_vector<HyperedgeWeight>& c : local_weighted_degree_per_vertex ) {
+    for ( const parallel::scalable_vector<HypergraphVolume>& c : local_weighted_degree_per_vertex ) {
       tbb::parallel_for(ID(0), num_hypernodes, [&](const size_t pos) {
         hypergraph._weighted_degrees[pos] += c[pos];
       });

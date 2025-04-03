@@ -45,18 +45,20 @@ public:
   }
 
   bool operator> (const NonnegativeFraction& other) const {
-    // case whith big difference
-    if (denominator / numerator < other.denominator / other.numerator) {
-      return true;
-    }
-    // case whith big difference
-    if (numerator / denominator > other.numerator / other.denominator) {
-      return true;
-    }
     // case "this = 0" or "other = infinity"
     if (numerator == 0 || other.denominator == 0) return false;
     // case "this = infinity" or "other = 0"
     if (denominator == 0 || other.numerator == 0) return true;
+
+    // !!! Now we have no zero and no infinity
+    // cases whith big difference
+    if (denominator / numerator < other.denominator / other.numerator) {
+      return true;
+    }
+    if (numerator / denominator > other.numerator / other.denominator) {
+      return true;
+    }
+
     // case "this <= other"
     if (numerator <= other.numerator && denominator >= other.denominator) { 
       return false;
@@ -65,7 +67,8 @@ public:
     if (numerator >= other.numerator && denominator <= other.denominator) {
       return numerator != other.numerator || denominator != other.denominator;
     }
-    // case 
+
+    // case default
     uintmax_t lhs = static_cast<uintmax_t>(numerator) * static_cast<uintmax_t>(other.denominator);
     uintmax_t rhs = static_cast<uintmax_t>(other.numerator) * static_cast<uintmax_t>(denominator);
     return lhs > rhs;
@@ -125,9 +128,10 @@ public:
     { }
   
   // ! Initializes the priority queue with the partitions of the hypergraph
+  // ! Could be called concurrently !!!
   void initialize(const PartitionedHypergraph& hg, bool synchronized = false) {
     /// [debug] std::cerr << "ConductancePriorityQueue::initialize(hg, " << synchronized << ")" << std::endl;
-    ASSERT(!_initialized);
+    // ASSERT(!_initialized); could be called concurrently -> no assertion before lock
     lock(synchronized);
     if (_initialized) {
       unlock(synchronized);

@@ -326,8 +326,11 @@ class PartitionedHypergraph {
   // ! Enables the conductance priority queue
   void enableConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::enableConductancePriorityQueue()" << std::endl;
-    ASSERT(_needs_conductance_pq && !_has_conductance_pq);
-    _conductance_pq.initialize(*this);
+    ASSERT(_needs_conductance_pq);
+    if (_has_conductance_pq) {
+      return;
+    }
+    _conductance_pq.initialize(*this, false /* synchronized */);
     _has_conductance_pq = true;
   }
 
@@ -338,16 +341,17 @@ class PartitionedHypergraph {
   }
 
   // ! Initializes the conductance priority queue if not yet (and should be)
+  // ! Could be called concurrently => uses locks !!!
   bool needsConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
     if (!_needs_conductance_pq) {
       return false;
     }
-    _conductance_pq.lock();
+    _conductance_pq.lock(true /* synchronized */);
     if (!_conductance_pq.initialized()) {
       enableConductancePriorityQueue();
     }
-    _conductance_pq.unlock();
+    _conductance_pq.unlock(true /* synchronized */);
     return true;
   }
 
@@ -361,6 +365,9 @@ class PartitionedHypergraph {
   // ! Used for testing
   void disableUsageOfOriginalStatsByConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::disableUsageOfOriginalStatsByConductancePriorityQueue()" << std::endl;
+    if ( !_needs_conductance_pq ) {
+      return;
+    }
     if (!conductancePriorityQueueUsesOriginalStats()) {
       return;
     }
@@ -373,6 +380,9 @@ class PartitionedHypergraph {
   // ! Used for testing
   void enableUsageOfOriginalStatsByConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::enableUsageOfOriginalStatsByConductancePriorityQueue()" << std::endl;
+    if (!_needs_conductance_pq) {
+      return;
+    }
     if (conductancePriorityQueueUsesOriginalStats()) {
       return;
     }
