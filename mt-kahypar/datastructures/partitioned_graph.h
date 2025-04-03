@@ -1109,9 +1109,8 @@ private:
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
   }
 
-  // not supported
+  // dummy
   bool hasConductancePriorityQueue() const {
-    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return false;
   }
 
@@ -1157,7 +1156,6 @@ private:
   }
   // Interface mirroring
   bool needsConductancePriorityQueue() const {
-    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return false;
   }
      

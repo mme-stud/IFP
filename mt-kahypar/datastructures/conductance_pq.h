@@ -145,9 +145,9 @@ public:
     SuperPQ::heap.resize(_size);
     tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
       HypergraphVolume cut_weight = getHGPartCutWeight(hg, p);
-      HypergraphVolume volume = getHGPartVolume(hg, p);
-      _complement_val_bits[p] = (volume > _total_volume - volume);
-      ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
+      HypergraphVolume part_volume = getHGPartVolume(hg, p);
+      _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
+      ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
       SuperPQ::heap[p].id = p; 
       SuperPQ::heap[p].key = f;
       SuperPQ::positions[p] = p;
@@ -192,9 +192,9 @@ public:
     _total_volume = getHGTotalVolume(hg);
     tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
       HypergraphVolume cut_weight = getHGPartCutWeight(hg, p);
-      HypergraphVolume volume = getHGPartVolume(hg, p);
-      _complement_val_bits[p] = (volume > _total_volume - volume);
-      ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
+      HypergraphVolume part_volume = getHGPartVolume(hg, p);
+      _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
+      ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
       SuperPQ::heap[SuperPQ::positions[p]].key = f;
     });
     buildHeap();
@@ -213,14 +213,16 @@ public:
     for (PartitionID p = 0; p < _size; ++p) {
       ConductanceFraction f = SuperPQ::getKey(p);
       HypergraphVolume cut_weight = f.getNumerator();
-      HypergraphVolume volume = f.getDenominator();
-      ASSERT(volume <= _total_volume);
+      HypergraphVolume part_volume = f.getDenominator();
+      ASSERT(part_volume <= _total_volume);
+      ASSERT(cut_weight <= part_volume);
       if (_complement_val_bits[p]) {
-        volume = _total_volume - volume;
+        part_volume = _total_volume - part_volume;
       }
-      if (volume != getHGPartVolume(hg, p)) {
+      ASSERT(cut_weight <= part_volume);
+      if (part_volume != getHGPartVolume(hg, p)) {
         correct = false;
-        LOG << "Volume of partition in ConductancePriorityQueue" << p << "is" << volume << ", but should be" << getHGPartVolume(hg, p);
+        LOG << "Volume of partition in ConductancePriorityQueue" << p << "is" << part_volume << ", but should be" << getHGPartVolume(hg, p);
       }
       if (cut_weight != getHGPartCutWeight(hg, p)) {
         correct = false;
@@ -232,7 +234,7 @@ public:
   }
 
   // ! Checks if the priority queue is correct with respect to the hypergraph: synchronizable version
-  bool checkSync(const PartitionedHypergraph& hg, bool synchronized = false) {
+  bool checkSync(const PartitionedHypergraph& hg, bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::checkSync(hg, " << synchronized << ")" << std::endl;
     lock(synchronized);
     bool correct = check(hg);
@@ -254,13 +256,15 @@ public:
 
   // ! Adjusts the cut weight and the volume of a partition
   // ! changes pq => uses a lock  
-  void adjustKey(const PartitionID& p, const HypergraphVolume& cut_weight, const HypergraphVolume& volume, bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << p << ", " << cut_weight << ", " << volume << ", " << synchronized << ")" << std::endl;
-    ASSERT(_total_volume >= volume && volume >= 0);
-    ASSERT(_initialized && _size == _complement_val_bits.size());
+  void adjustKey(const PartitionID& p, const HypergraphVolume& cut_weight, const HypergraphVolume& part_volume, bool synchronized = true) {
+    /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << p << ", " << cut_weight << ", " << part_volume << ", " << synchronized << ")" << std::endl;
+    ASSERT(_total_volume >= part_volume);
+    ASSERT(part_volume >= cut_weight);
+    ASSERT(_initialized);
+    ASSERT(static_cast<size_t>(_size) == _complement_val_bits.size());
     lock(synchronized);
-    _complement_val_bits[p] = (volume > _total_volume - volume);
-    ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
+    _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
+    ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
     SuperPQ::adjustKey(p, f);
     unlock(synchronized);
   }
@@ -269,17 +273,17 @@ public:
   // ! changes pq => uses a lock
   void updateTotalVolume(const HypergraphVolume& new_total_volume, bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::updateTotalVolume(" << new_total_volume << ", " << synchronized << ")" << std::endl;		
-    ASSERT(!_uses_original_stats);
+    ASSERT(_initialized && static_cast<size_t>(_size) == _complement_val_bits.size());
     lock(synchronized);
     for (PartitionID p = 0; p < _size; ++p) {
-      ConductanceFraction f = SuperPQ::getKey(p);
-      HypergraphVolume volume = f.getDenominator();
-      ASSERT(volume <= _total_volume);
+      ConductanceFraction& f = SuperPQ::getKey(p);
+      HypergraphVolume part_volume = f.getDenominator();
+      ASSERT(part_volume <= _total_volume && part_volume <= new_total_volume);
       if (_complement_val_bits[p]) {
-        volume = _total_volume - volume;
+        part_volume = _total_volume - part_volume;
       }
-      _complement_val_bits[p] = (volume > new_total_volume - volume);
-      f.setDenominator(std::min(volume, new_total_volume - volume));
+      _complement_val_bits[p] = (part_volume > new_total_volume - part_volume);
+      f.setDenominator(std::min(part_volume, new_total_volume - part_volume));
     }
     buildHeap();
     _total_volume = new_total_volume;
@@ -294,7 +298,7 @@ public:
   }
 
   // ! Get the partition with the highest conductance: synchronizable version
-  PartitionID topSync(bool synchronized = false) {
+  PartitionID topSync(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::topSync(" << synchronized << ")" << std::endl;
     lock(synchronized);
     PartitionID p = top();
@@ -315,7 +319,7 @@ public:
   }
   
   // ! Get the partition with the second highest conductance: synchronizable version
-  PartitionID secondTopSync(bool synchronized = false) {
+  PartitionID secondTopSync(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::secondTopSync(" << synchronized << ")" << std::endl;
     lock(synchronized);
     PartitionID f = secondTop();
@@ -336,7 +340,7 @@ public:
 
   // ! Get the top three partitions (unsorted): synchronizable version
   // ! (Works only for a binary heap)
-  vec<PartitionID> topThreeSync(bool synchronized = false) {
+  vec<PartitionID> topThreeSync(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::topThreeSync(" << synchronized << ")" << std::endl;
     lock(synchronized);
     vec<PartitionID> top_three = topThree();
