@@ -172,7 +172,7 @@ namespace {
       }
       #endif
     }
-    phg.initializePartition(); // for conductance-pq 
+    phg.needsConductancePriorityQueue(); // initializs _conductance_pq if needed
 
     ASSERT([&] {
       bool success = true;

@@ -179,7 +179,7 @@ class PartitionedHypergraph {
     }, [&] {
       for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
     }, [&] {
-      _conductance_pq.reset();
+      resetConductancePriorityQueue();
     });
   }
 
@@ -270,7 +270,7 @@ class PartitionedHypergraph {
     _part_original_volumes.assign(k,CAtomic<HypergraphVolume>(0));
     _part_cut_weights.assign(k,CAtomic<HypergraphVolume>(0));
     tbb::parallel_invoke([&] {
-      _conductance_pq.reset();
+      resetConductancePriorityQueue();
     }, [&] {
         _con_info.reset();
         _con_info = ConnectivityInformation(
@@ -371,7 +371,7 @@ class PartitionedHypergraph {
     if (!conductancePriorityQueueUsesOriginalStats()) {
       return;
     }
-    _conductance_pq.reset();
+    resetConductancePriorityQueue();
     _conductance_pq.disableUsageOfOriginalHGStats();
     enableConductancePriorityQueue();
     ASSERT_FALSE(conductancePriorityQueueUsesOriginalStats());
@@ -386,10 +386,16 @@ class PartitionedHypergraph {
     if (conductancePriorityQueueUsesOriginalStats()) {
       return;
     }
-    _conductance_pq.reset();
+    resetConductancePriorityQueue();
     _conductance_pq.enableUsageOfOriginalHGStats();
     enableConductancePriorityQueue();
     ASSERT(conductancePriorityQueueUsesOriginalStats());
+  }
+
+  // ! Resets the conductance priority queue
+  void resetConductancePriorityQueue() {  
+      _conductance_pq.reset();
+      _has_conductance_pq = false; // !!! always reset _has_conductance_pq after resetting the pq 
   }
 
   // ! Get the partition with the hightes conductance
@@ -1070,9 +1076,9 @@ class PartitionedHypergraph {
               initializePinCountInPart();
               initializeBlockCutWeights(); // must be called after initializePinCountInPart()
             },
-            [&] { _conductance_pq.reset(); }
+            [&] { resetConductancePriorityQueue(); }
     );
-    needsConductancePriorityQueue(); // initializes pq if needed
+    needsConductancePriorityQueue(); // initializes pq only if needed
   }
 
   // ! Reset partition (not thread-safe)
@@ -1083,7 +1089,7 @@ class PartitionedHypergraph {
     for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_original_volumes) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
-    _conductance_pq.reset();
+    resetConductancePriorityQueue();
 
     // Reset pin count in part and connectivity set
     _con_info.reset(false);

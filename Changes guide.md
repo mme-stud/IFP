@@ -321,12 +321,12 @@ TODO: write a TODO list for this section :)
 - `ConductanceFraction := NonnegativeFraction<HypergraphVolume>`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
-	- \+ `initialize(partitioned_hg, sync)`: initializes underlying `MaxHeap` with `build()` \
+	- \+ `initialize(partitioned_hg, sync=false)`: initializes underlying `MaxHeap` with `build()` \
 		&rarr; \+ `bool initialized`, `bool initialized()` \
-		&rarr; \+ `reset(sync)` to return underlying heap to the uninitialized state
+		&rarr; \+ `reset(sync=true)` to return underlying heap to the uninitialized state
 	- \+ `globalUpdate(hg, sync)`: a version of `initialize` but for already initialized pq. Should be used after global changes in partitioned hg (e.g. `uncontract(batch, gain_cache)`)
 	- \+ **public** metods `lock(sync)`, `uplock(sync)` for a *private* `Spinlock _pq_lock`: \
-		Are used by all "sync"-versions of public methods, when the last parameter `bool synchronized` is set `true`. Per default it is set to `true` only by writing methods except `initialize`, `globalUpdate`, `reset` (These shouldn't be called in parallel). \
+		Are used by all "sync"-versions of public methods, when the last parameter `bool synchronized` is set `true`. Per default it is set to `true` only by writing methods except `initialize`, `globalUpdate`, (These shouldn't be called in parallel). \
 		**Not used by normal - const - versions of getters** \
 		used by `PartitionedHypergraph::changeNodePart(..)`
 	- \+ `adjustKey(p, cut_weight, volume, sync)`, `size()`, `bool empty()` - standard pq methods
@@ -375,6 +375,7 @@ Update of `_conductance_pq` (if enabled):
 - \+ `recomputeConductancePriorityQueue()`: runs global update (only for testing (?))
 - \+ `topConductancePart()`, `secondTopConductancePart()`, `topThreeConductanceParts()` in `PartitionedHypergraph` - initialize `_conductance_pq` if needed (via `needsConductancePriorityQueue()`)
 - \+ `conductancePriorityQueue()` to get a const pointer to `_conductance_pq`
+- \+ `resetConductancePriorityQueue()`: `_conductance_pq.reset()` + `_has_conductance_pq = false` [debug]
 
 - in 2 constructors: `_conductance_pq()` &lArr; no `initialize()` **!!!**
 - `resetData()`: call `_conductance_pq.reset()` in parallel, if enabled
@@ -394,7 +395,7 @@ Update of `_conductance_pq` (if enabled):
 	**!!!** lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] 
 - `initializePartition()` - for now initialized pq here--- \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
-- `resetPartition()`: `_conductance_pq.reset()`
+- `resetPartition()`: calls `resetConductancePriorityQueue()`
 - `memoryConsumption(parent)`: no info about memory consumption from `priority_queue.h` \
 	&rarr; **!!!** for now no info about `ConductancePQ` (TODO **???**) \
 	&rarr; done with `PriorityQueue::memoryConsumption()`
@@ -402,7 +403,7 @@ Update of `_conductance_pq` (if enabled):
 ### External Support of ConductancePQ
 
 in `mt-kahypar/partition/multilevel.cpp`:
-- `multilevel_partitioning(..)` : in `## INITIAL PARTITIONING ##` after partitioning call `phg.initializePartition()` to ensure enabling and initializing og `_conductance_pq` [debug...]
+- `multilevel_partitioning(..)` : in `## INITIAL PARTITIONING ##` after partitioning call `phg.usesConductancePriorityQueue()` to ensure enabling and initializing of `_conductance_pq` if needed[debug...]
 
 ### Part 2.1 Guide: Setup
 

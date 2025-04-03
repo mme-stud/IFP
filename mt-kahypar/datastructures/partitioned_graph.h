@@ -1150,9 +1150,15 @@ private:
     return {};
   }
 
+  // Interface mirroring
   const ConductancePriorityQueue<Self>* conductancePriorityQueue() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return nullptr;
+  }
+  // Interface mirroring
+  bool needsConductancePriorityQueue() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return false;
   }
      
  private:

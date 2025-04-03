@@ -164,7 +164,7 @@ public:
   }
 
   // ! Reset the priority queue to the uninitialized state
-  void reset(bool synchronized = false) {
+  void reset(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::reset()" << std::endl;
     lock(synchronized);
     SuperPQ::clear();
@@ -257,6 +257,7 @@ public:
   void adjustKey(const PartitionID& p, const HypergraphVolume& cut_weight, const HypergraphVolume& volume, bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << p << ", " << cut_weight << ", " << volume << ", " << synchronized << ")" << std::endl;
     ASSERT(_total_volume >= volume && volume >= 0);
+    ASSERT(_initialized && _size == _complement_val_bits.size());
     lock(synchronized);
     _complement_val_bits[p] = (volume > _total_volume - volume);
     ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
