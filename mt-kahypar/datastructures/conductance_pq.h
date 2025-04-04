@@ -278,11 +278,11 @@ public:
     // << cut_weight << ", part_volume = " << part_volume << ") is started";
     _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
     ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
+    SuperPQ::adjustKey(p, f);
     SuperPQ::heap[SuperPQ::positions[p]].key = f; // needed, as the fraction are equal if their reduced forms are equal
     // so SuperPQ::adjustKey(p, f) would not change the key to the new one
     // but in ConductancePriorityQueue we need to set the key to the exact numerator and denominator
     // as they have meaning in the context of the hypergraph
-    SuperPQ::adjustKey(p, f);
     // LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
     // << cut_weight << ", part_volume = " << part_volume << ") is finished";
     unlock(synchronized);

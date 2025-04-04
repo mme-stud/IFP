@@ -333,7 +333,7 @@ TODO: write a TODO list for this section :)
 	- \+ `adjustKey(p, cut_weight, volume, sync)` - uses `SuperPQ::adjustKey(..)`.  \ 
 		**!!!** `SuperPQ::adjustKey(..)` does nothing when fractions are equal as fractions \
 		&rArr; the new numerator and denumerator are not set automaticly, if proportion is the same \
-		&rArr; manualy change key in the `SuperPQ::heap` and only then call `SuperPQ::adjustKey(..)` [debug]
+		&rArr; manualy change key in the `SuperPQ::heap` **after** calling `SuperPQ::adjustKey(..)` [debug]
 	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
 	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
 	- \+ `bool isHeap() const` - version with hushed log

@@ -901,6 +901,7 @@ class PartitionedHypergraph {
     if (to_weight_after <= max_weight_to) {
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
+
       // To avoid simultanious changes in HG stats and conductance_pq
       _conductance_pq.lock(true /* synchronized */);
         // update _part_volumes
@@ -910,30 +911,36 @@ class PartitionedHypergraph {
         decrementOriginalVolumeOfBlock(from, nodeOriginalWeightedDegree(u));
         incrementOriginalVolumeOfBlock(to, nodeOriginalWeightedDegree(u));
       _conductance_pq.unlock(true /* synchronized */);
+
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
       sync_update.to = to;
       sync_update.target_graph = _target_graph;
       sync_update.edge_locks = &_pin_count_update_ownership;
-      _conductance_pq.lock(true /* synchronized */);
+
+      // _conductance_pq.lock(true /* synchronized */); to avoid potential deadlocks 
+      // I lock the conductance_pq in updatePinCountOfHyperedge()
+      // (as locks used there are saved in the SynchronizedEdgeUpdate struct, 
+      //                which is passed to notify_func...)
       for ( const HyperedgeID he : incidentEdges(u) ) {
         // updates _part_cut_weights in updatePinCountOfHyperedge(...)
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
         // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
       }
-      _conductance_pq.unlock(true /* synchronized */);
+      // _conductance_pq.unlock(true /* synchronized */);
+
       // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
       if (needsConductancePriorityQueue()) { // initializes pq if needed
         _conductance_pq.lock(true /* synchronized */);
-        if (conductancePriorityQueueUsesOriginalStats()) {
-          _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from), false /* not synchronized */);
-          _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to), false /* not synchronized */);
-        } else {
-          // uses current stats
-          _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from), false /* not synchronized */);
-          _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to), false /* not synchronized */);
-        }
+          if (conductancePriorityQueueUsesOriginalStats()) {
+            _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from), false /* not synchronized */);
+            _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to), false /* not synchronized */);
+          } else {
+            // uses current stats
+            _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from), false /* not synchronized */);
+            _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to), false /* not synchronized */);
+          }
         _conductance_pq.unlock(true /* synchronized */);
       }
       return true;
@@ -1738,6 +1745,7 @@ class PartitionedHypergraph {
     sync_update.pin_counts_after = hasTargetGraph() ? &_con_info.pinCountSnapshot(he) : nullptr;
     const HypernodeID new_pins_in_to_part = pinCountInPart(he, to);
     // update _part_cut_weights for "from" part
+    _conductance_pq.lock(true /* synchronized */); // to ensure that the conductance priority queue is not updated while we are updating the pin counts
     if (HypernodeID(1) == old_pins_in_from_part && old_pins_in_from_part < edgeSize(he)) {
       // he was a cutting edge for part "from", but not anymore
       _part_cut_weights[from].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
@@ -1753,6 +1761,7 @@ class PartitionedHypergraph {
       // he was a cutting edge for part "to", but not anymore
       _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
     }
+    _conductance_pq.unlock(true /* synchronized */);
     // for all other parts, _part_cut_weights remains the same
     _pin_count_update_ownership[he].unlock();
     delta_func(sync_update);
