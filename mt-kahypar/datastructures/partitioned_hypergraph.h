@@ -874,7 +874,7 @@ class PartitionedHypergraph {
         ASSERT(new_connectivity == old_connectivity + 1);
         // Hyperedge he was a cutting edge for partitions of its pins
         // and is now a cutting edge for a new partition p of its pin u
-        // _part_cut_weights[p].fetch_add(edgeWeight(he), std::memory_order_acq_rel);
+        // _part_cut_weights[p].fetch_add(edgeWeight(he), std::memory_order_relaxed);
         incrementCutWeightOfBlock(p, edgeWeight(he));
       }
     }
@@ -902,35 +902,39 @@ class PartitionedHypergraph {
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
       // To avoid simultanious changes in HG stats and conductance_pq
-      // _conductance_pq.lock();
+      _conductance_pq.lock(true /* synchronized */);
         // update _part_volumes
         decrementVolumeOfBlock(from, nodeWeightedDegree(u));
         incrementVolumeOfBlock(to, nodeWeightedDegree(u));
         // update _part_original_volumes
         decrementOriginalVolumeOfBlock(from, nodeOriginalWeightedDegree(u));
         incrementOriginalVolumeOfBlock(to, nodeOriginalWeightedDegree(u));
-      // _conductance_pq.unlock();
+      _conductance_pq.unlock(true /* synchronized */);
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
       sync_update.to = to;
       sync_update.target_graph = _target_graph;
       sync_update.edge_locks = &_pin_count_update_ownership;
+      _conductance_pq.lock(true /* synchronized */);
       for ( const HyperedgeID he : incidentEdges(u) ) {
         // updates _part_cut_weights in updatePinCountOfHyperedge(...)
         updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
         // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
       }
+      _conductance_pq.unlock(true /* synchronized */);
       // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
       if (needsConductancePriorityQueue()) { // initializes pq if needed
+        _conductance_pq.lock(true /* synchronized */);
         if (conductancePriorityQueueUsesOriginalStats()) {
-          _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from), true /* synchronized */);
-          _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to), true /* synchronized */);
+          _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from), false /* not synchronized */);
+          _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to), false /* not synchronized */);
         } else {
           // uses current stats
-          _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from), true /* synchronized */);
-          _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to), true /* synchronized */);
+          _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from), false /* not synchronized */);
+          _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to), false /* not synchronized */);
         }
+        _conductance_pq.unlock(true /* synchronized */);
       }
       return true;
     } else {
@@ -992,19 +996,19 @@ class PartitionedHypergraph {
   // ! Volume of a block
   HypergraphVolume partVolume(const PartitionID p) const {
     ASSERT(p != kInvalidPartition && p < _k);
-    return _part_volumes[p].load(std::memory_order_seq_cst);
+    return _part_volumes[p].load(std::memory_order_relaxed);
   }
 
   // ! Original volume of a block
   HypergraphVolume partOriginalVolume(const PartitionID p) const {
     ASSERT(p != kInvalidPartition && p < _k);
-    return _part_original_volumes[p].load(std::memory_order_seq_cst);
+    return _part_original_volumes[p].load(std::memory_order_relaxed);
   }
 
   // ! Cut weight of a block 
   HypergraphVolume partCutWeight(const PartitionID p) const {
     ASSERT(p != kInvalidPartition && p < _k);
-    return _part_cut_weights[p].load(std::memory_order_seq_cst);
+    return _part_cut_weights[p].load(std::memory_order_relaxed);
   }
 
   // ! Returns, whether hypernode u is adjacent to a least one cut hyperedge.
@@ -1571,21 +1575,21 @@ class PartitionedHypergraph {
   void applyPartVolumeUpdates(vec<HypergraphVolume>& part_volume_deltas) {
     /// [debug] std::cerr << "PartitionedHypergraph::applyPartVolumeUpdates(part_volume_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
-      _part_volumes[p].fetch_add(part_volume_deltas[p], std::memory_order_acq_rel);
+      _part_volumes[p].fetch_add(part_volume_deltas[p], std::memory_order_relaxed);
     }
   }
 
   void applyPartOriginalVolumeUpdates(vec<HypergraphVolume>& part_original_volume_deltas) {
     /// [debug] std::cerr << "PartitionedHypergraph::applyPartOriginalVolumeUpdates(part_original_volume_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
-      _part_original_volumes[p].fetch_add(part_original_volume_deltas[p], std::memory_order_acq_rel);
+      _part_original_volumes[p].fetch_add(part_original_volume_deltas[p], std::memory_order_relaxed);
     }
   }
 
   void applyPartCutWeightUpdates(vec<HypergraphVolume>& part_cut_weight_deltas) {
     /// [debug] std::cerr << "PartitionedHypergraph::applyPartCutWeightUpdates(part_cut_weight_deltas)" << std::endl;
     for (PartitionID p = 0; p < _k; ++p) {
-      _part_cut_weights[p].fetch_add(part_cut_weight_deltas[p], std::memory_order_acq_rel);
+      _part_cut_weights[p].fetch_add(part_cut_weight_deltas[p], std::memory_order_relaxed);
     }
   }
 
@@ -1736,18 +1740,18 @@ class PartitionedHypergraph {
     // update _part_cut_weights for "from" part
     if (HypernodeID(1) == old_pins_in_from_part && old_pins_in_from_part < edgeSize(he)) {
       // he was a cutting edge for part "from", but not anymore
-      _part_cut_weights[from].fetch_sub(edgeWeight(he), std::memory_order_acq_rel);
+      _part_cut_weights[from].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
     } else if (HypernodeID(1) < old_pins_in_from_part && old_pins_in_from_part == edgeSize(he)) {
       // he was not a cutting edge for part "from", but now is
-      _part_cut_weights[from].fetch_add(edgeWeight(he), std::memory_order_acq_rel);
+      _part_cut_weights[from].fetch_add(edgeWeight(he), std::memory_order_relaxed);
     }
     // update _part_cut_weights for "to" part
     if (HypernodeID(1) == new_pins_in_to_part && new_pins_in_to_part < edgeSize(he)) {
       // he was not a cutting edge for part to, but now is
-      _part_cut_weights[to].fetch_add(edgeWeight(he), std::memory_order_acq_rel);
+      _part_cut_weights[to].fetch_add(edgeWeight(he), std::memory_order_relaxed);
     } else if (HypernodeID(1) < new_pins_in_to_part && new_pins_in_to_part == edgeSize(he)) {
       // he was a cutting edge for part "to", but not anymore
-      _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_acq_rel);
+      _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
     }
     // for all other parts, _part_cut_weights remains the same
     _pin_count_update_ownership[he].unlock();
@@ -1784,7 +1788,7 @@ class PartitionedHypergraph {
   HypergraphVolume decrementCutWeightOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::decrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_sub(w, std::memory_order_acq_rel);
+    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_sub(w, std::memory_order_relaxed);
     return cut_weight_after;
   }
 
@@ -1792,7 +1796,7 @@ class PartitionedHypergraph {
   HypergraphVolume incrementCutWeightOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::incrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_add(w, std::memory_order_acq_rel);
+    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_add(w, std::memory_order_relaxed);
     return cut_weight_after;
   }
 
@@ -1800,7 +1804,7 @@ class PartitionedHypergraph {
   HypergraphVolume decrementVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::decrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume volume_after = _part_volumes[p].fetch_sub(w, std::memory_order_acq_rel);
+    const HypergraphVolume volume_after = _part_volumes[p].fetch_sub(w, std::memory_order_relaxed);
     return volume_after;
   }
 
@@ -1808,7 +1812,7 @@ class PartitionedHypergraph {
   HypergraphVolume incrementVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::incrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume volume_after = _part_volumes[p].fetch_add(w, std::memory_order_acq_rel);
+    const HypergraphVolume volume_after = _part_volumes[p].fetch_add(w, std::memory_order_relaxed);
     return volume_after;
   }
 
@@ -1816,7 +1820,7 @@ class PartitionedHypergraph {
   HypergraphVolume decrementOriginalVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::decrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_sub(w, std::memory_order_acq_rel);
+    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_sub(w, std::memory_order_relaxed);
     return part_original_volume_after;
   }
 
@@ -1824,7 +1828,7 @@ class PartitionedHypergraph {
   HypergraphVolume incrementOriginalVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::incrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_add(w, std::memory_order_acq_rel);
+    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_add(w, std::memory_order_relaxed);
     return part_original_volume_after;
   }
 

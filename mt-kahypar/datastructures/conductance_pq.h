@@ -258,10 +258,17 @@ public:
   // ! changes pq => uses a lock  
   void adjustKey(const PartitionID& p, const HypergraphVolume& cut_weight, const HypergraphVolume& part_volume, bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << p << ", " << cut_weight << ", " << part_volume << ", " << synchronized << ")" << std::endl;
-    ASSERT(_total_volume >= part_volume);
-    ASSERT(part_volume >= cut_weight);
     ASSERT(_initialized);
     ASSERT(static_cast<size_t>(_size) == _complement_val_bits.size());
+    if (_total_volume < part_volume || part_volume < cut_weight) {
+      // this update is incorrect (potentially due to concurrency) => will be redone later
+      // [used by changeNodePart, where only for the last thread changing partition p 
+      //                                  the right stats are guaranteed]
+      LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
+          << cut_weight << ", part_volume = " << part_volume << ") is skipped due to incorrect stats."
+          << "[shouldn't be a problem]";
+      return;
+    }
     lock(synchronized);
     _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
     ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
@@ -452,6 +459,8 @@ private:
     /// [debug] std::cerr << "ConductancePriorityQueue::insert(" << p << ", " << cut_weight << ", " << volume << ", " << synchronized << ")" << std::endl;
     ConductanceFraction f(cut_weight, std::min(volume, _total_volume - volume));
     lock(synchronized);
+    ASSERT(_total_volume >= volume);
+    _complement_val_bits[p] = (volume > _total_volume - volume);
     SuperPQ::insert(p, f);
     _size++;
     unlock(synchronized);
