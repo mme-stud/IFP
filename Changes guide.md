@@ -329,7 +329,11 @@ TODO: write a TODO list for this section :)
 		Are used by all "sync"-versions of public methods, when the last parameter `bool synchronized` is set `true`. Per default it is set to `true` only by writing methods except `initialize`, `globalUpdate`, (These shouldn't be called in parallel). \
 		**Not used by normal - const - versions of getters** \
 		used by `PartitionedHypergraph::changeNodePart(..)`
-	- \+ `adjustKey(p, cut_weight, volume, sync)`, `size()`, `bool empty()` - standard pq methods
+	- \+ `size()`, `bool empty()` - standard pq methods
+	- \+ `adjustKey(p, cut_weight, volume, sync)` - uses `SuperPQ::adjustKey(..)`.  \ 
+		**!!!** `SuperPQ::adjustKey(..)` does nothing when fractions are equal as fractions \
+		&rArr; the new numerator and denumerator are not set automaticly, if proportion is the same \
+		&rArr; manualy change key in the `SuperPQ::heap` and only then call `SuperPQ::adjustKey(..)` [debug]
 	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
 	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
 	- \+ `bool isHeap() const` - version with hushed log

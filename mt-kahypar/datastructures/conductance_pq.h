@@ -187,12 +187,15 @@ public:
     lock(synchronized);
     ASSERT(_initialized && _size == hg.k());
     if (_uses_original_stats) {
-      ASSERT(_total_volume == hg.originalTotalVolume());
+      ASSERT(_total_volume == hg.originalTotalVolume(), "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << hg.originalTotalVolume());
     }
     _total_volume = getHGTotalVolume(hg);
     tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
       HypergraphVolume cut_weight = getHGPartCutWeight(hg, p);
       HypergraphVolume part_volume = getHGPartVolume(hg, p);
+      ASSERT(part_volume <= _total_volume, "Partition volume" << part_volume << "is greater than total volume" << _total_volume);
+      ASSERT(cut_weight <= part_volume, "Cut weight" << cut_weight << "is greater than partition volume" << part_volume);
+      ASSERT(cut_weight + part_volume <= _total_volume, "Cut weight" << cut_weight << "and partition volume" << part_volume << "is greater than total volume" << _total_volume);
       _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
       ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
       SuperPQ::heap[SuperPQ::positions[p]].key = f;
@@ -260,19 +263,28 @@ public:
     /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << p << ", " << cut_weight << ", " << part_volume << ", " << synchronized << ")" << std::endl;
     ASSERT(_initialized);
     ASSERT(static_cast<size_t>(_size) == _complement_val_bits.size());
-    if (_total_volume < part_volume || part_volume < cut_weight) {
+    if (part_volume < cut_weight || _total_volume < part_volume || _total_volume < part_volume + cut_weight) {
       // this update is incorrect (potentially due to concurrency) => will be redone later
       // [used by changeNodePart, where only for the last thread changing partition p 
       //                                  the right stats are guaranteed]
       LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
-          << cut_weight << ", part_volume = " << part_volume << ") is skipped due to incorrect stats."
+          << cut_weight << ", part_volume = " << part_volume << ") is skipped due to incorrect stats: "
+          << "total_volume = " << _total_volume << ". "
           << "[shouldn't be a problem]";
       return;
     }
     lock(synchronized);
+    // LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
+    // << cut_weight << ", part_volume = " << part_volume << ") is started";
     _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
     ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
+    SuperPQ::heap[SuperPQ::positions[p]].key = f; // needed, as the fraction are equal if their reduced forms are equal
+    // so SuperPQ::adjustKey(p, f) would not change the key to the new one
+    // but in ConductancePriorityQueue we need to set the key to the exact numerator and denominator
+    // as they have meaning in the context of the hypergraph
     SuperPQ::adjustKey(p, f);
+    // LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
+    // << cut_weight << ", part_volume = " << part_volume << ") is finished";
     unlock(synchronized);
   }
   
