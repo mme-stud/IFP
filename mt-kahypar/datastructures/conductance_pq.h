@@ -10,99 +10,10 @@
 
 #include "mt-kahypar/datastructures/partitioned_hypergraph.h"
 #include "mt-kahypar/datastructures/priority_queue.h"
+#include "mt-kahypar/datastructures/nonnegative_fraction.h"
 
 namespace mt_kahypar {
 namespace ds {
-
-template <typename Numerator, typename Denominator = Numerator>
-class NonnegativeFraction {
-private:
-  Numerator numerator;
-  Denominator denominator;
-public:
-  // infinity per default
-  NonnegativeFraction() :
-    numerator(1),
-    denominator(0) { }
-
-  NonnegativeFraction(const Numerator& n, const Denominator& d) :
-    numerator(n),
-    denominator(d) { 
-      ASSERT(d >= 0);
-      ASSERT(n >= 0);
-    }
-
-  bool operator< (const NonnegativeFraction& other) const {
-    size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
-    size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
-    return lhs < rhs;
-  }
-
-  bool operator== (const NonnegativeFraction& other) const {
-    size_t lhs = static_cast<size_t>(numerator) * static_cast<size_t>(other.denominator);
-    size_t rhs = static_cast<size_t>(other.numerator) * static_cast<size_t>(denominator);
-    return lhs == rhs;
-  }
-
-  bool operator> (const NonnegativeFraction& other) const {
-    // case "this = 0" or "other = infinity"
-    if (numerator == 0 || other.denominator == 0) return false;
-    // case "this = infinity" or "other = 0"
-    if (denominator == 0 || other.numerator == 0) return true;
-
-    // !!! Now we have no zero and no infinity
-    // cases whith big difference
-    if (denominator / numerator < other.denominator / other.numerator) {
-      return true;
-    }
-    if (numerator / denominator > other.numerator / other.denominator) {
-      return true;
-    }
-
-    // case "this <= other"
-    if (numerator <= other.numerator && denominator >= other.denominator) { 
-      return false;
-    }
-    // case "this > other" if **not** both numerators and denominators are equal 
-    if (numerator >= other.numerator && denominator <= other.denominator) {
-      return numerator != other.numerator || denominator != other.denominator;
-    }
-
-    // case default
-    uintmax_t lhs = static_cast<uintmax_t>(numerator) * static_cast<uintmax_t>(other.denominator);
-    uintmax_t rhs = static_cast<uintmax_t>(other.numerator) * static_cast<uintmax_t>(denominator);
-    return lhs > rhs;
-  }
-
-  // operator<< 
-  friend std::ostream& operator<< (std::ostream& s, const NonnegativeFraction& f) {
-    return s << f.numerator << " / " << f.denominator;
-  }
-
-  // Numerator must be non-negative 
-  void setNumerator(const Numerator& n) {
-    ASSERT(n >= 0);
-    numerator = n;
-  }
-  // ! Denominator must be greater than 0
-  void setDenominator(const Denominator& d) {
-    ASSERT(d >= 0);
-    denominator = d;
-  }
-  Numerator getNumerator() const {
-    return numerator;
-  }
-  Denominator getDenominator() const {
-    return denominator;
-  }
-
-  double_t value() const {
-    if (denominator == 0) {
-      return std::numeric_limits<double_t>::max();
-    }
-    return static_cast<double_t>(numerator) / static_cast<double_t>(denominator);
-  }
-};
 
 using ConductanceFraction = NonnegativeFraction<HypergraphVolume>;
 
@@ -130,7 +41,7 @@ public:
   // ! Initializes the priority queue with the partitions of the hypergraph
   // ! Could be called concurrently !!!
   void initialize(const PartitionedHypergraph& hg, bool synchronized = false) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::initialize(hg, " << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::initialize(hg, " << V(synchronized) << ")" << std::endl;
     // ASSERT(!_initialized); could be called concurrently -> no assertion before lock
     lock(synchronized);
     if (_initialized) {
@@ -183,7 +94,7 @@ public:
 
   // ! Updates the priority queue after global changes in partition
   void globalUpdate(const PartitionedHypergraph& hg, bool synchronized = false) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::globalUpdate(hg, " << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::globalUpdate(hg, " << V(synchronized) << ")" << std::endl;
     lock(synchronized);
     ASSERT(_initialized && _size == hg.k());
     if (_uses_original_stats) {
@@ -225,11 +136,11 @@ public:
       ASSERT(cut_weight <= part_volume);
       if (part_volume != getHGPartVolume(hg, p)) {
         correct = false;
-        LOG << "Volume of partition in ConductancePriorityQueue" << p << "is" << part_volume << ", but should be" << getHGPartVolume(hg, p);
+        LOG << "Volume of partition in ConductancePriorityQueue" << V(p) << "is" << V(part_volume) << ", but should be" << getHGPartVolume(hg, p);
       }
       if (cut_weight != getHGPartCutWeight(hg, p)) {
         correct = false;
-        LOG << "Cut weight of partition in ConductancePriorityQueue" << p << "is" << cut_weight << ", but should be" << getHGPartCutWeight(hg, p);
+        LOG << "Cut weight of partition in ConductancePriorityQueue" << V(p) << "is" << V(cut_weight) << ", but should be" << getHGPartCutWeight(hg, p);
       }
     }
     correct = correct && SuperPQ::isHeap() && SuperPQ::positionsMatch();
@@ -238,7 +149,7 @@ public:
 
   // ! Checks if the priority queue is correct with respect to the hypergraph: synchronizable version
   bool checkSync(const PartitionedHypergraph& hg, bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::checkSync(hg, " << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::checkSync(hg, " << V(synchronized) << ")" << std::endl;
     lock(synchronized);
     bool correct = check(hg);
     unlock(synchronized);
@@ -248,9 +159,10 @@ public:
   // ################# Priority Queue Operations #################
 
   bool isHeap() const {
-    /// [debug] std::cerr << "ConductancePriorityQueue::isHeap(" << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::isHeap()" << std::endl;
     for (PosT i = 1; i < size(); ++i) {
-      if (heap[i].key > heap[parent(i)].key) {
+      if (heap[parent(i)].key < heap[i].key) {
+        LOG << "heap property violation" << V(i) << V(parent(i))  << V(heap[i].key) << V(heap[parent(i)].key);
         return false;
       }
     }
@@ -260,22 +172,22 @@ public:
   // ! Adjusts the cut weight and the volume of a partition
   // ! changes pq => uses a lock  
   void adjustKey(const PartitionID& p, const HypergraphVolume& cut_weight, const HypergraphVolume& part_volume, bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << p << ", " << cut_weight << ", " << part_volume << ", " << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " << V(cut_weight) << ", " << V(part_volume) << ", " << V(synchronized) << ")" << std::endl;
     ASSERT(_initialized);
     ASSERT(static_cast<size_t>(_size) == _complement_val_bits.size());
     if (part_volume < cut_weight || _total_volume < part_volume || _total_volume < part_volume + cut_weight) {
       // this update is incorrect (potentially due to concurrency) => will be redone later
       // [used by changeNodePart, where only for the last thread changing partition p 
       //                                  the right stats are guaranteed]
-      LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
-          << cut_weight << ", part_volume = " << part_volume << ") is skipped due to incorrect stats: "
-          << "total_volume = " << _total_volume << ". "
+      LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " 
+          << V(cut_weight) << ", " << V(part_volume) << ") is skipped due to incorrect stats: "
+          << " " << V(_total_volume) << ". "
           << "[shouldn't be a problem]";
       return;
     }
     lock(synchronized);
-    // LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
-    // << cut_weight << ", part_volume = " << part_volume << ") is started";
+     LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " 
+     << V(cut_weight) << ", " << V(part_volume) << ") is started";
     _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
     ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
     SuperPQ::adjustKey(p, f);
@@ -283,15 +195,15 @@ public:
     // so SuperPQ::adjustKey(p, f) would not change the key to the new one
     // but in ConductancePriorityQueue we need to set the key to the exact numerator and denominator
     // as they have meaning in the context of the hypergraph
-    // LOG << "ConductancePriorityQueue::adjustKey(p = " << p << ", cut_weight = " 
-    // << cut_weight << ", part_volume = " << part_volume << ") is finished";
+    LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " 
+     << V(cut_weight) << ", " << V(part_volume) << ") is finished";
     unlock(synchronized);
   }
   
   // ! Updates PQ after total volume of the hypergraph has changed
   // ! changes pq => uses a lock
   void updateTotalVolume(const HypergraphVolume& new_total_volume, bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::updateTotalVolume(" << new_total_volume << ", " << synchronized << ")" << std::endl;		
+    /// [debug] std::cerr << "ConductancePriorityQueue::updateTotalVolume(" << V(new_total_volume) << ", " << V(synchronized) << ")" << std::endl;		
     ASSERT(_initialized && static_cast<size_t>(_size) == _complement_val_bits.size());
     lock(synchronized);
     for (PartitionID p = 0; p < _size; ++p) {
@@ -318,7 +230,7 @@ public:
 
   // ! Get the partition with the highest conductance: synchronizable version
   PartitionID topSync(bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::topSync(" << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::topSync(" << V(synchronized) << ")" << std::endl;
     lock(synchronized);
     PartitionID p = top();
     unlock(synchronized);
@@ -339,7 +251,7 @@ public:
   
   // ! Get the partition with the second highest conductance: synchronizable version
   PartitionID secondTopSync(bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::secondTopSync(" << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::secondTopSync(" << V(synchronized) << ")" << std::endl;
     lock(synchronized);
     PartitionID f = secondTop();
     unlock(synchronized);
@@ -360,7 +272,7 @@ public:
   // ! Get the top three partitions (unsorted): synchronizable version
   // ! (Works only for a binary heap)
   vec<PartitionID> topThreeSync(bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::topThreeSync(" << synchronized << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::topThreeSync(" << V(synchronized) << ")" << std::endl;
     lock(synchronized);
     vec<PartitionID> top_three = topThree();
     unlock(synchronized);
@@ -410,13 +322,16 @@ public:
   // ! Exclude simultaneous synchronized access to the priority queue
   // ! To be used when HG is changed and the priority queue is changed in parallel
   void lock(bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::lock(synchronized)" << std::endl;
     if (synchronized) _pq_lock.lock();
+      /// [debug] std::cerr << "ConductancePriorityQueue::lock(" << V(synchronized) << ")" << std::endl;
   }
 
   void unlock(bool synchronized = true) {
-    /// [debug] std::cerr << "ConductancePriorityQueue::unlock(synchronized)" << std::endl;
-    if (synchronized) _pq_lock.unlock();
+    if (synchronized) { 
+      /// [debug] std::cerr << "ConductancePriorityQueue::unlock(" << V(synchronized) << ")" << std::endl;
+      ASSERT(!_pq_lock.tryLock(), "ConductancePriorityQueue::unlock() called without lock");
+      _pq_lock.unlock();
+    }
   }
 
 private:
@@ -425,9 +340,10 @@ private:
   void buildHeap() {
     /// [debug] std::cerr << "ConductancePriorityQueue::buildHeap()" << std::endl;
     ASSERT(static_cast<PosT>(_size) == SuperPQ::size());
-    if (isHeap()) return;
-    for (PartitionID p = _size - 1; p >= 0; --p) {
-      SuperPQ::siftDown(p);
+    if (!isHeap()) {
+      for (PartitionID p = _size - 1; p >= 0; --p) {
+        SuperPQ::siftDown(p);
+      }
     }
     ASSERT(SuperPQ::isHeap() && SuperPQ::positionsMatch());
   }
@@ -436,7 +352,7 @@ private:
   // ! Get needed kind of total volume
   // ! (original or current)
   HypergraphVolume getHGTotalVolume(const PartitionedHypergraph& hg) const {
-    /// [debug] std::cerr << "ConductancePriorityQueue::getHGTotalVolume(hg)" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::getHGTotalVolume(hg): " << hg.originalTotalVolume() << ", " << hg.totalVolume() << std::endl;
     if (_uses_original_stats) {
       return hg.originalTotalVolume();
     } else {
@@ -447,7 +363,7 @@ private:
   // ! Get needed kind of part volume
   // ! (original or current)
   HypergraphVolume getHGPartVolume(const PartitionedHypergraph& hg, const PartitionID p) const {
-    /// [debug] std::cerr << "ConductancePriorityQueue::getHGPartVolume(hg, " << p << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::getHGPartVolume(hg, " << p << "): "  << hg.partOriginalVolume(p) << ", " << hg.partVolume(p) << std::endl;
     if (_uses_original_stats) {
       return hg.partOriginalVolume(p);
     } else {
@@ -458,7 +374,7 @@ private:
   // ! Get needed kind of cut weight
   // ! (only one kind of cut weight for now)
   HypergraphVolume getHGPartCutWeight(const PartitionedHypergraph& hg, const PartitionID p) const {
-    /// [debug] std::cerr << "ConductancePriorityQueue::getHGPartCutWeight(hg, " << p << ")" << std::endl;
+    /// [debug] std::cerr << "ConductancePriorityQueue::getHGPartCutWeight(hg, " << p << "): " << hg.partCutWeight(p) << std::endl;
     return hg.partCutWeight(p);
   }
 

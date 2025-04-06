@@ -4,6 +4,9 @@
 - `partitioned_hypergraph.h`: `extract(..[4])`, `extractAllBlocks(..[4])`: an extracted hypergraph has no original weighted degrees, original total value **!!!** (could be solved by adding public methods `setNodeOriginalWeightedDegree(u, d)`, `setOriginalTotalVolume(w)` in hypergraphs -- not needed for now, as blocks are used by `recursive_bipartitioning.cpp`)
 - `using HypergraphVolume = uint64_t` (defined in `../datastructures/hypergraph_common.h`)
 
+### Problems:
+- test `HasCorrectGainsAfterNLevelUncontractionWithLocalizedRefinement` didn't finish in several minutes, but no _conductance_pq.lock(1) was called. Non-stopping runs of actions on github started after implementing original hypergraph stats (original volumes, original weighted degrees, ...)
+
 ### Potential problems:
 - uncontraction in relative contraction order?: reversed 
     &rarr; should be ok
@@ -312,12 +315,23 @@ TODO: write a TODO list for this section :)
 **TODO** Mark most methods as *inline* (?)
 
 #### Implementation of The ConductancePriority Queue
+##### Nonnegative Fraction
+\+ `nonnegative_fraction.h`:
+- \+ class `NonnegativeFraction<Numerator, Denominator>` in ``with `operator< , ==, >`, `double_t value()` and getters \+ setters
+- ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
+- &rarr; default versions of constructors are perfect (and are generated as only the trivial constructor is defined)
+- `denominator` could be 0: in that case, `value() = std::numeric_limits<double_t>::max()`
+- comparing cautious, to avoid overflow, division by zero:
+	- \+ `bool null()`, `isLess_nullCases(other)`, `isEqual_nullCases(other)` - to cover the case $0 / 0$ \
+		**!!!** we say $0 / 0 = -\infty, 0 / x = 0, x / 0 = +\infty$ \ 
+		this way, parts with zero weight edges are not disturbed &rarr; TODO: check if suitable 
+	- \+ `bool small()`, `isLessQuick(other)`, `isEqualQuick(other)` - by $a/b < c/d \equiv a \cdot d < b \cdot c$ \
+		**!!!** only suitable for *small* fractions (i.e. in `uint32_t`, to cause no overflow), not null cases (or else everything is equal to $0/0$ &rArr; heap problems) [debug]
+	- \+ `isLess_zeroCases(other)`, `isEqual_zeroCases(other)` - to chech for comparing fractions with zeroes in numerator **or** denumerator
+	- \+ `gcd(a, b)`, `reduce(), ``isLessSlow(one, other)`, `isEqualSlow(one, other)` - tricks with integral division and reduction: regulary check for `.._zeroCases(..)`, `small()`
+
+##### ConductancePQ
 \+ `conductance_pq.h`:
-- \+ class `NonnegativeFraction<Numerator, Denominator>` with `operator< , ==, >`, `double_t value()` and getters \+ setters
-	- ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
-	- &rarr; default versions are perfect (and are generated as only the trivial constructor is defined)
-	- `denominator` could be 0: in that case, `value() = std::numeric_limits<double_t>::max()`
-	- comparing with heuristics (0;  n > n' && d < d';  ceil(d/n) < ceil (d'/n')), only else convert n * d'and d * n' to `uintmax_t`
 - `ConductanceFraction := NonnegativeFraction<HypergraphVolume>`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$

@@ -485,7 +485,8 @@ void IncidentNetArray::construct(const HyperedgeVector& edge_vector, const Hyper
     }
     // Assign the original weighted degrees as current weighted degrees
     tbb::parallel_for(ID(0), _num_hypernodes, [&](const HypernodeID pos) {
-      header(pos)->original_weighted_degree = header(pos)->weighted_degree.load();
+      Header* head = header(pos);
+      head->original_weighted_degree = head->weighted_degree.load();
     });
   }
 }

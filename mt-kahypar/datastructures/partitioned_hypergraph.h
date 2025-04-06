@@ -891,7 +891,7 @@ class PartitionedHypergraph {
                       const DeltaFunction& delta_func,
                       const NotificationFunc& notify_func = NOOP_NOTIFY_FUNC,
                       const bool force_moving_fixed_vertices = false) {
-    /// [debug] std::cerr << "PartitionedHypergraph::changeNodePart(u, from, to, max_weight_to, report_success, delta_func, notify_func, force_moving_fixed_vertices)" << std::endl;
+    /// [debug] std::cerr << "PartitionedHypergraph::changeNodePart(" << V(u) << ", " << V(from) << ", " << V(to) << ", " << V(max_weight_to) << ", report_success, delta_func, notify_func, " << V(force_moving_fixed_vertices) << ")" << std::endl;
     unused(force_moving_fixed_vertices);
     ASSERT(partID(u) == from);
     ASSERT(from != to);
@@ -1729,7 +1729,7 @@ class PartitionedHypergraph {
                                                                     SynchronizedEdgeUpdate& sync_update,
                                                                     const DeltaFunction& delta_func,
                                                                     const NotificationFunc& notify_func) {
-    /// [debug] std::cerr << "PartitionedHypergraph::updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func)" << std::endl;
+    /// [debug] std::cerr << "PartitionedHypergraph::updatePinCountOfHyperedge(" V(he) << ", " << V(from) << ", " << V(to) << ", sync_update, delta_func, notify_func)" << std::endl;
     ASSERT(he < _pin_count_update_ownership.size());
     // TODO: change sync_update to contain info for calculating concuctance gain (1st and 2nd max cond cuts; total val; ...)
     //       Problem: conductance gain depends on both whole parts, not just the edge
