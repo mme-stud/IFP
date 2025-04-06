@@ -228,9 +228,7 @@ class AGainCache : public Test {
   }
 
   void simulateNLevelWithGainCacheUpdates(const bool simulate_localized_refinement) {
-    std::cerr << "231: simulateNLevelWithGain" << std::endl;
     if constexpr ( !Hypergraph::is_static_hypergraph ) {
-      std::cerr << "233: is not static" << std::endl;
       // Coarsening
       utils::Randomize& rand = utils::Randomize::instance();
       std::atomic<HypernodeID> current_num_nodes(hypergraph.initialNumNodes());
@@ -254,26 +252,20 @@ class AGainCache : public Test {
                 const HypernodeID rep = representatives[rand.getRandomInt(
                   0, static_cast<int>(representatives.size() - 1), THREAD_ID)];
                 if ( hypergraph.registerContraction(hn, rep) ) {
-                  std::cerr << "257: befor contract" << std::endl;
                   current_num_nodes -= hypergraph.contract(
                     rep, std::numeric_limits<HypernodeWeight>::max());
-                  std::cerr << "260: after contract" << std::endl;
                 }
                 representatives.clear();
               }
             }
           });
         if ( current_num_nodes.load() == num_nodes_before_pass ) break;
-        std::cerr << "267: befor remove single ..." << std::endl;
         parallel_hes.emplace_back(
           hypergraph.removeSinglePinAndParallelHyperedges());
-        std::cerr << "270: after remove single ..." << std::endl;
       }
 
-      std::cerr << "273: befor initialize part ..." << std::endl;
       // Initial Partitioning
       initializePartition(true);
-      std::cerr << "276: after initialize part ..." << std::endl;
       gain_cache.initializeGainCache(partitioned_hg);
 
       // Uncoarsening
