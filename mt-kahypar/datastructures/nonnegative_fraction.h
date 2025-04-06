@@ -4,6 +4,13 @@
 namespace mt_kahypar {
 namespace ds {
 
+
+
+/**
+ * @brief Non-negative Fraction for the conductance priority queue.
+ * Numerator and denominator are nonnegative numbers.
+ * 0 / 0 = -inf, x / 0 = +inf
+ */
 template <typename Numerator>
 class NonnegativeFraction {
   using Denominator = Numerator;

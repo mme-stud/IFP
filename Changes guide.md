@@ -330,6 +330,15 @@ TODO: write a TODO list for this section :)
 	- \+ `isLess_zeroCases(other)`, `isEqual_zeroCases(other)` - to chech for comparing fractions with zeroes in numerator **or** denumerator
 	- \+ `gcd(a, b)`, `reduce(), ``isLessSlow(one, other)`, `isEqualSlow(one, other)` - tricks with integral division and reduction: regulary check for `.._zeroCases(..)`, `small()`
 
+##### Delta Value 
+Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDeltas(..)` of `conductance_pq.h`
+
+\+ `delta_val.h`:
++ \+ `Deltavalue<NonnegativeNumT>` - Delta Value for adjusting keys in the conductance pririty queue during parallel calls of `changeNodePart(u, from, to, ..)`. \ Value `_val` is always non-negative. Boolean flag `_negative` tells the sign.:
+	+ \+ getters `bool isNegative()`, `NonnegativeNumT abs()`, `operator<<`
+	+ \+ operators `+=, -=, -, +, >, <, ==, !=` for arithmetics with other `DeltaValue` or `NonnegariveNumT`. **!!!** `NonnegativeNumT` shouldn't go first (?)
+	- all arithmetical operators use `operator+= (NonnegativeNumT)` or `operator-= (NonnegativeNumT)` which contain an assertion about overflow.
+
 ##### ConductancePQ
 \+ `conductance_pq.h`:
 - `ConductanceFraction := NonnegativeFraction<HypergraphVolume>`
@@ -347,7 +356,12 @@ TODO: write a TODO list for this section :)
 	- \+ `adjustKey(p, cut_weight, volume, sync)` - uses `SuperPQ::adjustKey(..)`.  \ 
 		**!!!** `SuperPQ::adjustKey(..)` does nothing when fractions are equal as fractions \
 		&rArr; the new numerator and denumerator are not set automaticly, if proportion is the same \
-		&rArr; manualy change key in the `SuperPQ::heap` **after** calling `SuperPQ::adjustKey(..)` [debug]
+		&rArr; manualy change key in the `SuperPQ::heap` **after** calling `SuperPQ::adjustKey(..)` [debug] \
+		**!!!** isn't used by any function (previously used by `changeNodePart`), but due to synchronization problems is replaced by `adjustKeyByDeltas`
+	+ \+ ``adjustKeyByDeltas()` - used by `changeNodePart(..)` of `partitioned_hypergraph.h` to accumulate changes in `_part_cut_weights[p]` and `_part_volumes[p]` / `_part_original_volumes[p]` and apply them only once they look 'reasonable' (nonnegative cut weights or part volumes; cut weights or part volumes that are greater than `_total_volume`; cut weights and part volumes that are as sum greater than `_total_volume`) \
+	After calling `SuoerPQ::adjustKey(p, f)` we still (as in `adjustLKey(..)`) need to set `SuperPQ::heap[position[p]] = f`
+	+ \+ `vec<DeltaV> _delta_part_volumes, _delta_cut_weights` with `using DeltaV = DeltaValue<HypergraphVolume>` - set empty in constructor, filled with `0` in `initialize()`, cleared in `reset()`, asserted as filles with `0` in `flobalUpdate(hg)`, `check(hg)`, `uodateTotalVolume(..)` \
+	used for `adjustKeyByDeltas(..)`  to accumulate changes in `_part_cut_weights[p]` and the correct version of part volumes (current or original), that are clearly not yet finished (due to simultaneous calles of `changeNodePart` of `partitioned_hypergraph.h`). This changed are applied once they look *reasonable* (see `adjustKeyByDeltas(..)`)
 	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
 	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
 	- \+ `bool isHeap() const` - version with hushed log
@@ -380,12 +394,17 @@ Update of `_conductance_pq` (if enabled):
 `partitioned_hypergraph.h`:
 + \+ `#include "conductance_pq.h"`
 + \+ `ConductancePriorityQueue<Self> _conductance_pq` - attribute
+
 + \+ `private bool _has_conductance_pq = fasle` - is set to `true` **at the end** of initialization, `_conductance_pq` 
 + \+ `private bool _uses_conductance_pq = true` - if set to `false`, no conductance priority queue is not maintained
 + \+ `bool needsConductancePriorityQueue()` - initializes pq, if it should be done, but wasnt done yet:
 	- ~~ **!!!** Called at the end of `partitionImpl()` for all defined partitioners!~~ \
 	[undone, because `multilevel.cpp` uses `setOnlyNodePart()` + `initializePartition()` &rArr; `_conductance_pq` is initialized after setting all the `PartitionID`-s]
 + \+ `bool hasConductancePriorityQueue() const` - just returns `_has_conductance_pq`. Is called by all getters to conductance pq (top etc)
+
++ \+ `bool _conductance_pq_uses_original_stats = true`, `conductancePriorityQueueUsesOriginalStats()` - `enableConductancePriorityQueue()` looks at `_conductance_pq_uses_original_stats` and configures `_conductance_pq`
++ \+ `disableUsageOfOriginalStatsByConductancePriorityQueue()`, `enableUsageOfOriginalStatsByConductancePriorityQueue()`
+
 + \+ `enableConductancePriorityQueue()` - initializes pq
 - \+ `double_t conductance(p)` - calculates conductance of a partition without using `_conductance_pq` \
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
@@ -408,9 +427,10 @@ Update of `_conductance_pq` (if enabled):
 - `setNodePart(u, p)` - sets partition for the first time \
 	&rArr; `_conductance_pq` shouldn't be initialized yet \
 	&rArr; not touched
-- `changeNodePart(u, from, to, ...)`: call `adjustKey()` for `from` and `to` \
+- `changeNodePart(u, from, to, ...)`: call ~~`adjustKey()`~~ `adjustKeyByDeltas(..)` for `from` and `to`  to avoid needing heaby locks and to not break `_conductance_pq` \
 	!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight \
-	**!!!** lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] 
+	**!!!** ~~lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] ~~ [debug + adjustKeyByDeltas] 
+- &rArr; force `updatePinCountOfHyperedge(..)` to return deltas of `part_cut_weights` pf `from` and `to` as `vec<DeltaValue<hypergraphVolume>>` (`<from, to>`)
 - `initializePartition()` - for now initialized pq here--- \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
 - `resetPartition()`: calls `resetConductancePriorityQueue()`
@@ -830,7 +850,7 @@ Contraction of 2 nodes decreases volume by the sum of weights of their shared ne
 	+ \+ `initializeBlockOriginalVolumes()`
 	+ \+ `applyPartOriginalVolumeUpdates(vec<HypergraphVolume>&)` - for now, needed only for `initializeBlockOriginalVolumes()`
 	+ \+ `double_t originalConductance(p)`
-	+ \+ `conductancePriorityQueueUsesOriginalStats()`
+	+ \+ `bool _conductance_pq_uses_original_stats = true`, `conductancePriorityQueueUsesOriginalStats()` - `enableConductancePriorityQueue()` looks at `_conductance_pq_uses_original_stats` and configures `_conductance_pq` accordingly
 	+ \+ `disableUsageOfOriginalStatsByConductancePriorityQueue()`, `enableUsageOfOriginalStatsByConductancePriorityQueue()`
 	- set in 2 constructors, reset in `resetData()` 
 	- `setK(k, ..[1])` - resize `_part_original_volumes` !!! [debug]

@@ -12,6 +12,8 @@
 #include "mt-kahypar/datastructures/priority_queue.h"
 #include "mt-kahypar/datastructures/nonnegative_fraction.h"
 
+#include "mt-kahypar/datastructures/delta_val.h"
+
 namespace mt_kahypar {
 namespace ds {
 
@@ -29,12 +31,15 @@ class ConductancePriorityQueue :
       protected ExclusiveHandleHeap<MaxHeap<ConductanceFraction, PartitionID>> {
 private:
   using SuperPQ = ExclusiveHandleHeap<MaxHeap<ConductanceFraction, PartitionID>>;
+  using DeltaV = DeltaValue<HypergraphVolume>;
 public:
   ConductancePriorityQueue() :
     SuperPQ(0),
     _total_volume(-1),
     _size(0),
     _complement_val_bits(),
+    _delta_part_volumes(),
+    _delta_cut_weights(),
     _initialized(false)
     { }
   
@@ -51,6 +56,8 @@ public:
     _total_volume = getHGTotalVolume(hg);
     _size = hg.k();
     _complement_val_bits.resize(_size);
+    _delta_part_volumes.resize(_size, 0);
+    _delta_cut_weights.resize(_size, 0);
     SuperPQ::clear();
     SuperPQ::resize(_size);
     SuperPQ::heap.resize(_size);
@@ -82,6 +89,8 @@ public:
     _total_volume = -1;
     _size = 0;
     _complement_val_bits.clear();
+    _delta_part_volumes.clear();
+    _delta_cut_weights.clear();
     _initialized = false;
     unlock(synchronized);
   }
@@ -89,7 +98,8 @@ public:
   // ! Returns an approximate memory consumption of the conductance priority queue in bytes
   size_t memoryConsumption() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::memoryConsumption()" << std::endl;
-    return SuperPQ::memoryConsumption() + _complement_val_bits.size() * sizeof(bool);
+    return SuperPQ::memoryConsumption() + _complement_val_bits.size() * sizeof(bool)
+    + (_delta_cut_weights.size() + _delta_part_volumes.size()) * (sizeof(bool) + sizeof(HypergraphVolume));
   }
 
   // ! Updates the priority queue after global changes in partition
@@ -104,12 +114,13 @@ public:
     tbb::parallel_for(PartitionID(0), _size, [&](const PartitionID& p) {
       HypergraphVolume cut_weight = getHGPartCutWeight(hg, p);
       HypergraphVolume part_volume = getHGPartVolume(hg, p);
-      ASSERT(part_volume <= _total_volume, "Partition volume" << part_volume << "is greater than total volume" << _total_volume);
-      ASSERT(cut_weight <= part_volume, "Cut weight" << cut_weight << "is greater than partition volume" << part_volume);
-      ASSERT(cut_weight + part_volume <= _total_volume, "Cut weight" << cut_weight << "and partition volume" << part_volume << "is greater than total volume" << _total_volume);
+      ASSERT(part_volume <= _total_volume, "Partition volume " << part_volume << " is greater than total volume " << _total_volume);
+      ASSERT(cut_weight <= part_volume, "Cut weight " << cut_weight << " is greater than partition volume " << part_volume);
+      ASSERT(cut_weight + part_volume <= _total_volume, "Cut weight " << cut_weight << " plus partition volume " << part_volume << " is greater than total volume " << _total_volume);
       _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
       ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
       SuperPQ::heap[SuperPQ::positions[p]].key = f;
+      ASSERT(_delta_cut_weights[p] == 0 && _delta_part_volumes[p] == 0, "Deltas should be empty: " << V(_delta_cut_weights[p]) << ", " V(_delta_part_volumes[p]));
     });
     buildHeap();
     unlock(synchronized);
@@ -142,6 +153,11 @@ public:
         correct = false;
         LOG << "Cut weight of partition in ConductancePriorityQueue" << V(p) << "is" << V(cut_weight) << ", but should be" << getHGPartCutWeight(hg, p);
       }
+      // Deltas should be empty after changeNodePart-stage is empty. And check is called only then
+      if (_delta_part_volumes[p] != 0 || _delta_cut_weights[p] != 0) {
+        correct = false;
+        LOG << "Deltas should be always empty, when changeNodePart-stage is finished: " << V(_delta_part_volumes[p]) << ", " << V(_delta_cut_weights[p]);
+      }
     }
     correct = correct && SuperPQ::isHeap() && SuperPQ::positionsMatch();
     return correct;
@@ -169,8 +185,9 @@ public:
     return true;
   }
 
-  // ! Adjusts the cut weight and the volume of a partition
+  // ! Adjusts the cut weight and the volume of a partition by values
   // ! changes pq => uses a lock  
+  // ! Needs exact new values => discouraged from usage due to patential data race 
   void adjustKey(const PartitionID& p, const HypergraphVolume& cut_weight, const HypergraphVolume& part_volume, bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " << V(cut_weight) << ", " << V(part_volume) << ", " << V(synchronized) << ")" << std::endl;
     ASSERT(_initialized);
@@ -179,15 +196,11 @@ public:
       // this update is incorrect (potentially due to concurrency) => will be redone later
       // [used by changeNodePart, where only for the last thread changing partition p 
       //                                  the right stats are guaranteed]
-      LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " 
-          << V(cut_weight) << ", " << V(part_volume) << ") is skipped due to incorrect stats: "
-          << " " << V(_total_volume) << ". "
-          << "[shouldn't be a problem]";
+      // LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " << V(cut_weight) << ", " << V(part_volume) << ") is skipped due to incorrect stats: " << " " << V(_total_volume) << ". " << "[shouldn't be a problem]";
       return;
     }
     lock(synchronized);
-     LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " 
-     << V(cut_weight) << ", " << V(part_volume) << ") is started";
+    // LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " << V(cut_weight) << ", " << V(part_volume) << ") is started";
     _complement_val_bits[p] = (part_volume > _total_volume - part_volume);
     ConductanceFraction f(cut_weight, std::min(part_volume, _total_volume - part_volume));
     SuperPQ::adjustKey(p, f);
@@ -195,11 +208,70 @@ public:
     // so SuperPQ::adjustKey(p, f) would not change the key to the new one
     // but in ConductancePriorityQueue we need to set the key to the exact numerator and denominator
     // as they have meaning in the context of the hypergraph
-    LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " 
-     << V(cut_weight) << ", " << V(part_volume) << ") is finished";
+    // LOG << "ConductancePriorityQueue::adjustKey(" << V(p) << ", " << V(cut_weight) << ", " << V(part_volume) << ") is finished";
     unlock(synchronized);
   }
   
+  // ! Adjusts the cut weight and the volume of a partition by deltas of theis values
+  // ! Used only by changeNodePart, where only for the last thread changing partition p 
+  // ! the right stats are guaranteed
+  // changes pq => uses a lock
+  // Skips clearly not finished updates (_total_value < _part_volume etc)
+  // Maintains deltas of skipped updates
+  void adjustKeyByDeltas(const PartitionID& p, 
+                         const DeltaV& d_cut_weight, 
+                         const DeltaV& d_part_volume, 
+                         bool synchronized = true) {
+    /// [debug] std::cerr << "ConductancePriorityQueue::adjustKeyByDeltas(" << V(p) << ", " << V(d_cut_weight) << ", " << V(d_part_volume) << ", " << V(synchronized) << ")" << std::endl;
+    ASSERT(_initialized);
+    ASSERT(static_cast<size_t>(_size) == _complement_val_bits.size());
+    lock(synchronized);
+    // Update daltas
+    _delta_part_volumes[p] += d_part_volume;
+    _delta_cut_weights[p] += d_cut_weight;
+
+    // Get current values
+    ConductanceFraction f = SuperPQ::getKey(p);
+    HypergraphVolume cut_weight = f.getNumerator();
+    HypergraphVolume part_volume = f.getDenominator();
+    if (_complement_val_bits[p]) {
+      ASSERT(_total_volume >= part_volume);
+      part_volume = _total_volume - part_volume;
+    }
+    // Check if update could be skipped as clearly not finished
+    DeltaV new_cut_weight = _delta_cut_weights[p] + cut_weight;
+    if (new_cut_weight.isNegative() || new_cut_weight.abs() > _total_volume) {
+      // skip this update, as it is not finished
+      // LOG << "ConductancePriorityQueue::adjustKeyByDeltas(" << V(p) << ", " << V(d_cut_weight) << ", " << V(d_part_volume) << ") is skipped due to incorrect stats: " << " " << V(_total_volume) << ", " << V(new_cut_weight) << ", " << V(new_part_volume) << ". [shouldn't be a problem]";
+      unlock(synchronized);
+      return;
+    }
+    DeltaV new_part_volume = _delta_part_volumes[p] + part_volume;
+    if (new_part_volume.isNegative() || new_part_volume.abs() > _total_volume || (new_cut_weight + new_part_volume).abs() > _total_volume) {
+      // skip this update, as it is not finished
+      // LOG << "ConductancePriorityQueue::adjustKeyByDeltas(" << V(p) << ", " << V(d_cut_weight) << ", " << V(d_part_volume) << ") is skipped due to incorrect stats: " << " " << V(_total_volume) << ", " << V(new_cut_weight) << ", " << V(new_part_volume) << ". [shouldn't be a problem]";
+      unlock(synchronized);
+      return;
+    }
+   
+    // Didn't skip the update
+    // LOG << "ConductancePriorityQueue::adjustKeyByDeltas(" << V(p) << ", " << V(new_cut_weight) << ", " << V(new_part_volume) << ") is started";
+    
+    // Clear deltas
+    _delta_cut_weights[p] = 0;  _delta_part_volumes[p] = 0;
+    // Adjust key
+    _complement_val_bits[p] = (new_part_volume.abs() > _total_volume - new_part_volume.abs());
+    ConductanceFraction newF(new_cut_weight.abs(), std::min(new_part_volume.abs(), _total_volume - new_part_volume.abs()));
+    SuperPQ::adjustKey(p, newF);
+    SuperPQ::heap[SuperPQ::positions[p]].key = newF; // needed, as the fraction are equal if their reduced forms are equal
+    // so SuperPQ::adjustKey(p, f) would not change the key to the new one
+    // but in ConductancePriorityQueue we need to set the key to the exact numerator and denominator
+    // as they have meaning in the context of the hypergraph
+
+    // LOG << "ConductancePriorityQueue::adjustKeyByDeltas(" << V(p) << ", " << V(new_cut_weight) << ", " << V(new_part_volume) << ") is finished";
+    unlock(synchronized);
+  }
+
   // ! Updates PQ after total volume of the hypergraph has changed
   // ! changes pq => uses a lock
   void updateTotalVolume(const HypergraphVolume& new_total_volume, bool synchronized = true) {
@@ -215,6 +287,7 @@ public:
       }
       _complement_val_bits[p] = (part_volume > new_total_volume - part_volume);
       f.setDenominator(std::min(part_volume, new_total_volume - part_volume));
+      ASSERT(_delta_cut_weights[p] == 0 && _delta_part_volumes[p] == 0, "Deltas should be empty: " << V(_delta_cut_weights[p]) << ", " V(_delta_part_volumes[p]));
     }
     buildHeap();
     _total_volume = new_total_volume;
@@ -471,6 +544,8 @@ private:
   HypergraphVolume _total_volume;
   PartitionID _size;
   vec<bool> _complement_val_bits;
+  vec<DeltaV> _delta_part_volumes;
+  vec<DeltaV> _delta_cut_weights;
   bool _uses_original_stats = true;
   bool _initialized;
 };

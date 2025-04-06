@@ -324,11 +324,17 @@ class PartitionedHypergraph {
   }
 
   // ! Enables the conductance priority queue
+  // ! Sets up usage of original / current HG stats as set in _conductance_pq_uses_original_stats
   void enableConductancePriorityQueue() {
     /// [debug] std::cerr << "PartitionedHypergraph::enableConductancePriorityQueue()" << std::endl;
     ASSERT(_needs_conductance_pq);
     if (_has_conductance_pq) {
       return;
+    }
+    if (_conductance_pq_uses_original_stats) {
+      _conductance_pq.enableUsageOfOriginalHGStats();
+    } else {
+      _conductance_pq.disableUsageOfOriginalHGStats();
     }
     _conductance_pq.initialize(*this, false /* not synchronized */);
     _has_conductance_pq = true;
@@ -360,7 +366,8 @@ class PartitionedHypergraph {
   // ! (i.e. original part volumes, original total volume)
   bool conductancePriorityQueueUsesOriginalStats() const {
     /// [debug] std::cerr << "PartitionedHypergraph::usesOriginalWeightedDegrees()" << std::endl;
-    return _conductance_pq.usesOriginalStats();
+    ASSERT(_conductance_pq_uses_original_stats == _conductance_pq.usesOriginalStats());
+    return _conductance_pq_uses_original_stats;
   }
 
   // ! Used for testing
@@ -373,7 +380,7 @@ class PartitionedHypergraph {
       return;
     }
     resetConductancePriorityQueue();
-    _conductance_pq.disableUsageOfOriginalHGStats();
+    _conductance_pq_uses_original_stats = false;
     enableConductancePriorityQueue();
     ASSERT_FALSE(conductancePriorityQueueUsesOriginalStats());
   }
@@ -388,7 +395,7 @@ class PartitionedHypergraph {
       return;
     }
     resetConductancePriorityQueue();
-    _conductance_pq.enableUsageOfOriginalHGStats();
+    _conductance_pq_uses_original_stats = true;
     enableConductancePriorityQueue();
     ASSERT(conductancePriorityQueueUsesOriginalStats());
   }
@@ -902,16 +909,31 @@ class PartitionedHypergraph {
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
 
-      // To avoid simultanious changes in HG stats and conductance_pq
-      _conductance_pq.lock(true /* synchronized */);
-        // update _part_volumes
-        decrementVolumeOfBlock(from, nodeWeightedDegree(u));
-        incrementVolumeOfBlock(to, nodeWeightedDegree(u));
-        // update _part_original_volumes
-        decrementOriginalVolumeOfBlock(from, nodeOriginalWeightedDegree(u));
-        incrementOriginalVolumeOfBlock(to, nodeOriginalWeightedDegree(u));
-      _conductance_pq.unlock(true /* synchronized */);
+      // To avoid simultanious in HG stats and conductance_pq use deltas instead of heavy locks
+      DeltaValue<HypergraphVolume> d_part_volume_ver_from(0); // version used by _conductance_pq
+      DeltaValue<HypergraphVolume> d_part_volume_ver_to(0); // version used by _conductance_pq
+      DeltaValue<HypergraphVolume> d_cut_weight_from(0);
+      DeltaValue<HypergraphVolume> d_cut_weight_to(0);
 
+      // Update part volumes
+      HypergraphVolume node_weighted_deg_u = nodeWeightedDegree(u);
+      HypergraphVolume node_original_weighted_deg_u = nodeOriginalWeightedDegree(u);
+      // update _part_volumes
+      decrementVolumeOfBlock(from, node_weighted_deg_u);
+      incrementVolumeOfBlock(to, node_weighted_deg_u);
+      // update _part_original_volumes
+      decrementOriginalVolumeOfBlock(from, node_original_weighted_deg_u);
+      incrementOriginalVolumeOfBlock(to, node_original_weighted_deg_u);
+    
+      if (_conductance_pq_uses_original_stats) {
+        d_part_volume_ver_from -= node_original_weighted_deg_u;
+        d_part_volume_ver_to += node_original_weighted_deg_u;        
+      } else {
+        d_part_volume_ver_from -= node_weighted_deg_u;
+        d_part_volume_ver_to += node_weighted_deg_u;
+      }
+
+      // Construct sync_update
       report_success();
       SynchronizedEdgeUpdate sync_update;
       sync_update.from = from;
@@ -919,29 +941,21 @@ class PartitionedHypergraph {
       sync_update.target_graph = _target_graph;
       sync_update.edge_locks = &_pin_count_update_ownership;
 
-      // _conductance_pq.lock(true /* synchronized */); to avoid potential deadlocks 
-      // I lock the conductance_pq in updatePinCountOfHyperedge()
-      // (as locks used there are saved in the SynchronizedEdgeUpdate struct, 
-      //                which is passed to notify_func...)
+      // Update pin count and cut weights
       for ( const HyperedgeID he : incidentEdges(u) ) {
-        // updates _part_cut_weights in updatePinCountOfHyperedge(...)
-        updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
+        // updates _part_cut_weights in updatePinCountOfHyperedge(...), returns deltas <from, to>
+        vec<DeltaValue<HypergraphVolume>> d_cut_weights = updatePinCountOfHyperedge(he, from, to, sync_update, delta_func, notify_func);
+        d_cut_weight_from += d_cut_weights[0];
+        d_cut_weight_to += d_cut_weights[1];
         // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
       }
-      // _conductance_pq.unlock(true /* synchronized */);
 
       // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
       if (needsConductancePriorityQueue()) { // initializes pq if needed
-        _conductance_pq.lock(true /* synchronized */);
-          if (conductancePriorityQueueUsesOriginalStats()) {
-            _conductance_pq.adjustKey(from, partCutWeight(from), partOriginalVolume(from), false /* not synchronized */);
-            _conductance_pq.adjustKey(to, partCutWeight(to), partOriginalVolume(to), false /* not synchronized */);
-          } else {
-            // uses current stats
-            _conductance_pq.adjustKey(from, partCutWeight(from), partVolume(from), false /* not synchronized */);
-            _conductance_pq.adjustKey(to, partCutWeight(to), partVolume(to), false /* not synchronized */);
-          }
-        _conductance_pq.unlock(true /* synchronized */);
+        // _conductance_pq.lock(true /* synchronized */); - update by deltsas => no locks => sync in adjust..
+          _conductance_pq.adjustKeyByDeltas(from, d_cut_weight_from, d_part_volume_ver_from, true /* synchronized */);
+          _conductance_pq.adjustKeyByDeltas(to, d_cut_weight_to, d_part_volume_ver_to, true /* synchronized */);
+        // _conductance_pq.unlock(true /* synchronized */); - update by deltas => no locks => sync in adiust..
       }
       return true;
     } else {
@@ -1723,7 +1737,8 @@ class PartitionedHypergraph {
 
   // ! Updates pin count in part using a spinlock.
   // ! Also updates _part_cut_weights (after my adjustments)
-  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void updatePinCountOfHyperedge(const HyperedgeID he,
+  // Returns deltas of part cut weights: <from, to>
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE vec<DeltaValue<HypergraphVolume>> updatePinCountOfHyperedge(const HyperedgeID he,
                                                                     const PartitionID from,
                                                                     const PartitionID to,
                                                                     SynchronizedEdgeUpdate& sync_update,
@@ -1731,6 +1746,8 @@ class PartitionedHypergraph {
                                                                     const NotificationFunc& notify_func) {
     /// [debug] std::cerr << "PartitionedHypergraph::updatePinCountOfHyperedge(" V(he) << ", " << V(from) << ", " << V(to) << ", sync_update, delta_func, notify_func)" << std::endl;
     ASSERT(he < _pin_count_update_ownership.size());
+    
+    // Update pin counts
     // TODO: change sync_update to contain info for calculating concuctance gain (1st and 2nd max cond cuts; total val; ...)
     //       Problem: conductance gain depends on both whole parts, not just the edge
     sync_update.he = he;
@@ -1744,27 +1761,34 @@ class PartitionedHypergraph {
     sync_update.connectivity_set_after = hasTargetGraph() ? &deepCopyOfConnectivitySet(he) : nullptr;
     sync_update.pin_counts_after = hasTargetGraph() ? &_con_info.pinCountSnapshot(he) : nullptr;
     const HypernodeID new_pins_in_to_part = pinCountInPart(he, to);
-    // update _part_cut_weights for "from" part
-    _conductance_pq.lock(true /* synchronized */); // to ensure that the conductance priority queue is not updated while we are updating the pin counts
+    
+    // Update _part_cut_weights for "from" part
+    // Acquire deltas <from, to>
+    vec<DeltaValue<HypergraphVolume>> d_cut_weights(2, 0); // 2 elements equal to 0
     if (HypernodeID(1) == old_pins_in_from_part && old_pins_in_from_part < edgeSize(he)) {
       // he was a cutting edge for part "from", but not anymore
       _part_cut_weights[from].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
+      d_cut_weights[0] -= static_cast<HypergraphVolume>(edgeWeight(he)); // from
     } else if (HypernodeID(1) < old_pins_in_from_part && old_pins_in_from_part == edgeSize(he)) {
       // he was not a cutting edge for part "from", but now is
       _part_cut_weights[from].fetch_add(edgeWeight(he), std::memory_order_relaxed);
+      d_cut_weights[0] += static_cast<HypergraphVolume>(edgeWeight(he)); // from
     }
     // update _part_cut_weights for "to" part
     if (HypernodeID(1) == new_pins_in_to_part && new_pins_in_to_part < edgeSize(he)) {
       // he was not a cutting edge for part to, but now is
       _part_cut_weights[to].fetch_add(edgeWeight(he), std::memory_order_relaxed);
+      d_cut_weights[1] += static_cast<HypergraphVolume>(edgeWeight(he)); // to
     } else if (HypernodeID(1) < new_pins_in_to_part && new_pins_in_to_part == edgeSize(he)) {
       // he was a cutting edge for part "to", but not anymore
       _part_cut_weights[to].fetch_sub(edgeWeight(he), std::memory_order_relaxed);
+      d_cut_weights[1] -= static_cast<HypergraphVolume>(edgeWeight(he)); // to
     }
-    _conductance_pq.unlock(true /* synchronized */);
     // for all other parts, _part_cut_weights remains the same
     _pin_count_update_ownership[he].unlock();
     delta_func(sync_update);
+
+    return d_cut_weights;
   }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
@@ -1862,6 +1886,8 @@ class PartitionedHypergraph {
   bool _has_conductance_pq = false;
   // ! Flag indicating whether the conductance priority queue is needed
   bool _needs_conductance_pq = true;
+  // ! Flag indicating usage of original hypergraph stats by _conductance_pq
+  bool _conductance_pq_uses_original_stats = true;
 
   // ! Weight and information for all blocks.
   vec< CAtomic<HypernodeWeight> > _part_weights;
