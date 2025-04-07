@@ -44,10 +44,11 @@ struct BipartitioningPolicy {
       case GainPolicy::steiner_tree: return true;
       case GainPolicy::cut_for_graphs: return false;
       case GainPolicy::steiner_tree_for_graphs: return false;
-      // to be rethought later 
       // (cut nets are influencing conductance in the blocks..?)
-      case GainPolicy::conductance_local: return true;
-      case GainPolicy::conductance_global: return true;
+      case GainPolicy::conductance_local: 
+        throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_local");
+      case GainPolicy::conductance_global: 
+        throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_global");
       case GainPolicy::none: throw InvalidParameterException("Gain policy is unknown");
     }
     throw InvalidParameterException("Gain policy is unknown");
@@ -65,8 +66,10 @@ struct BipartitioningPolicy {
       // to be rethought later 
       // (but if != 1, the edge weights change
       //                => e.g. weighted degrees are broken...)
-      case GainPolicy::conductance_local: return 1;
-      case GainPolicy::conductance_global: return 1;
+      case GainPolicy::conductance_local: 
+        throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_local");
+      case GainPolicy::conductance_global:
+        throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_global");
       case GainPolicy::none: throw InvalidParameterException("Gain policy is unknown");
     }
     throw InvalidParameterException("Gain policy is unknown");

@@ -89,6 +89,9 @@ public:
 
   double_t value() const {
     if (denominator == 0) {
+      if (numerator == 0) {
+        return -std::numeric_limits<double_t>::max();
+      }
       return std::numeric_limits<double_t>::max();
     }
     return static_cast<double_t>(numerator) / static_cast<double_t>(denominator);
