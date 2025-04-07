@@ -20,9 +20,9 @@ private:
   
   static const uintmax_t MAX_QUICK = std::numeric_limits<uint32_t>::max();
 public:
-  // infinity per default
+  // -infinity per default
   NonnegativeFraction() :
-    numerator(1),
+    numerator(0),
     denominator(0) { }
 
   NonnegativeFraction(const Numerator& n, const Denominator& d) :

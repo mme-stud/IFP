@@ -19,6 +19,11 @@ namespace ds {
 
 using ConductanceFraction = NonnegativeFraction<HypergraphVolume>;
 
+struct ConductanceInfo {
+  ConductanceFraction fraction;
+  PartitionID partID;
+};
+
 
 /**
  * @brief Priority Queue for partitions based on their conductance.
@@ -295,59 +300,59 @@ public:
   }
 
   // ! Get the partition with the highest conductance: const version
-  PartitionID top() const {
+  ConductanceInfo top() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::top()" << std::endl;
-    PartitionID p = SuperPQ::top();
-    return p;
+    ConductanceInfo first = SuperPQ::heap[0];
+    return first;
   }
 
   // ! Get the partition with the highest conductance: synchronizable version
-  PartitionID topSync(bool synchronized = true) {
+  ConductanceInfo topSync(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::topSync(" << V(synchronized) << ")" << std::endl;
     lock(synchronized);
-    PartitionID p = top();
+    ConductanceInfo first = top();
     unlock(synchronized);
-    return p;
+    return first;
   }
 
   // ! Get the partition with the second highest conductance: const version
-  PartitionID secondTop() const {
+  ConductanceInfo secondTop() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::secondTop()" << std::endl;
     ASSERT(SuperPQ::size() > 1);
-    PartitionID f = SuperPQ::heap[1].id;
+    ConductanceInfo second = SuperPQ::heap[1];
     // ConductancePriorityQueue is a MaxHeap => binary tree
     if (size() > 2 && SuperPQ::heap[1].key < SuperPQ::heap[2].key) {
-      f = SuperPQ::heap[2].id;
+      second = SuperPQ::heap[2];
     }
-    return f;
+    return second;
   }
   
   // ! Get the partition with the second highest conductance: synchronizable version
-  PartitionID secondTopSync(bool synchronized = true) {
+  ConductanceInfo secondTopSync(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::secondTopSync(" << V(synchronized) << ")" << std::endl;
     lock(synchronized);
-    PartitionID f = secondTop();
+    ConductanceInfo second = secondTop();
     unlock(synchronized);
-    return f;
+    return second;
   }
 
-  // ! Get the top three partitions (unsorted): constant version
+  // ! Get ConductanceInfo of the top three partitions (unsorted, [0] is max): constant version
   // ! (Works only for a binary heap)
-  vec<PartitionID> topThree() const {
+  vec<ConductanceInfo> topThree() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::topThree()" << std::endl;
-    vec<PartitionID> top_three(3, kInvalidPartition);
+    vec<ConductanceInfo> top_three(3, ConductanceInfo { ConductanceFraction(0, 0), kInvalidPartition});
     for (size_t i = 0; i < 3 && i < _size; ++i) {
-      top_three[i] = SuperPQ::heap[i].id;
+      top_three[i] = SuperPQ::heap[i]; // HeapElement { KeyT, IdT }
     }
     return top_three;
   }
 
-  // ! Get the top three partitions (unsorted): synchronizable version
+  // ! Get ConductanceInfo of the top three partitions (unsorted, [0] is max): synchronizable version
   // ! (Works only for a binary heap)
-  vec<PartitionID> topThreeSync(bool synchronized = true) {
+  vec<ConductanceInfo> topThreeSync(bool synchronized = true) {
     /// [debug] std::cerr << "ConductancePriorityQueue::topThreeSync(" << V(synchronized) << ")" << std::endl;
     lock(synchronized);
-    vec<PartitionID> top_three = topThree();
+    vec<ConductanceInfo> top_three = topThree();
     unlock(synchronized);
     return top_three;
   }

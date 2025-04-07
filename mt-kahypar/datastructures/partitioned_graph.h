@@ -1104,7 +1104,7 @@ private:
     return 0;
   }
 
-  // ! iNITIALIZE part cut weights: not supported
+  // ! Initialize part cut weights: not supported
   void initializeBlockCutWeights() {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
   }
@@ -1132,19 +1132,19 @@ private:
   }
 
   // ! Get the partition with the hightes conductance: not supported
-  PartitionID topConductancePart() const {
+  ConductanceInfo topPartConductanceInfo() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return 0;
   }
 
   // ! Get the partition with the second highest conductance: not supported
-  PartitionID secondTopConductancePart() const {
+  ConductanceInfo secondTopPartConductanceInfo() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return 0;
   }
 
   // ! Get top 3 partitions with the highest conductance: not supported
-  vec<PartitionID> topThreeConductanceParts() const {
+  vec<ConductanceInfo> topThreePartConductanceInfos() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return {};
   }

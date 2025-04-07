@@ -79,22 +79,41 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
   HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
-    // const ConductancePriorityQueue<PartitionedHypergraph>* conductance_pq = phg.conductancePriorityQueue();
-    // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
-    const PartitionID part_with_biggest_conductance = phg.topConductancePart();
-    ASSERT(0 <= part_with_biggest_conductance && part_with_biggest_conductance < phg.k());
-    const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, part_with_biggest_conductance);
+
+    const ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+    const PartitionID top_part = top_conductance_info.partID;
+    const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, top_part);
+    ASSERT(0 <= top_part && top_part < phg.k());
+
     if (pin_count_he_in_part == 0 || pin_count_he_in_part == phg.edgeSize(he)) {
       // not a cutting edge => contributes by 0
       return 0;
     } else {
       // cutting edge => contributes by its weight / min(vol, total_vol - vol)
-      double conductance_contribution = static_cast<double>(phg.edgeWeight(he)) /
-                          static_cast<double>(std::min(pin_count_he_in_part, phg.edgeSize(he) - pin_count_he_in_part));
-      double current_multiplier = static_cast<double>(phg.totalVolume()) / static_cast<double>(phg.k());
-      // TODO: make current_multiplier a parameter / member of phg, ASK ABOUT THIS APPROACH
-      double scaled_contribution = conductance_contribution * current_multiplier;
-      ASSERT(0 <= scaled_contribution && scaled_contribution <= std::numeric_limits<HyperedgeWeight>::max());
+      const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
+      const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
+                                                        phg.originalTotalVolume() : 
+                                                        phg.totalVolume();
+      ASSERT(top_part_min_volume != 0);
+      ASSERT(total_volume_version != 0);
+
+      double_t conductance_contribution = static_cast<double_t>(phg.edgeWeight(he)) /
+                                          static_cast<double_t>(top_part_min_volume);
+      double_t current_multiplier = static_cast<double_t>(phg.totalVolume()) / 
+                                    static_cast<double_t>(phg.k());
+      // double_t scaled_contribution = conductance_contribution * current_multiplier;
+      double_t scaled_contribution = 
+          (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
+          (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
+      
+      ASSERT(0 <= scaled_contribution);
+
+      HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      if (value_threshold < scaled_contribution) {
+        LOG << "Scaled of hyperedge " << he << " is too big: " << V(scaled_contribution) 
+            << ". It is rounded to " << value_threshold;
+        return value_threshold;
+      }
       return static_cast<HyperedgeWeight>(scaled_contribution);
     }
     // TODO: several parts with the same conductance?
@@ -106,28 +125,44 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
   HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
-    // const ConductancePriorityQueue<PartitionedHypergraph>* conductance_pq = phg.conductancePriorityQueue();
-    // const PartitionID part_with_biggest_conductance = conductance_pq->getTopKey();
-    const PartitionID part_with_biggest_conductance = phg.topConductancePart();
-    ASSERT(0 <= part_with_biggest_conductance && part_with_biggest_conductance < phg.k());
-    const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, part_with_biggest_conductance);
+
+    const ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+    const PartitionID top_part = top_conductance_info.partID;
+    const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, top_part);
+    ASSERT(0 <= top_part && top_part < phg.k());
+
     if (pin_count_he_in_part == 0 || pin_count_he_in_part == phg.edgeSize(he)) {
       // not a cutting edge => contributes by 0
       return 0;
     } else {
       // cutting edge => contributes by its weight / min(vol, total_vol - vol)
-      double conductance_contribution = static_cast<double>(phg.edgeWeight(he)) /
-                          static_cast<double>(std::min(pin_count_he_in_part, phg.edgeSize(he) - pin_count_he_in_part));
-      double current_multiplier = static_cast<double>(phg.totalVolume()) / static_cast<double>(phg.k());
-      // TODO: make current_multiplier a parameter / member of phg, ASK ABOUT THIS APPROACH
-      double scaled_contribution = conductance_contribution * current_multiplier;
-      if (0 <= scaled_contribution && scaled_contribution <= std::numeric_limits<HyperedgeWeight>::max()) {
-        return static_cast<HyperedgeWeight>(conductance_contribution * current_multiplier);
-      } else {
-        std::cerr << "Gain of hyperedge " << he << " is too large: " << scaled_contribution << std::endl;
-        return std::numeric_limits<HyperedgeWeight>::max();
+      const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
+      const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
+                                                        phg.originalTotalVolume() : 
+                                                        phg.totalVolume();
+      ASSERT(top_part_min_volume != 0);
+      ASSERT(total_volume_version != 0);
+
+      double_t conductance_contribution = static_cast<double_t>(phg.edgeWeight(he)) /
+                                          static_cast<double_t>(top_part_min_volume);
+      double_t current_multiplier = static_cast<double_t>(phg.totalVolume()) / 
+                                    static_cast<double_t>(phg.k());
+      // double_t scaled_contribution = conductance_contribution * current_multiplier;
+      double_t scaled_contribution = 
+          (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
+          (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
+      
+      ASSERT(0 <= scaled_contribution);
+
+      HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      if (value_threshold < scaled_contribution) {
+        LOG << "Scaled of hyperedge " << he << " is too big: " << V(scaled_contribution) 
+            << ". It is rounded to " << value_threshold;
+        return value_threshold;
       }
+      return static_cast<HyperedgeWeight>(scaled_contribution);
     }
+    // TODO: several parts with the same conductance?
   }
 };
 
