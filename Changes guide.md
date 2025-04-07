@@ -320,6 +320,7 @@ TODO: write a TODO list for this section :)
 - \+ class `NonnegativeFraction<Numerator, Denominator>` in ``with `operator< , ==, >`, `double_t value()` and getters \+ setters
 - ~~\+ default `operator=(&)`, `operator=(&&)`, `NonnegativeFraction(&&)` to make moving of `ConductancePriorityQueue` &rArr; `PartitionedHypergraph` possible (without `warning`)~~
 - &rarr; default versions of constructors are perfect (and are generated as only the trivial constructor is defined)
+- default value is $0 / 0 = - \infty$
 - `denominator` could be 0: in that case, `value() = std::numeric_limits<double_t>::max()`
 - comparing cautious, to avoid overflow, division by zero:
 	- \+ `bool null()`, `isLess_nullCases(other)`, `isEqual_nullCases(other)` - to cover the case $0 / 0$ \
@@ -342,6 +343,7 @@ Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDelta
 ##### ConductancePQ
 \+ `conductance_pq.h`:
 - `ConductanceFraction := NonnegativeFraction<HypergraphVolume>`
+- \+ `struct ConductanceInfo { ConductanceFraction, PartitionID}`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
 	- \+ `initialize(partitioned_hg, sync=false)`: initializes underlying `MaxHeap` with `build()` \
@@ -362,8 +364,8 @@ Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDelta
 	After calling `SuoerPQ::adjustKey(p, f)` we still (as in `adjustLKey(..)`) need to set `SuperPQ::heap[position[p]] = f`
 	+ \+ `vec<DeltaV> _delta_part_volumes, _delta_cut_weights` with `using DeltaV = DeltaValue<HypergraphVolume>` - set empty in constructor, filled with `0` in `initialize()`, cleared in `reset()`, asserted as filles with `0` in `flobalUpdate(hg)`, `check(hg)`, `uodateTotalVolume(..)` \
 	used for `adjustKeyByDeltas(..)`  to accumulate changes in `_part_cut_weights[p]` and the correct version of part volumes (current or original), that are clearly not yet finished (due to simultaneous calles of `changeNodePart` of `partitioned_hypergraph.h`). This changed are applied once they look *reasonable* (see `adjustKeyByDeltas(..)`)
-	- \+ `PartitionID top(sync)`,`PartitionID secondTop(sync)` - return the first and second conductance-wise maximal partitions
-	- \+ `vec<PartitionID> topThree(sync)` - returns an **unsorted** vector with 3 top partitions (last elements are `kInvalid`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
+	- \+ `ConductanceInfo top(sync)`,`ConductanceInfo secondTop(sync)` - return `ConductanceInfo {ConductanceFraction, PartitionID}` of the first, second conductance-wise maximal partitions
+	- \+ `vec<ConductanceInfo> topThree(sync)` - returns an **unsorted** vector with `ConductanceInfo {ConductanceFraction, PartitionID}` of the top 3 partitions (last elements are `{0/0, kInvalid}`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
 	- \+ `bool isHeap() const` - version with hushed log
 	- \+ `check(phg, sync)` - to check correctness with respect to the phg
 	- \+ [potentially useless methods]:
@@ -410,7 +412,7 @@ Update of `_conductance_pq` (if enabled):
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
 - \+ `bool checkConductancePriorityQueue()` - for testing. True if not initialized.
 - \+ `recomputeConductancePriorityQueue()`: runs global update (only for testing (?))
-- \+ `topConductancePart()`, `secondTopConductancePart()`, `topThreeConductanceParts()` in `PartitionedHypergraph` - initialize `_conductance_pq` if needed (via `needsConductancePriorityQueue()`)
+- \+ `ConductanceInfo topPartConductanceInfo()`, `ConductanceInfo secondTopPartConductanceInfo()`, `topThreePartConductanceInfos()` in `PartitionedHypergraph` - initialize `_conductance_pq` if needed (via `needsConductancePriorityQueue()`)
 - \+ `conductancePriorityQueue()` to get a const pointer to `_conductance_pq`
 - \+ `resetConductancePriorityQueue()`: `_conductance_pq.reset()` + `_has_conductance_pq = false` [debug]
 
@@ -438,6 +440,8 @@ Update of `_conductance_pq` (if enabled):
 	&rarr; **!!!** for now no info about `ConductancePQ` (TODO **???**) \
 	&rarr; done with `PriorityQueue::memoryConsumption()`
 
+&rarr; mirrored interface in `partitioned_graph.h`
+
 ### External Support of ConductancePQ
 
 in `mt-kahypar/partition/multilevel.cpp`:
@@ -460,7 +464,10 @@ in `mt-kahypar/partition/multilevel.cpp`:
 		- **TODO**: What if several parts have the biggest conductance?
 		- **Problem**: value of `ObjectiveFunction` has to be `HyperedgeWeight`: \
 		Current solution: `current_multiplier = phg.totalVolume() / phg.k()`. Problems? -> **ASK!!!**
-	- `quality(...)` and `contribution(...)`: add new objective functions to the switch statements
+		- if the contribution is too big, a message is printed (`LOG`), the returned value is `std::numeric_limits<HyperedgeWeight>::max()`
+	- `contribution(...)`, `quality(...)`: add new objective functions to the switch statements
+	+ \+ `hyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets
+	- in `compute_objective_parallel(..)`, `compute_objective_sequentially(..)` add switch to compute conductance objective without looping through nets 
 4. `partition/refinement/gains/gain_definitions.h`:
 	- \+ `ConductanceLocalGainTypes`, `ConductanceGlobalGainTypes` - gain type structs analog. to `CutGainTypes`:
 		- should in the end contain all relevant implementations for the gain computation in the refinement algorithms &rarr; *to be implemented*
@@ -482,9 +489,10 @@ in `mt-kahypar/partition/multilevel.cpp`:
 7. `partition/registries/register_policies.cpp`: 
 	- `== Gain Type Policies ==`: Create a mapping between the enum class `GainPolicy` and its gain type struct (for `conductance_local` and `clonductance_global`)
 8. `partition/refinement/gains/bipartitioning_policy.h:`:
-	- `useCutNetSplitting(..)` and `nonCutEdgeMultiplier(..)`: add the `GainPolicy` type of new objective functions to the switch statements.	**!!!** **to be rethought later**. For now:
+	- `useCutNetSplitting(..)` and `nonCutEdgeMultiplier(..)`: add the `GainPolicy` type of new objective functions to the switch statements.	**!!!** **to be rethought later**. ~~For now~~ How it was:
 		- `useCutNetSplitting = true`: already cut nets could be cutting nets in the block (if it will be bipartitioned further) &rArr; cannot remove cut nets
-		- `nonCutEdgeMultiplier = 1`: otherwise it would change edge weights... Note: in `deep_multilevel.cpp` only `bipartition_each_block(..)` calls `adaptWeightsOfNonCutEdges(..)` and a partitioned hypergraph is built later &rArr; we could recalculate weighted degrees and total volume in the constructor of a partitioned hypergraph **???** &rarr; **no...**: `recursive_bipartitioning.cpp` changes edge weights of a given partitioned hypergraph...
+		- `nonCutEdgeMultiplier = 1`: otherwise it would change edge weights... Note: in `deep_multilevel.cpp` only `bipartition_each_block(..)` calls `adaptWeightsOfNonCutEdges(..)` and a partitioned hypergraph is built later &rArr; we could recalculate weighted degrees and total volume in the constructor of a partitioned hypergraph **???** &rarr; **no...**: `recursive_bipartitioning.cpp` changes edge weights of a given partitioned hypergraph...  \
+	**Rethought**: throw an `UnsupportedOperationException`, as recursive bipartitioning isn't working for conductance
 9. \+ `partition/refinement/gains/conductance_local`, `partition/refinement/gains/conductance_global` - folders to that we will later add all relevant gain computation techniques.	
 
 ### Part 2.2 ~~Guide:~~ Initial Partitioning
@@ -500,6 +508,26 @@ is not implementable for (scaled) conductance.
 #### Singleton Partitioning:
 Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context for cluster & singleton IP set up", `f799400` "singleton IP with k = num nodes of coarsened hg", `04fc118` "fix uncoarsening bug (con info - input num hyperedges)" from https://github.com/adilchhabra/mt-kahypar]:
 
+My changes: 
+1) `cluster_preset.ini`:
+	```ini
+	# main -> refinement -> fm
+	...
+	r-fm-rollback-parallel=false
+	```
+2) `presets.cpp`:
+	```cpp 
+	std::vector<option>	load_clustering_preset() {
+		...
+		// main -> refinement -> fm
+		create_option("r-fm-type", "unconstrained_fm"),
+		create_option("r-fm-multitry-rounds", "10"),
+		create_option("r-fm-unconstrained-rounds", "8"),
+		create_option("r-fm-rollback-parallel", "false"),
+		...
+	}
+	```
+
 ##### New clustering preset and new singleton IP
 
 - in `CMakeLists.txt`:
@@ -511,7 +539,9 @@ Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context 
 	- disable `KAHYPAR_ENABLE_CLUSTERING_FEATURES` in `minimal` preset
 
 - in `config/`:
-	- \+ `cluster_preset.ini`: uses `multilevel_coarsener`, only `singleton` IP, no IP refinement, `label_propagation`, `fm` [TODO: shut `fm` down, if `gain_cache` not implemented (?)]
+	- \+ `cluster_preset.ini`: 
+		- uses `multilevel_coarsener`, only `singleton` IP, no IP refinement, `label_propagation`, `fm` [TODO: shut `fm` down, if `gain_cache` not implemented (?)]
+		- [my] set `r-fm-rollback-parallel=false`
 	- `large_k_preset.ini`: \+ `i-enabled-ip-algos=0` 
 	- all other `.ini` use `initial_partitioning: i-mode=rb` [recursive bipartitioning] &rArr; no changes
 
@@ -552,7 +582,9 @@ Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context 
 			- by `"i-enabled-ip-algos"` add singleton IP to the example
 		- `presets.cpp`:
 			- in `load_large_k_preset()`: by`// main -> initial_partitioning` add entry for `singleton` (`"0"`) 
-			- \+ `load_clustering_preset()`: uses `"multilevel_coarsener"`, `"1" // singleton" IP`, no IP refinement, refinement until no improvement by label propagation anf fm (but no flows)
+			- \+ `load_clustering_preset()`: 
+				- uses `"multilevel_coarsener"`, `"1" // singleton" IP`, no IP refinement, refinement until no IP improvement by label propagation and fm (but no flows)
+				- [my] set `create_option("r-fm-rollback-parallel", false")`
 			- in `loadPreset(preset)`: add case `PresetType::cluster` to call `load_clustering_preset()`
 		- `partitioning_output.cpp`: [adjust output for `PresetType::cluster`]
 			- in `printPartWeightsAndSizes(hg, context)`:
@@ -769,7 +801,7 @@ Also done:
 	- \+ `ExtractBlockZeroWithCutNetSplittingAndSinglePinNets`, `ExtractBlockOneWithCutNetSplittingAndSinglePinNets`, `ExtractBlockTwoWithCutNetSplittingAndSinglePinNets`: `extract` + `disable`
 	- \+ `ExtractAllBlockBlocksWithCutNetSplittingAndSinlePinNets`: `extractAll` + `disable`
 
-### Problem: volumes are still not preserved
+### Part 2.2.2 Side trip: Problem: volumes are still not preserved
 Contraction of 2 nodes decreases volume by the sum of weights of their shared nets
 
 #### Solution:
@@ -916,3 +948,125 @@ Contraction of 2 nodes decreases volume by the sum of weights of their shared ne
 		- **rename** to `VerifyConductancePriorityQueueWithOriginalStatsSmokeTest`
 		- add assertion about using original stats
 	+ \+ `VerifyConductancePriorityQueueWithCurrentStatsSmokeTest`
+
+### Part 2.3 Guide: Label Propagation Refinement
+
+Label propagation algorithm iterates over all nodes in parallel and moves each node to the block **with the highest gain**. 
+
+The algorithm requires two gain techniques: 
+1) A *gain computation* algorithm to compute **the highest gain move for a node** 
+2) the *attributed gain* technique to **double-check the gain of a node move at the time performed on the partition**. 
+
+#### Guide: outer changes
+
+`partition/`:
+- `refinement/`:
+	- `gains/gain_definitions.h`:
+		+ include `conductance_local_gain_computation.h`, `conductance_global_gain_computation.h`, ~~`conductance_local_attributed_gain.h` and~~ `conductance_global_attributed_gain.h`
+		+ replace `GainComputation` and `AttributedGains` members of `ConductanceLocalGainTypes` and `ConductanceGlobalGainTypes`. **!!!** both use `ConductanceGlobalAttributedGains`
+
+#### Synchronized Update (my changes)
+##### Intro from guide
+
+- The ```SynchronizedEdgeUpdate``` structs contains the following members:
+```cpp
+struct SynchronizedEdgeUpdate {
+  HyperedgeID he;
+  PartitionID from;
+  PartitionID to;
+  HyperedgeID edge_weight;
+  HypernodeID edge_size;
+  HypernodeID pin_count_in_from_part_after;
+  HypernodeID pin_count_in_to_part_after;
+  PartitionID block_of_other_node; // only set in graph partitioning mode
+  mutable ds::Bitset* connectivity_set_after; // only set when optimizing the Steiner tree metric
+  mutable ds::PinCountSnapshot* pin_counts_after; // only set when optimizing the Steiner tree metric
+  const TargetGraph* target_graph; // only set when optimizing the Steiner tree metric
+  ds::Array<SpinLock>* edge_locks; // only set when optimizing the Steiner tree metric
+};
+```
+When we move a node from its *source* (```from```) to a *target* block (```to```), we iterate over all hyperedges, perform syncronized data structure updates and call `gain` function for each incident hyperedge of the moved node. The sum of all calls to this function is the attributed gain of the node move.
+
+###### Changes
+&rArr; `hypergraph_common.h`:
+- `SynchronizedEdgeUpdate`: \+ New attributes  be able to **estimate** AttributedGain (never exact due to rounding. scaling...):
+	0) `PartitionID k`
+	1) `HypergraphVolume cut_weight_from_after, cut_weight_to_after` 
+	2) `vec<ds::ConductanceInfo> top_three_conductance_info_before` - ConductanceInfo of the top 3 conductance-wise parts before the move: [0, 1/2, 2/1]
+	3) `HypergraphVolume volume_from_after, volume_to_after`
+	5) `HypergraphVolume weighted_degree` (the used version!!!)
+	6) `HypergraphVolume total_volume` (the used version!!!)
+	- ~~`edgeWeight`~~: already there
+- \+ forward declaration of `ds::ConductanceInfo`
+
+Initialize new members of `SynchronizedEdgeUpdate` (looked for mentions: skipped lambdas, tests):
+- `partitioned_hypergraph.h`:
+	- `changeNodePart(u, from, to, ..)`: 
+		- after `// Construct sync_update` (before iterating through incident nets) set:
+			- `k`, `top_three_conductance_info_before`
+			-  `volume_from_after`, `volume_to_after`, `weighted_degree`, `total_volume` [used version only]
+		- after iterating through incident nets 
+			- call `notify_func(sync_update)`, if collective sync_update is enabled
+			- set `cut_weight_to_after`, `cut_weight_from_after`
+			- call `delta_func(sync_update)`, if collective sync_update is enabled
+
+- `global_rollback.cpp`:
+	- `recalculateGainForHyperedgeViaAttributedGains(&phg, FMShareData&, &e)`, `recalculateGainForGraphEdgeViaAttributedGains()`: 
+		- **do nothing**, as used by `recalculateGains(..)` &larr; `revertToBestPrefixParallel(..)`, but I can't use it (parallel computation of attributed gain is incorrect...) 
+
+#### Attributed Gain
+##### Intro from guide
+The gain of a node move can change between its initial calculation and execution due to concurrent node moves in its neighborhood. 
+
+&rArr; We double-check the gain of a node move at the time performed on the partition via synchronized data structure updates. This technique is called *attributed gains*:
+- The *label propagation algorithm* **reverts node moves that worsen the solution quality** by checking the attributed gain value. 
+- The attributed gain function implements the following interface:
+	```cpp
+	static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update);
+	```
+##### Problem: I can only calculate collective AttributedGain of a move (not a sum for all edges)
+&rarr; slightly analog. to `_disable_single_pin_nets_removal`
+
+`hypergraph_common.h`:
++ \+ `bool sync_update::collective_sync_updates_in_phg = false`
+
+`partitioned_hypergraph.h`:
++ \+ `bool collectiveSyncUpdatesEnabled() bool `
+- `changeNodePart(..)`: if collective sync_update is enabled
+	- call `notify_func(sync_update)` in before changing pin counts
+	- call `delta_func(sync_update)` after changing pin counts
+- `updatePinCountOfHyperedge(..)`: call `notify_func(sync_update)`, `delta_func(sync_update)` only is collective sync_update is disabled
+
+- `mt-kahypar/partition`:
+	- `context.cpp`:
+		- \+ `setupSyncUpdatePreference() const`: if conductance objective, enable collective sync_update (if not yet) and write in `LOG` [analog. to `setupSinglePinNetsRemoval()`]
+		- `sanityCheck(..)`: if conductance objective, enable collective sync_update (if not yet) and write in `LOG`
+	- `context.h`: declare `setupSyncUpdatePreference() const`
+	- `partitioner.cpp`:
+		- `setupContext(&hg, &context, ..)`: 
+			- call `context.setupSyncUpdatePreference()` after `setupSinglePinNetsRemoval()`
+			- after setup calls [as `context.partition.instance_type` could be initializes there]: if `hypergaph` (*not graph*), disable single-pin nets in `hg`
+
+##### Conductance Global
+**As far as I know** [*to be disproven by failing quality assertions...*], `contribution(phg, he)` is called only by `partitioner.cpp` in the `POSTPROCESSING` phase: `restoreLargeHyperedges()`. So `AttributedGain` is compared to the `quaality(phg)`, which can be (and now is) calculated almost exact (rounded max conductance). Therefore to calculate `AttributedGains` for conductance (both use global version), I compute the difference on new and old rounded conductances (and do this by enabled **collective** sync_updates)
+
+\+ `conductance_global_attributed_gain.h`:
++ \+ `ConductanceGlobalAttributedGains`:
+	+ \+ `private HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` 
+	- `static HyperedgeWeight gain(&sync_update)` - computes new fractions for `to` and `from`, finds the biggest other fraction (in `sync_update.top_three_conductance_info_before` - vector with $\le 3$ biggest conductance fractions), computes old and new top conductances via `HyperedgeWeight compute_conductance_objective(..)`, returns `new_conductance - old_conductance`
+
+##### Conductance Local
+Uses the same attributed gains
+&rArr; in `gain_definitions.h` set `ConductanceLocalGainTypes::AttributedGains = ConductanceGlobalAttributedGains`
+
+~~\+ `conductance_local_attributed_gain.h`:~~
+~~+ \+ `ConductanceLocalAttributedGains`~~
+
+
+#### Gain Computation
+To Be implemented
+\+ `conductance_local_gain_computation.h`:
+- \+ `ConductanceLocalGainComputation`
+
+\+ `conductance_global_gain_computation.h`
++ \+ `ConductanceGlobalGainComputation`

@@ -285,6 +285,20 @@ namespace mt_kahypar {
     }
   }
 
+  // ! \brief This function sets the global flag sync_update::collective_sync_updates_in_phg
+  // ! based on the partitioning objective.
+  void Context::setupSyncUpdatePreference() const {
+    switch (partition.objective) {
+      case Objective::conductance_local:
+      case Objective::conductance_global:
+        mt_kahypar::sync_update::collective_sync_updates_in_phg = true; 
+        LOG << "Collective sync updates in PHG are enabled.";
+        break;
+      default:
+        mt_kahypar::sync_update::collective_sync_updates_in_phg = false; break;
+    }
+  }
+
   void Context::setupPartWeights(const HypernodeWeight total_hypergraph_weight) {
     if (partition.use_individual_part_weights) {
       ASSERT(static_cast<size_t>(partition.k) == partition.max_part_weights.size());
@@ -435,6 +449,11 @@ namespace mt_kahypar {
       if ( partition.preset_type != PresetType::cluster ) {
         throw UnsupportedOperationException(
           "Conductance objective functions are only supported for cluster preset type.");
+      }
+      if (! sync_update::collective_sync_updates_in_phg ) {
+        sync_update::collective_sync_updates_in_phg = true;
+        LOG << "Conductance objective function needs collective sync updates in hypergraphs: "
+            << "Switching to collective sync updates.";
       }
     }
 

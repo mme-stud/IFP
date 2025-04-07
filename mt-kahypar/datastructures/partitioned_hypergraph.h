@@ -438,6 +438,15 @@ class PartitionedHypergraph {
     return &_conductance_pq;
   }
 
+  // ################## Collective sync_update ######################
+  
+  // ! Collective sync_updates in changeNodePart are enabled
+  // ! i.e. updates only once instead of for each incident net
+  // ! (Needed for conductance objective)
+  bool collectiveSyncUpdatesEnabled() const {
+    /// [debug] std::cerr << "PartitionedHypergraph::collectiveSyncUpdatesEnabled()" << std::endl;
+    return mt_kahypar::sync_update::collective_sync_updates_in_phg;
+  }
 
   // ####################### Iterators #######################
 
@@ -919,11 +928,11 @@ class PartitionedHypergraph {
       HypergraphVolume node_weighted_deg_u = nodeWeightedDegree(u);
       HypergraphVolume node_original_weighted_deg_u = nodeOriginalWeightedDegree(u);
       // update _part_volumes
-      decrementVolumeOfBlock(from, node_weighted_deg_u);
-      incrementVolumeOfBlock(to, node_weighted_deg_u);
+      HypergraphVolume vol_from_after = decrementVolumeOfBlock(from, node_weighted_deg_u);
+      HypergraphVolume vol_to_after = incrementVolumeOfBlock(to, node_weighted_deg_u);
       // update _part_original_volumes
-      decrementOriginalVolumeOfBlock(from, node_original_weighted_deg_u);
-      incrementOriginalVolumeOfBlock(to, node_original_weighted_deg_u);
+      HypergraphVolume orig_vol_from_after = decrementOriginalVolumeOfBlock(from, node_original_weighted_deg_u);
+      HypergraphVolume orig_vol_to_after = incrementOriginalVolumeOfBlock(to, node_original_weighted_deg_u);
     
       if (_conductance_pq_uses_original_stats) {
         d_part_volume_ver_from -= node_original_weighted_deg_u;
@@ -940,6 +949,26 @@ class PartitionedHypergraph {
       sync_update.to = to;
       sync_update.target_graph = _target_graph;
       sync_update.edge_locks = &_pin_count_update_ownership;
+      // (new) for conductance objective
+      sync_update.k = _k;
+      sync_update.top_three_conductance_info_before = _conductance_pq.topThree();
+      // use _conductance_pq.topThree() istead of topThreePartConductanceInfos() 
+      // to avoid ASSERT(hasConductancePriorityQueue())
+      if (_conductance_pq_uses_original_stats) {
+        sync_update.volume_from_after = orig_vol_from_after;
+        sync_update.volume_to_after = orig_vol_to_after;
+        sync_update.weighted_degree = node_original_weighted_deg_u;
+        sync_update.total_volume = originalTotalVolume();
+      } else {
+        sync_update.volume_from_after = vol_from_after;
+        sync_update.volume_to_after = vol_to_after;
+        sync_update.weighted_degree = node_weighted_deg_u;
+        sync_update.total_volume = totalVolume();
+      }
+      if (collectiveSyncUpdatesEnabled()) {
+        // conductance objective support only collective sync_updates
+        notify_func(sync_update);
+      }
 
       // Update pin count and cut weights
       for ( const HyperedgeID he : incidentEdges(u) ) {
@@ -948,6 +977,15 @@ class PartitionedHypergraph {
         d_cut_weight_from += d_cut_weights[0];
         d_cut_weight_to += d_cut_weights[1];
         // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
+      }
+      
+      // Set cut weights in sync_update
+      sync_update.cut_weight_from_after = partCutWeight(from);
+      sync_update.cut_weight_to_after = partCutWeight(to);
+      
+      if (collectiveSyncUpdatesEnabled()) {
+        // conductance objective support only collective sync_updates
+        delta_func(sync_update);
       }
 
       // update _conductance_pq if enabled: do it after updating _part_cut_weights and _part_volumes
@@ -1754,7 +1792,10 @@ class PartitionedHypergraph {
     sync_update.edge_weight = edgeWeight(he);
     sync_update.edge_size = edgeSize(he);
     _pin_count_update_ownership[he].lock();
-    notify_func(sync_update);
+    if ( !collectiveSyncUpdatesEnabled() ) { 
+      // conductance objective supports only collective sync updates
+      notify_func(sync_update);
+    }
     const HypernodeID old_pins_in_from_part = pinCountInPart(he, from);
     sync_update.pin_count_in_from_part_after = decrementPinCountOfBlock(he, from);
     sync_update.pin_count_in_to_part_after = incrementPinCountOfBlock(he, to);
@@ -1786,7 +1827,11 @@ class PartitionedHypergraph {
     }
     // for all other parts, _part_cut_weights remains the same
     _pin_count_update_ownership[he].unlock();
-    delta_func(sync_update);
+    
+    if ( !collectiveSyncUpdatesEnabled() ) { 
+      // conductance objective supports only collective sync updates
+      delta_func(sync_update);
+    }
 
     return d_cut_weights;
   }

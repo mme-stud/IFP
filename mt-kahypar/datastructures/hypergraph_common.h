@@ -98,6 +98,10 @@ static constexpr size_t kEdgeHashSeed = 42;
 static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max();
 static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
+namespace sync_update {
+  bool collective_sync_updates_in_phg = false;
+}
+
 namespace ds {
   using Clustering = vec<PartitionID>;
 }
@@ -147,6 +151,7 @@ class DynamicGraph;
 class DynamicHypergraph;
 class ConnectivityInfo;
 class SparseConnectivityInfo;
+class ConductanceInfo;
 }
 
 struct SynchronizedEdgeUpdate {
@@ -162,6 +167,15 @@ struct SynchronizedEdgeUpdate {
   mutable ds::PinCountSnapshot* pin_counts_after = nullptr;
   const TargetGraph* target_graph = nullptr;
   ds::Array<SpinLock>* edge_locks = nullptr;
+  // (new) For conductance:
+  PartitionID k;
+  HypergraphVolume volume_from_after;
+  HypergraphVolume volume_to_after;
+  HypergraphVolume cut_weight_from_after;
+  HypergraphVolume cut_weight_to_after;
+  HypergraphVolume weighted_degree; // only the used version!!!
+  HypergraphVolume total_volume; // only the used version!!!
+  vec<ds::ConductanceInfo> top_three_conductance_info_before;
 };
 
 struct NoOpDeltaFunc {
