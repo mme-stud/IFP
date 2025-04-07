@@ -98,9 +98,10 @@ static constexpr size_t kEdgeHashSeed = 42;
 static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max();
 static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
-namespace sync_update {
-  bool collective_sync_updates_in_phg = false;
-}
+// A clumsy patch to add an option of collective sync updates in PHG
+struct SyncUpdatePreferences {
+  static bool collective_sync_updates_in_phg;
+};
 
 namespace ds {
   using Clustering = vec<PartitionID>;

@@ -291,11 +291,11 @@ namespace mt_kahypar {
     switch (partition.objective) {
       case Objective::conductance_local:
       case Objective::conductance_global:
-        mt_kahypar::sync_update::collective_sync_updates_in_phg = true; 
+        mt_kahypar::SyncUpdatePreferences::collective_sync_updates_in_phg = true; 
         LOG << "Collective sync updates in PHG are enabled.";
         break;
       default:
-        mt_kahypar::sync_update::collective_sync_updates_in_phg = false; break;
+        mt_kahypar::SyncUpdatePreferences::collective_sync_updates_in_phg = false; break;
     }
   }
 
@@ -450,8 +450,8 @@ namespace mt_kahypar {
         throw UnsupportedOperationException(
           "Conductance objective functions are only supported for cluster preset type.");
       }
-      if (! sync_update::collective_sync_updates_in_phg ) {
-        sync_update::collective_sync_updates_in_phg = true;
+      if (! SyncUpdatePreferences::collective_sync_updates_in_phg ) {
+        SyncUpdatePreferences::collective_sync_updates_in_phg = true;
         LOG << "Conductance objective function needs collective sync updates in hypergraphs: "
             << "Switching to collective sync updates.";
       }

@@ -445,7 +445,7 @@ class PartitionedHypergraph {
   // ! (Needed for conductance objective)
   bool collectiveSyncUpdatesEnabled() const {
     /// [debug] std::cerr << "PartitionedHypergraph::collectiveSyncUpdatesEnabled()" << std::endl;
-    return mt_kahypar::sync_update::collective_sync_updates_in_phg;
+    return mt_kahypar::SyncUpdatePreferences::collective_sync_updates_in_phg;
   }
 
   // ####################### Iterators #######################
