@@ -99,7 +99,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
 
       double_t conductance_contribution = static_cast<double_t>(phg.edgeWeight(he)) /
                                           static_cast<double_t>(top_part_min_volume);
-      double_t current_multiplier = static_cast<double_t>(phg.totalVolume()) / 
+      double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
                                     static_cast<double_t>(phg.k());
       // double_t scaled_contribution = conductance_contribution * current_multiplier;
       double_t scaled_contribution = 
@@ -110,7 +110,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
 
       HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
       if (value_threshold < scaled_contribution) {
-        LOG << "Scaled of hyperedge " << he << " is too big: " << V(scaled_contribution) 
+        LOG << "Scaled contribution of hyperedge " << he << " is too big: " << V(scaled_contribution) 
             << ". It is rounded to " << value_threshold;
         return value_threshold;
       }
@@ -145,7 +145,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
 
       double_t conductance_contribution = static_cast<double_t>(phg.edgeWeight(he)) /
                                           static_cast<double_t>(top_part_min_volume);
-      double_t current_multiplier = static_cast<double_t>(phg.totalVolume()) / 
+      double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
                                     static_cast<double_t>(phg.k());
       // double_t scaled_contribution = conductance_contribution * current_multiplier;
       double_t scaled_contribution = 
@@ -156,7 +156,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
 
       HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
       if (value_threshold < scaled_contribution) {
-        LOG << "Scaled of hyperedge " << he << " is too big: " << V(scaled_contribution) 
+        LOG << "Scaled contribution of hyperedge " << he << " is too big: " << V(scaled_contribution) 
             << ". It is rounded to " << value_threshold;
         return value_threshold;
       }
@@ -166,8 +166,51 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
   }
 };
 
+template<typename PartitionedHypergraph>
+HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) {
+  ASSERT( !PartitionedHypergraph::is_graph, "Conductance objective is not supported for graphs" );
+  ASSERT(phg.hasConductancePriorityQueue());
+  const ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+  const HypergraphVolume top_part_cut_weight = top_conductance_info.fraction.getNumerator();
+  const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
+
+  const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
+                                                        phg.originalTotalVolume() : 
+                                                        phg.totalVolume();
+
+  ASSERT(top_part_min_volume != 0);
+  ASSERT(total_volume_version != 0);
+
+  double_t conductance = static_cast<double_t>(top_part_cut_weight) /
+                                      static_cast<double_t>(top_part_min_volume);
+  double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
+                                static_cast<double_t>(phg.k());
+  // double_t scaled_contribution = conductance_contribution * current_multiplier;
+  double_t scaled_conductance = 
+      (static_cast<double_t>(top_part_cut_weight) * static_cast<double_t>(total_volume_version)) /
+      (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
+  
+  ASSERT(0 <= scaled_conductance);
+
+  HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+  if (value_threshold < scaled_conductance) {
+    LOG << "Scaled conductance is too big: " << V(scaled_conductance) 
+        << ". It is rounded to " << value_threshold;
+    return value_threshold;
+  }
+  return static_cast<HyperedgeWeight>(scaled_conductance);
+}
+
 template<Objective objective, typename PartitionedHypergraph>
 HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
+  // Compute objective without for-loop through all hyperedges
+  switch (objective) {
+    case Objective::conductance_local:
+    case Objective::conductance_global:
+      return compute_conductance_objective(phg);
+    default: break;
+  }
+  // Compute objective by iterating through all hyperedges
   ObjectiveFunction<PartitionedHypergraph, objective> func;
   tbb::enumerable_thread_specific<HyperedgeWeight> obj(0);
   phg.doParallelForAllEdges([&](const HyperedgeID he) {
@@ -178,6 +221,14 @@ HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
 
 template<Objective objective, typename PartitionedHypergraph>
 HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph& phg) {
+  // Compute objective without for-loop through all hyperedges
+  switch (objective) {
+    case Objective::conductance_local:
+    case Objective::conductance_global:
+      return compute_conductance_objective(phg);
+    default: break;
+  }
+  // Compute objective by iterating through all hyperedges
   ObjectiveFunction<PartitionedHypergraph, objective> func;
   HyperedgeWeight obj = 0;
   for (const HyperedgeID& he : phg.edges()) {
