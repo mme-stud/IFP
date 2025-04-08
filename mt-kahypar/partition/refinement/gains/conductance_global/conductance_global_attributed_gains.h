@@ -103,27 +103,33 @@ struct ConductanceGlobalAttributedGains {
   static HyperedgeWeight compute_conductance_objective(const HypergraphVolume& total_volume_version,
                                                        const ds::ConductanceFraction& fraction, 
                                                        const PartitionID& k) {
+    unused(k);
+    unused(total_volume_version);
     const HypergraphVolume& top_part_cut_weight = fraction.getNumerator();
     const HypergraphVolume& top_part_min_volume = fraction.getDenominator();
     ASSERT(top_part_min_volume != 0);
-    ASSERT(total_volume_version != 0);
+    // ASSERT(total_volume_version != 0);
+    // ASSERT(top_part_cut_weight <= top_part_min_volume);
+  
+    // double_t scaled_conductance = 
+    //  (static_cast<double_t>(top_part_cut_weight) * static_cast<double_t>(total_volume_version)) /
+    //  (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(k));
 
-    // double_t conductance = static_cast<double_t>(top_part_cut_weight) /
-    //                       static_cast<double_t>(top_part_min_volume);
-    // double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
-    //                              static_cast<double_t>(k);
-    // double_t scaled_contribution = conductance_contribution * current_multiplier;
-    double_t scaled_conductance = 
-      (static_cast<double_t>(top_part_cut_weight) * static_cast<double_t>(total_volume_version)) /
-      (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(k));
-    ASSERT(0 <= scaled_conductance);
-    HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
-    if (value_threshold < scaled_conductance) {
-      LOG << "Scaled conductance is too big: " << V(scaled_conductance) 
-          << ". It is rounded to " << value_threshold;
-      return value_threshold;
+    if ( top_part_cut_weight <= top_part_min_volume ) {
+      double_t scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
+                                  / static_cast<double_t>(top_part_min_volume)
+                                  * static_cast<double_t>(mt_kahypar::scaling_factor);
+      ASSERT(0 <= scaled_conductance);
+      HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      if (value_threshold < scaled_conductance) {
+        LOG << "Scaled conductance is too big: " << V(scaled_conductance) 
+            << ". It is rounded to " << value_threshold;
+        return value_threshold;
+      }
+      return static_cast<HyperedgeWeight>(scaled_conductance);
     }
-    return static_cast<HyperedgeWeight>(scaled_conductance);
+    // weights are wrong, but conductnace could  therefore be high
+    return mt_kahypar::scaling_factor;
   }
 
 };

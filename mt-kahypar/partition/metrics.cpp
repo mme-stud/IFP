@@ -91,21 +91,20 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
     } else {
       // cutting edge => contributes by its weight / min(vol, total_vol - vol)
       const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
-      const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
-                                                        phg.originalTotalVolume() : 
-                                                        phg.totalVolume();
+      // const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
+      //                                                  phg.originalTotalVolume() : 
+      //                                                  phg.totalVolume();
       ASSERT(top_part_min_volume != 0);
-      ASSERT(total_volume_version != 0);
+      // ASSERT(total_volume_version != 0);
 
-      double_t conductance_contribution = static_cast<double_t>(phg.edgeWeight(he)) /
-                                          static_cast<double_t>(top_part_min_volume);
-      double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
-                                    static_cast<double_t>(phg.k());
-      // double_t scaled_contribution = conductance_contribution * current_multiplier;
+
+      // double_t scaled_contribution = 
+      //    (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
+      //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
       double_t scaled_contribution = 
-          (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
-          (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-      
+          (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(mt_kahypar::scaling_factor))
+          / (static_cast<double_t>(top_part_min_volume));
+
       ASSERT(0 <= scaled_contribution);
 
       HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
@@ -137,21 +136,20 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
     } else {
       // cutting edge => contributes by its weight / min(vol, total_vol - vol)
       const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
-      const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
-                                                        phg.originalTotalVolume() : 
-                                                        phg.totalVolume();
+      // const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
+      //                                                  phg.originalTotalVolume() : 
+      //                                                  phg.totalVolume();
       ASSERT(top_part_min_volume != 0);
-      ASSERT(total_volume_version != 0);
+      // ASSERT(total_volume_version != 0);
 
-      double_t conductance_contribution = static_cast<double_t>(phg.edgeWeight(he)) /
-                                          static_cast<double_t>(top_part_min_volume);
-      double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
-                                    static_cast<double_t>(phg.k());
-      // double_t scaled_contribution = conductance_contribution * current_multiplier;
+
+      // double_t scaled_contribution = 
+      //    (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
+      //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
       double_t scaled_contribution = 
-          (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
-          (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-      
+          (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(mt_kahypar::scaling_factor))
+          / (static_cast<double_t>(top_part_min_volume));
+
       ASSERT(0 <= scaled_contribution);
 
       HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
@@ -174,22 +172,26 @@ HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) 
   const HypergraphVolume top_part_cut_weight = top_conductance_info.fraction.getNumerator();
   const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
 
-  const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
-                                                        phg.originalTotalVolume() : 
-                                                        phg.totalVolume();
+  if (top_part_min_volume == 0) {
+    // only one black => bad partition
+    return std::numeric_limits<HyperedgeWeight>::max();
+  }
+  // const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
+  //                                                      phg.originalTotalVolume() : 
+  //                                                      phg.totalVolume();
 
   ASSERT(top_part_min_volume != 0);
-  ASSERT(total_volume_version != 0);
+  // ASSERT(total_volume_version != 0);
+  ASSERT(top_part_cut_weight <= top_part_min_volume);
 
-  double_t conductance = static_cast<double_t>(top_part_cut_weight) /
-                                      static_cast<double_t>(top_part_min_volume);
-  double_t current_multiplier = static_cast<double_t>(total_volume_version) / 
-                                static_cast<double_t>(phg.k());
-  // double_t scaled_contribution = conductance_contribution * current_multiplier;
-  double_t scaled_conductance = 
-      (static_cast<double_t>(top_part_cut_weight) * static_cast<double_t>(total_volume_version)) /
-      (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-  
+
+  // double_t scaled_conductance = 
+  //    (static_cast<double_t>(top_part_cut_weight) * static_cast<double_t>(total_volume_version)) /
+  //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
+  double_t scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
+                                / static_cast<double_t>(top_part_min_volume)
+                                * static_cast<double_t>(mt_kahypar::scaling_factor);
+
   ASSERT(0 <= scaled_conductance);
 
   HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
@@ -342,6 +344,17 @@ double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergr
   }
 }
 
+template<typename PartitionedHypergraph>
+double compute_double_conductance(const PartitionedHypergraph& phg) {
+  ASSERT( !PartitionedHypergraph::is_graph, "Conductance objective is not supported for graphs" );
+  ASSERT(phg.hasConductancePriorityQueue());
+  const ds::ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+  const HypergraphVolume top_part_cut_weight = top_conductance_info.fraction.getNumerator();
+  const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
+  return static_cast<double_t>(top_part_cut_weight) /
+         static_cast<double_t>(top_part_min_volume);
+}
+
 namespace {
 #define OBJECTIVE_1(X) HyperedgeWeight quality(const X& hg, const Context& context, const bool parallel)
 #define OBJECTIVE_2(X) HyperedgeWeight quality(const X& hg, const Objective objective, const bool parallel)
@@ -349,6 +362,7 @@ namespace {
 #define IS_BALANCED(X) bool isBalanced(const X& phg, const Context& context)
 #define IMBALANCE(X) double imbalance(const X& hypergraph, const Context& context)
 #define APPROX_FACTOR(X) double approximationFactorForProcessMapping(const X& hypergraph, const Context& context)
+#define CONDUCTANCE_DOUBLE(X) double compute_double_conductance(const X& phg)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(OBJECTIVE_1)
@@ -357,5 +371,6 @@ INSTANTIATE_FUNC_WITH_PARTITIONED_HG(CONTRIBUTION)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(IS_BALANCED)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(IMBALANCE)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(APPROX_FACTOR)
+INSTANTIATE_FUNC_WITH_PARTITIONED_HG(CONDUCTANCE_DOUBLE)
 
 } // namespace mt_kahypar::metrics

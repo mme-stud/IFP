@@ -99,6 +99,7 @@ static constexpr size_t kEdgeHashSeed = 42;
 static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max();
 static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
+static constexpr size_t scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;
 
 namespace ds {
   using Clustering = vec<PartitionID>;

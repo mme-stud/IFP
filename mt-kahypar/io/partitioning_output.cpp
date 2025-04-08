@@ -446,10 +446,14 @@ namespace mt_kahypar::io {
     if ( context.partition.objective != Objective::conductance_local && !PartitionedHypergraph::is_graph ) {
       printKeyValue(Objective::conductance_local,
         metrics::quality(hypergraph, Objective::conductance_local));
+      printKeyValue("Conductance (double)",
+        metrics::compute_double_conductance(hypergraph));
     }
     if ( context.partition.objective != Objective::conductance_global && !PartitionedHypergraph::is_graph ) {
       printKeyValue(Objective::conductance_global,
         metrics::quality(hypergraph, Objective::conductance_global));
+      printKeyValue("Conductance (double)",
+          metrics::compute_double_conductance(hypergraph));
     }
     printKeyValue("Imbalance", metrics::imbalance(hypergraph, context));
     printKeyValue("Partitioning Time", std::to_string(elapsed_seconds.count()) + " s");

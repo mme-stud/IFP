@@ -63,5 +63,8 @@ double imbalance(const PartitionedHypergraph& hypergraph, const Context& context
 template<typename PartitionedHypergraph>
 double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergraph, const Context& context);
 
+template<typename PartitionedHypergraph>
+double compute_double_conductance(const PartitionedHypergraph& phg);
+
 }  // namespace metrics
 }  // namespace mt_kahypar
