@@ -300,7 +300,7 @@ class Context {
   
   void setupSinglePinNetsRemoval();
 
-  // ! \brief This function sets the global flag sync_update::collective_sync_updates_in_phg
+  // ! \brief This function sets the global flag SyncUpdatePreferences::collective_sync_updates_in_phg
   // ! based on the partitioning objective.
   void setupSyncUpdatePreference() const;
 

@@ -38,9 +38,20 @@ namespace mt_kahypar {
  * attributed gain value.
  */
 struct ConductanceGlobalAttributedGains {
+  // sync_update must contain the following values:
+  // - from: the partition id of the node that is moved
+  // - to: the partition id of the node that is moved to
+  // - cut_weight_from_after: the cut weight of the partition from after the move
+  // - cut_weight_to_after: the cut weight of the partition to after the move
+  // - volume_from_after: the used version of volume of the partition from after the move
+  // - volume_to_after: the used version of volume of the partition to after the move
+  // - total_volume: the used version of total volume of the hypergraph
+  // - weighted_degree: the used version of weighted degree of the node that is moved
+  // - top_three_conductance_info_before: the top three conductance info of the conductanve_pq before the move
+  // - k: the number of partitions
   static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
-    ASSERT(mt_kahypar::sync_update::collective_sync_updates_in_phg, 
-     "Synchronized gain updates should be enabled for Conductance Attribted Gains");
+    ASSERT(SyncUpdatePreferences::collective_sync_updates_in_phg, 
+      "Synchronized gain updates should be enabled for Conductance Attribted Gains");
     ASSERT(sync_update.top_three_conductance_info_before.size() == 3, 
       "Top three conductance info vector isn't: " << V(sync_update.top_three_conductance_info_before.size()));
     
@@ -80,7 +91,6 @@ struct ConductanceGlobalAttributedGains {
     return new_conductance - old_conductance; // gain is positive if conductance increases
   }
 
-private:
   static HyperedgeWeight compute_conductance_objective(const HypergraphVolume& total_volume_version,
                                                        const ds::ConductanceFraction& fraction, 
                                                        const PartitionID& k) {
