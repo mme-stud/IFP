@@ -46,6 +46,7 @@ struct PartitioningParameters {
   mt_kahypar_partition_type_t partition_type =  NULLPTR_PARTITION;
   double epsilon = std::numeric_limits<double>::max();
   PartitionID k = std::numeric_limits<PartitionID>::max();
+  PartitionID initial_k = -1;
   int seed = 0;
   size_t num_vcycles = 0;
   bool perform_parallel_recursion_in_deep_multilevel = true;
