@@ -182,11 +182,13 @@ public:
 
   // ################# Priority Queue Operations #################
 
+  // used to upderstand, if buildHeap is nessesary
+  // otherwise use SuperPQ::isHeap() - it prints out to LOG
   bool isHeap() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::isHeap()" << std::endl;
     for (PartitionID i = 1; i < size(); ++i) {
       if (heap[parent(i)].key < heap[i].key) {
-        LOG << "heap property violation" << V(i) << V(parent(i))  << V(heap[i].key) << V(heap[parent(i)].key);
+        // LOG << "heap property violation" << V(i) << V(parent(i))  << V(heap[i].key) << V(heap[parent(i)].key);
         return false;
       }
     }

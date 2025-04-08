@@ -1,0 +1,316 @@
+Collective sync updates in PHG are enabled. 
+Collective sync updates in PHG are enabled. 
+Collective sync updates in PHG are enabled. 
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
++         __  __ _______       _  __     _    _       _____                   + 
++        |  \/  |__   __|     | |/ /    | |  | |     |  __ \                  + 
++        | \  / |  | |  ____  | ' / __ _| |__| |_   _| |__) |_ _ _ __         + 
++        | |\/| |  | | |____| |  < / _` |  __  | | | |  ___/ _` | '__|        + 
++        | |  | |  | |        | . \ (_| | |  | | |_| | |  | (_| | |           + 
++        |_|  |_|  |_|        |_|\_\__,_|_|  |_|\__, |_|   \__,_|_|           + 
++                                                __/ |                        + 
++                                               |___/                         + 
++          Karlsruhe Shared Memory Hypergraph Partitioning Framework          + 
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+Collective sync updates in PHG are enabled. 
+*******************************************************************************
+*                            Partitioning Context                             *
+*******************************************************************************
+Partitioning Parameters:
+  Hypergraph:                         lib/examples/ibm01.hgr
+  Mode:                               direct_kway
+  Objective:                          conductance_local
+  Gain Policy:                        conductance_local
+  Input File Format:                  hMetis
+  Instance Type:                      hypergraph
+  Preset Type:                        cluster
+  Partition Type:                     multilevel_hypergraph_partitioning
+  k:                                  2
+  epsilon:                            1.79769e+308
+  seed:                               0
+  Number of V-Cycles:                 0
+  Ignore HE Size Threshold:           1000
+  Large HE Size Threshold:            127
+  Collective Sync Updates:            true
+-------------------------------------------------------------------------------
+Preprocessing Parameters:
+  Use Community Detection:            true
+  Disable C. D. for Mesh Graphs:      true
+
+  Community Detection Parameters:
+    Edge Weight Function:                uniform
+    Maximum Louvain-Pass Iterations:     5
+    Minimum Vertex Move Fraction:        0.01
+    Vertex Degree Sampling Threshold:    200000
+    Number of subrounds (deterministic): 16
+-------------------------------------------------------------------------------
+Coarsening Parameters:
+  Algorithm:                          multilevel_coarsener
+  Use Adaptive Edge Size:             true
+  Max Allowed Weight Multiplier:      1
+  Maximum Allowed Hypernode Weight:   40
+  Contraction Limit Multiplier:       160
+  Deep ML Contraction Limit Multi.:   4294967295
+  Contraction Limit:                  320
+  Minimum Shrink Factor:              1.01
+  Maximum Shrink Factor:              2.5
+  Vertex Degree Sampling Threshold:   200000
+  Number of subrounds (deterministic):16
+  Single-pin Nets Removal:            disabled
+
+  Rating Parameters:
+    Rating Function:                  heavy_edge
+    Heavy Node Penalty:               no_penalty
+    Acceptance Policy:                best_prefer_unmatched
+-------------------------------------------------------------------------------
+Initial Partitioning Parameters:
+  Initial Partitioning Mode:          direct_kway
+  Number of Runs:                     30
+  Use Adaptive IP Runs:               false
+  Perform Refinement On Best:         false
+  Fm Refinement Rounds:               0
+  Remove Degree-Zero HNs Before IP:   true
+  Maximum Iterations of LP IP:        0
+  Initial Block Size of LP IP:        0
+
+Initial Partitioning Refinement Parameters:
+  Rebalancing Algorithm:              do_nothing
+  Refine Until No Improvement:        false
+  Relative Improvement Threshold:     0
+  Maximum Batch Size:                 1000
+  Min Border Vertices Per Thread:     0
+
+  Label Propagation Parameters:
+    Algorithm:                        lp_do_nothing
+
+  FM Parameters: 
+    Algorithm:                        fm_do_nothing
+
+  Flow Parameters: 
+    Algorithm:                        do_nothing
+
+-------------------------------------------------------------------------------
+Refinement Parameters:
+  Rebalancing Algorithm:              advanced_rebalancer
+  Refine Until No Improvement:        true
+  Relative Improvement Threshold:     0
+  Maximum Batch Size:                 1000
+  Min Border Vertices Per Thread:     0
+
+  Label Propagation Parameters:
+    Algorithm:                        label_propagation
+    Maximum Iterations:               20
+    Unconstrained:                    true
+    Rebalancing:                      false
+    HE Size Activation Threshold:     100
+    Relative Improvement Threshold:   0.001
+
+  FM Parameters: 
+    Algorithm:                        unconstrained_fm
+    Multitry Rounds:                  18
+    Parallel Global Rollbacks:        false
+    Rollback Bal. Violation Factor:   1
+    Num Seed Nodes:                   25
+    Enable Random Shuffle:            true
+    Obey Minimal Parallelism:         true
+    Minimum Improvement Factor:       -1
+    Release Nodes:                    true
+    Time Limit Factor:                0.25
+    Unconstrained Rounds:             10
+    Threshold Border Node Inclusion:  0.7
+    Minimum Imbalance Penalty Factor: 0.2
+    Maximum Imbalance Penalty Factor: 1
+    Start Upper Bound for Unc.:       0
+    Final Upper Bound for Unc.:       0
+    Unc. Minimum Improvement Factor:  0.002
+    Activate Unc. Dynamically:        false
+
+  Flow Parameters: 
+    Algorithm:                        do_nothing
+-------------------------------------------------------------------------------
+Shared Memory Parameters:             
+  Number of Threads:                  2
+  Number of used NUMA nodes:          1
+  Use Localized Random Shuffle:       false
+  Random Shuffle Block Size:          2
+------------------------------------------------------------------------------- 
+
+******************************************************************************** 
+*                                    Input                                     * 
+******************************************************************************** 
+Hypergraph Information 
+Name : ibm01.hgr 
+# HNs : 12752 # HEs : 14111 # pins: 50566 # graph edges: 8341 
+HE size             HE weight           HN degree           HN weight 
+| min= 2            | min= 1            | min= 1            | min= 1           
+| Q1 = 2            | Q1 = 1            | Q1 = 2            | Q1 = 1           
+| med= 2            | med= 1            | med= 3            | med= 1           
+| Q3 = 4            | Q3 = 1            | Q3 = 5            | Q3 = 1           
+| max= 42           | max= 1            | max= 39           | max= 1           
+| avg= 3.58345      | avg= 1            | avg= 3.96534      | avg= 1           
+| sd = 3.34271      | sd = 0            | sd = 2.32894      | sd = 0           
+
+******************************************************************************** 
+*                              Preprocessing...                                * 
+******************************************************************************** 
+# Communities : 35 
+# HNs Per Community # Internal Pins     Internal Degree Sum 
+| min= 59           | min= 134          | min= 134         
+| Q1 = 190          | Q1 = 979          | Q1 = 979         
+| med= 335          | med= 1364         | med= 1364        
+| Q3 = 422          | Q3 = 1693         | Q3 = 1693        
+| max= 1111         | max= 4480         | max= 4480        
+| avg= 364.343      | avg= 1444.74      | avg= 1444.74     
+| sd = 219.687      | sd = 813.216      | sd = 813.216     
+******************************************************************************** 
+*                                Coarsening...                                 * 
+******************************************************************************** 
+Hypergraph Information 
+Name : Coarsened Hypergraph 
+# HNs : 420 # HEs : 3514 # pins: 10647 # graph edges: 1503 
+HE size             HE weight           HN degree           HN weight 
+| min= 1            | min= 1            | min= 1            | min= 1           
+| Q1 = 2            | Q1 = 1            | Q1 = 16           | Q1 = 28          
+| med= 2            | med= 1            | med= 25           | med= 35          
+| Q3 = 4            | Q3 = 2            | Q3 = 33           | Q3 = 38          
+| max= 21           | max= 86           | max= 79           | max= 40          
+| avg= 3.02988      | avg= 4.01565      | avg= 25.35        | avg= 30.3619     
+| sd = 1.991        | sd = 8.5908       | sd = 14.241       | sd = 11.3654     
+
+******************************************************************************** 
+*                           Initial Partitioning...                            * 
+******************************************************************************** 
+heap property violation i = 4 parent(i) = 1 heap[i].key = 1079 / 4488 heap[parent(i)].key = 1347 / 5716 
+heap property violation i = 5 parent(i) = 2 heap[i].key = 1105 / 4448 heap[parent(i)].key = 1059 / 4613 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 962 / 4119 heap[parent(i)].key = 790 / 3447 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1564 / 6957 heap[parent(i)].key = 951 / 4408 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1076 / 4615 heap[parent(i)].key = 1223 / 5469 
+heap property violation i = 3 parent(i) = 1 heap[i].key = 1112 / 4820 heap[parent(i)].key = 1311 / 6179 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1171 / 4919 heap[parent(i)].key = 1108 / 4773 
+heap property violation i = 7 parent(i) = 3 heap[i].key = 1073 / 4727 heap[parent(i)].key = 1609 / 7170 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1255 / 5160 heap[parent(i)].key = 1172 / 5267 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1113 / 4456 heap[parent(i)].key = 1281 / 6037 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 898 / 3635 heap[parent(i)].key = 1361 / 6191 
+heap property violation i = 5 parent(i) = 2 heap[i].key = 936 / 4011 heap[parent(i)].key = 970 / 4516 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1273 / 5347 heap[parent(i)].key = 840 / 3798 
+heap property violation i = 2 parent(i) = 0 heap[i].key = 1008 / 4473 heap[parent(i)].key = 1279 / 5799 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1343 / 5544 heap[parent(i)].key = 754 / 3258 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1302 / 5491 heap[parent(i)].key = 1107 / 4742 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 953 / 3884 heap[parent(i)].key = 978 / 4155 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1074 / 4442 heap[parent(i)].key = 1442 / 6519 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 957 / 3684 heap[parent(i)].key = 1136 / 5042 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1205 / 5282 heap[parent(i)].key = 1216 / 5350 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1237 / 5419 heap[parent(i)].key = 1033 / 4705 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1018 / 4468 heap[parent(i)].key = 1306 / 5819 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1319 / 5674 heap[parent(i)].key = 846 / 3858 
+heap property violation i = 2 parent(i) = 0 heap[i].key = 936 / 3789 heap[parent(i)].key = 1264 / 5209 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 978 / 3951 heap[parent(i)].key = 1132 / 4927 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1297 / 5839 heap[parent(i)].key = 1101 / 5119 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1230 / 5183 heap[parent(i)].key = 1351 / 6036 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 1266 / 5490 heap[parent(i)].key = 1363 / 6655 
+heap property violation i = 4 parent(i) = 1 heap[i].key = 1221 / 4948 heap[parent(i)].key = 1043 / 4574 
+heap property violation i = 3 parent(i) = 1 heap[i].key = 992 / 4130 heap[parent(i)].key = 1198 / 5165 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 962 / 4119 heap[parent(i)].key = 790 / 3447 
+Initial Partitioning Results: 
+conductance_local       = 510435 
+imbalance = -0.884646 
+Part sizes and weights: 
+Num. of Clusters = 10
+|block 0 | =   32  w(  0 ) =  896  max(  0 ) = 12752
+|block 1 | =   37  w(  1 ) = 1115  max(  1 ) = 12752
+|block 2 | =   38  w(  2 ) = 1166  max(  2 ) = 12752
+|block 3 | =   46  w(  3 ) = 1344  max(  3 ) = 12752
+|block 4 | =   45  w(  4 ) = 1337  max(  4 ) = 12752
+|block 5 | =   42  w(  5 ) = 1314  max(  5 ) = 12752
+|block 6 | =   48  w(  6 ) = 1442  max(  6 ) = 12752
+|block 7 | =   42  w(  7 ) = 1351  max(  7 ) = 12752
+|block 8 | =   43  w(  8 ) = 1316  max(  8 ) = 12752
+|block 9 | =   47  w(  9 ) = 1471  max(  9 ) = 12752
+ 
+Initial Partitioning Algorithm Summary: 
+Number of Initial Partitioning Calls = 1 
+Average Number of Thread per IP Call = 2 
+ 
+[1mAlgorithm                      Avg. Quality    Total Time (s)  Total Best Total Best (%)[0m
+greedy_round_robin_fm          0               0               0          0               
+greedy_global_fm               0               0               0          0               
+greedy_sequential_fm           0               0               0          0               
+random                         539863          0.0244276       1          100             
+bfs                            0               0               0          0               
+label_propagation              0               0               0          0               
+greedy_round_robin_max_net     0               0               0          0               
+greedy_global_max_net          0               0               0          0               
+greedy_sequential_max_net      0               0               0          0               
+singleton                      0               0               0          0               
+
+******************************************************************************** 
+*                               Local Search...                                * 
+******************************************************************************** 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 841 / 4029 heap[parent(i)].key = 694 / 3413 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 706 / 2833 heap[parent(i)].key = 854 / 4136 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 389 / 1875 heap[parent(i)].key = 382 / 2139 
+heap property violation i = 1 parent(i) = 0 heap[i].key = 356 / 1767 heap[parent(i)].key = 317 / 1917 
+Local Search Results: 
+conductance_local       = 417423 
+imbalance = -0.438755 
+Part sizes and weights: 
+Num. of Clusters = 10
+|block 0 | =  514  w(  0 ) =  514  max(  0 ) = 12752
+|block 1 | =  463  w(  1 ) =  463  max(  1 ) = 12752
+|block 2 | =  677  w(  2 ) =  677  max(  2 ) = 12752
+|block 3 | =  519  w(  3 ) =  519  max(  3 ) = 12752
+|block 4 | =  834  w(  4 ) =  834  max(  4 ) = 12752
+|block 5 | =  627  w(  5 ) =  627  max(  5 ) = 12752
+|block 6 | =  589  w(  6 ) =  589  max(  6 ) = 12752
+|block 7 | =  492  w(  7 ) =  492  max(  7 ) = 12752
+|block 8 | =  880  w(  8 ) =  880  max(  8 ) = 12752
+|block 9 | = 7157  w(  9 ) = 7157  max(  9 ) = 12752
+ 
+Hypergraph Information 
+Name : Uncoarsened Hypergraph 
+# HNs : 12752 # HEs : 14111 # pins: 50566 # graph edges: 8341 
+HE size             HE weight           HN degree           HN weight 
+| min= 2            | min= 1            | min= 1            | min= 1           
+| Q1 = 2            | Q1 = 1            | Q1 = 2            | Q1 = 1           
+| med= 2            | med= 1            | med= 3            | med= 1           
+| Q3 = 4            | Q3 = 1            | Q3 = 5            | Q3 = 1           
+| max= 42           | max= 1            | max= 39           | max= 1           
+| avg= 3.58345      | avg= 1            | avg= 3.96534      | avg= 1           
+| sd = 3.34271      | sd = 0            | sd = 2.32894      | sd = 0           
+-------------------------------------------------------------------------------- 
+
+******************************************************************************** 
+*                             Partitioning Result                              * 
+******************************************************************************** 
+Objectives: 
+  conductance_local    = 417423 (primary objective function) 
+  cut                  = 2513  
+  km1                  = 3177  
+  soed                 = 5690  
+  conductance_global   = 417423  
+  Conductance (double) = 0.194378  
+  Imbalance            = -0.438755  
+  Partitioning Time    = 0.223771 s  
+
+Partition sizes and weights:  
+Num. of Clusters = 10
+|block 0 | =  514  w(  0 ) =  514  max(  0 ) = 12752
+|block 1 | =  463  w(  1 ) =  463  max(  1 ) = 12752
+|block 2 | =  677  w(  2 ) =  677  max(  2 ) = 12752
+|block 3 | =  519  w(  3 ) =  519  max(  3 ) = 12752
+|block 4 | =  834  w(  4 ) =  834  max(  4 ) = 12752
+|block 5 | =  627  w(  5 ) =  627  max(  5 ) = 12752
+|block 6 | =  589  w(  6 ) =  589  max(  6 ) = 12752
+|block 7 | =  492  w(  7 ) =  492  max(  7 ) = 12752
+|block 8 | =  880  w(  8 ) =  880  max(  8 ) = 12752
+|block 9 | = 7157  w(  9 ) = 7157  max(  9 ) = 12752
+
+Timings: 
+ + I/O Hypergraph                             = 0.00942315 s
+ + Memory Pool Allocation                     = 0.00254839 s
+ + Preprocessing                              = 0.036273 s
+ + Coarsening                                 = 0.0274196 s
+ + Initial Partitioning                       = 0.0131575 s
+ + Refinement                                 = 0.143757 s
+ + Postprocessing                             = 1.245e-06 s
+ 

@@ -471,11 +471,22 @@ in `mt-kahypar/partition/multilevel.cpp`:
 		- &rarr; `operator()(phg, he)` returns 0 if `he` isn't in the most expensive cut, otherwise returns edge weight divided by $min{_part_volume(p), _total_volume - _part_volume(p)}$
 		- &rArr; depends on `conductance_pq` of `PartitionedHypergraph`
 		- **TODO**: What if several parts have the biggest conductance?
-		- **Problem**: value of `ObjectiveFunction` has to be `HyperedgeWeight`: \
-		Current solution: `current_multiplier = phg.totalVolume() / phg.k()`. Problems? -> **ASK!!!**
+		- **Problem**: value of `ObjectiveFunction` has to be `HyperedgeWeight`:
+			- Old solution: `current_multiplier = phg.totalVolume() / phg.k()`. Problems? -> too big values &rarr;; no gains from moves &rarr; bad partitions...**ASK!!!**
+			- **Current solution**: conductance is between 0 and 1 &rArr; scale it by `mt_kahypar::scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;` (less than `...::max()`, as sometimes cut weight could be bigger than part volume due to concurrency) \
+			&rArr; `hypergraph_common.h`: \+ constant `mt_kahypar::scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;` (**TODO**: think of a good way to make it a power of ten for clearer visual, but still dynamicly dependend on `HyperedgeWeight` )
 		- if the contribution is too big, a message is printed (`LOG`), the returned value is `std::numeric_limits<HyperedgeWeight>::max()`
 	- `contribution(...)`, `quality(...)`: add new objective functions to the switch statements
-	+ \+ `HyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets
+	+ \+ `HyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets. Returns `std::numerical_limits<HyperedgeWeight>::max()` if `top_part_min_volume = 0` (for the edgecase, that only one block exists: conductance was previausly -infinity, which discouraged moves from that "block"...)
+	+ \+ [my]: `double compute_double_conductance(phg)` in `metrics.cpp / .h` to print out double conductance at the end:
+		- to instantiate this method: [debug: **important** is to instantiate, declare and define methods in the same order]
+			- \+`#define CONDUCTANCE_DOUBLE(X) double compute_double_conductance(const X& phg)`
+			- \+ `INSTANTIATE_FUNC_WITH_PARTITIONED_HG(CONDUCTANCE_DOUBLE)`
+		- usage: `partitioning_output.cpp`:  in `printObjectives(..)` in if-es of `conductance_local`, `conductance_global` also call:
+		```cpp
+		printKeyValue("Conductance (double)",
+        metrics::compute_double_conductance(hypergraph));
+		```
 	- in `compute_objective_parallel(..)`, `compute_objective_sequentially(..)` add switch to compute conductance objective without looping through nets 
 4. `partition/refinement/gains/gain_definitions.h`:
 	- \+ `ConductanceLocalGainTypes`, `ConductanceGlobalGainTypes` - gain type structs analog. to `CutGainTypes`:
@@ -514,25 +525,71 @@ is not implementable for (scaled) conductance.
 1) use singleton partitioning &rArr; change `k` to the number of nodes in the kernel;
 2) use recursive bipartitioning with other objective &larr; TODO later (if enough time) - see `partitioner.cpp  partition(...)  #ifdef KAHYPAR_ENABLE_STEINER_TREE_METRIC ...` 
 
-#### Singleton Partitioning:
+#### ~~Singleton Partitioning~~ Clustering preset:
+**Before**
 Add New preset `clustering` with a singleton IP [use commits `a869e6e` "context for cluster & singleton IP set up", `f799400` "singleton IP with k = num nodes of coarsened hg", `04fc118` "fix uncoarsening bug (con info - input num hyperedges)" from https://github.com/adilchhabra/mt-kahypar]:
+
+**Now**
+`clustering` has minimal weight constraints, but performes 5 rounds of random IP instead of singleton IP (singleton makes conductance = 1...). Also it runs $\le20$ rounds of label propagation (stipps, when no / negative improvement). 
 
 My changes: 
 1) `cluster_preset.ini`:
 	```ini
-	# main -> refinement -> fm
 	...
-	r-fm-rollback-parallel=false
+	# main -> initial_partitioning
+	i-mode=direct
+	i-runs=5 # before: 1 => could be 1 block...
+	i-enabled-ip-algos=0 # greedy_round_robin_fm
+	i-enabled-ip-algos=0 # greedy_global_fm
+	i-enabled-ip-algos=0 # greedy_sequential_fm
+	i-enabled-ip-algos=1 # random
+	...
+	i-enabled-ip-algos=0 # singleton
+	...
+	# main -> refinement -> label_propagation
+	r-lp-type=label_propagation
+	r-lp-unconstrained=true
+	r-lp-maximum-iterations=20 # before: 5
+	r-lp-rebalancing=false
+	r-lp-he-size-activation-threshold=100
+	r-lp-relative-improvement-threshold=0.001
+	# main -> refinement -> fm
+	r-fm-type=unconstrained_fm
+	r-fm-multitry-rounds=18 # before: 10
+	r-fm-unconstrained-rounds=10 # before: 8
+	r-fm-rollback-parallel=false # before: true
 	```
 2) `presets.cpp`:
 	```cpp 
 	std::vector<option>	load_clustering_preset() {
+		// main -> initial_partitioning
+		create_option("i-mode", "direct"),
+		create_option("i-runs", "5"),
+		{ "i-enabled-ip-algos", {
+				"0",    // greedy_round_robin_fm
+				"0",    // greedy_global_fm
+				"0",    // greedy_sequential_fm
+				"1",    // random
+				...
+				"0",    // singleton
+		} };
 		...
+		// main -> refinement -> label_propagation
+		create_option("r-lp-type", "label_propagation"),
+		create_option("r-lp-unconstrained", "true"),
+		create_option("r-lp-maximum-iterations", "20"), // was 5
+		create_option("r-lp-rebalancing", "false"),
+		create_option("r-lp-he-size-activation-threshold", "100"),
+		create_option("r-lp-relative-improvement-threshold", "0.001"),
+		// main -> refinement -> fm
+		create_option("r-fm-type", "unconstrained_fm"),
+		create_option("r-fm-multitry-rounds", "18"), // was 10
+		create_option("r-fm-unconstrained-rounds", "10"), // was 8
 		// main -> refinement -> fm
 		create_option("r-fm-type", "unconstrained_fm"),
 		create_option("r-fm-multitry-rounds", "10"),
 		create_option("r-fm-unconstrained-rounds", "8"),
-		create_option("r-fm-rollback-parallel", "false"),
+		create_option("r-fm-rollback-parallel", "false"), // was true
 		...
 	}
 	```
@@ -654,7 +711,9 @@ My changes:
 		- `multilevel_partitioning(hg, context, ..)`:
 			- make `Context& context` argument non-const to be able to change `k` in case of `PresetType::cluster`
 			- before `## Coarsening ##` get `HyperedgeID input_he_count = hypergraph.initialNumEdges();`
-			- in `## Initial partitioning ##` set `k = phg.initialNumNodes()` in `context` and `phg`
+			- in `## Initial partitioning ##`, 
+				- if `PresetType::cluster`: return `k = initial_k` (cluster sets `k = 2` in  `setupContext()` of `partitioner.cpp` to make weight constraints as lax as possible)
+				- **if singleton enabled** and $> 2$ nodes in `phg`: set `k = phg.initialNumNodes()` in `context` and `phg`
 		- in methods of `Multilevel<TypeTraits>` that call `multilevel_partitioning()` (or call methods that call it, etc.): 
 			- make `Context& context` argument non-const to be able to call `multilevel_partitioning(hg, context)`, etc. &rArr; change declaration in `.h` \
 			[`Multilevel<TypeTraits>::partition(hg, context, ..)`, `Multilevel<TypeTraits>::partition(phg, context, ..)`, `Multilevel<TypeTraits>::partitionVCycle(hg, phg, context, ..)`]
@@ -662,10 +721,20 @@ My changes:
 		- make `Context& context` argument non-const to correspond `.cpp` \
 			[`partition(hg, context, ..)`, `partition(phg, context, ..)`, `partitionVCycle(hg, phg, context, ..)`]
 	- `partitioner.cpp`:
-		- `setupContext(hg, context, ..)`: if `PresetType::cluster`, set `context.partition.k = 2` and `context.partition.epsilon = std::numeric_limits<double>::max();` \ 
+		- `setupContext(hg, context, ..)`: if `PresetType::cluster`, set `context.partition.k = 2` and `context.partition.epsilon = std::numeric_limits<double>::max();`, [my] **save old k** in `context.partition.initial_k` \ 
 			[Adil: this determines how the part weights and contraction limits are defined]
+		- &rArr; in `context.cpp, .h`: \+ attribute `PartitionID context.partition.initial_k = -1` \
+			&rArr; in `mt-kahypar/io/sql_plottools_serializer.cpp` in `serialize()` print out `"initial_k=..."` (experience of prior debugging...) 
 
-**Sanity check**: compiles, passes the test suite
+**Sanity check**: compiles, passes the test suite [for the old implementation!]
+
+#### IP Algorithms
+Cluster uses `random_initial_partitioner` ber default, but can run with `singleton_initial_partitioner`.
+
+`singleton_initial_partitioner` acts exactly like `random_initial_partitioner` if `k != num_nodes`.
+
+My changes:
+- use `setOnlyNodePart(..)` + `initializePartition()` in both `singleton_initial_partitioner` and `random_initial_partitioner`. This way program doesn't hang... [**TODO** sometime later: find out, what's wrong with `setNodePart()`!!!]
 
 ### Part 2.2.1 Side trip: Disabling single-pin net removal
 Note: enabling collective sync_update is discussed in the section about Attributed Gain (Problem with `SyncronizedEdgeUpdate`). The new atributes, set-up functions and getters / setters are analogous to single-pin net removal
@@ -1121,7 +1190,7 @@ call `context.setupCollectiveSyncUpdates()` as early as possible after setting `
 
 \+ `conductance_global_attributed_gain.h`:
 + \+ `ConductanceGlobalAttributedGains`:
-	+ \+ `public HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` 
+	+ \+ `public HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` (but if `top_part_cut_weight > top_part_min_volume`, simpty returns `sd::numerical_limit<HyperedgeWeigh>::max()`, as conductance seems to be high)
 	- `static HyperedgeWeight gain(&sync_update)` - computes new fractions for `to` and `from`, finds the biggest other fraction (in `sync_update.top_three_conductance_info_before` - vector with $\le 3$ biggest conductance fractions), computes old and new top conductances via `HyperedgeWeight compute_conductance_objective(..)`, returns `new_conductance - old_conductance`
 
 ##### Conductance Local
