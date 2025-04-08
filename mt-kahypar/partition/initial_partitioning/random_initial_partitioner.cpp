@@ -55,9 +55,11 @@ void RandomInitialPartitioner<TypeTraits>::partitionImpl() {
             break;
           }
         }
-        hg.setNodePart(hn, current_block);
+        hg.setOnlyNodePart(hn, current_block);
       }
     }
+    hg.initializePartition();
+    hg.needsConductancePriorityQueue();
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double>(end - start).count();
