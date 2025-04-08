@@ -1071,19 +1071,36 @@ private:
   // ################## Non-supported operations from PHG #######################
 
   // ! Total volume of graph: not supported 
-  HypernodeWeight totalVolume() const {
+  HypergraphVolume totalVolume() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return 0;
   }  
+  // ! Original total volume of graph: not supported 
+  HypergraphVolume originalTotalVolume() const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }  
+  
 
   // ! Node weighted degree: not supported
-  HyperedgeWeight nodeWeightedDegree(const HypernodeID) const {
+  HypergraphVolume nodeWeightedDegree(const HypernodeID) const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+  // ! Node original weighted degree: not supported
+  HypergraphVolume nodeOriginalWeightedDegree(const HypernodeID) const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return 0;
   }
 
   // ! Part volume: not supported
-  HyperedgeWeight partVolume(const PartitionID) const {
+  HypergraphVolume partVolume(const PartitionID) const {
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+    return 0;
+  }
+
+  // ! Part volume: not supported
+  HypergraphVolume partOriginalVolume(const PartitionID) const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return 0;
   }
@@ -1156,6 +1173,13 @@ private:
   }
   // Interface mirroring
   bool needsConductancePriorityQueue() const {
+    return false;
+  }
+  // Interface mirroring
+  // (not supportsed for partitioned graphs)
+  bool conductancePriorityQueueUsesOriginalStats() const {
+    /// [debug] std::cerr << "ParititonedGraph::conductancePriorityQueueUsesOriginalStats()" << std::endl;
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return false;
   }
      
