@@ -341,9 +341,13 @@ Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDelta
 	- all arithmetical operators use `operator+= (NonnegativeNumT)` or `operator-= (NonnegativeNumT)` which contain an assertion about overflow.
 
 ##### ConductancePQ
+`hypergraph_commons.h`: [debug: here to avoid include loop]
+- include `nonnegative_fraction.h`
+- \+ `using ds::ConductanceFraction = NonnegativeFraction<HypergraphVolume>`
+- \+ `struct ds::ConductanceInfo { ConductanceFraction, PartitionID}` 
+
 \+ `conductance_pq.h`:
-- `ConductanceFraction := NonnegativeFraction<HypergraphVolume>`
-- \+ `struct ConductanceInfo { ConductanceFraction, PartitionID}`
+- `~~ConductanceFraction := NonnegativeFraction<HypergraphVolume>`~~ moved to `hypergraph_common.h`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
 	- \+ `initialize(partitioned_hg, sync=false)`: initializes underlying `MaxHeap` with `build()` \
@@ -466,7 +470,7 @@ in `mt-kahypar/partition/multilevel.cpp`:
 		Current solution: `current_multiplier = phg.totalVolume() / phg.k()`. Problems? -> **ASK!!!**
 		- if the contribution is too big, a message is printed (`LOG`), the returned value is `std::numeric_limits<HyperedgeWeight>::max()`
 	- `contribution(...)`, `quality(...)`: add new objective functions to the switch statements
-	+ \+ `hyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets
+	+ \+ `HyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets
 	- in `compute_objective_parallel(..)`, `compute_objective_sequentially(..)` add switch to compute conductance objective without looping through nets 
 4. `partition/refinement/gains/gain_definitions.h`:
 	- \+ `ConductanceLocalGainTypes`, `ConductanceGlobalGainTypes` - gain type structs analog. to `CutGainTypes`:
@@ -996,8 +1000,8 @@ When we move a node from its *source* (```from```) to a *target* block (```to```
 	3) `HypergraphVolume volume_from_after, volume_to_after`
 	5) `HypergraphVolume weighted_degree` (the used version!!!)
 	6) `HypergraphVolume total_volume` (the used version!!!)
-	- ~~`edgeWeight`~~: already there
-- \+ forward declaration of `ds::ConductanceInfo`
+	7) `PartitionID from, to` 
+- \+ f~~orward declaration~~ definition of `ds::ConductanceInfo` [debug: here to avoid include loop]
 
 Initialize new members of `SynchronizedEdgeUpdate` (looked for mentions: skipped lambdas, tests):
 - `partitioned_hypergraph.h`:
@@ -1028,7 +1032,7 @@ The gain of a node move can change between its initial calculation and execution
 &rarr; slightly analog. to `_disable_single_pin_nets_removal`
 
 `hypergraph_common.h`:
-+ \+ `bool sync_update::collective_sync_updates_in_phg = false`
++ \+ struct `mt_kahypar::SyncUpdatePreferences` with `static bool collective_sync_updates_in_phg`
 
 `partitioned_hypergraph.h`:
 + \+ `bool collectiveSyncUpdatesEnabled() bool `
@@ -1052,7 +1056,7 @@ The gain of a node move can change between its initial calculation and execution
 
 \+ `conductance_global_attributed_gain.h`:
 + \+ `ConductanceGlobalAttributedGains`:
-	+ \+ `private HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` 
+	+ \+ `public HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` 
 	- `static HyperedgeWeight gain(&sync_update)` - computes new fractions for `to` and `from`, finds the biggest other fraction (in `sync_update.top_three_conductance_info_before` - vector with $\le 3$ biggest conductance fractions), computes old and new top conductances via `HyperedgeWeight compute_conductance_objective(..)`, returns `new_conductance - old_conductance`
 
 ##### Conductance Local
@@ -1064,9 +1068,60 @@ Uses the same attributed gains
 
 
 #### Gain Computation
-To Be implemented
-\+ `conductance_local_gain_computation.h`:
-- \+ `ConductanceLocalGainComputation`
+##### Intro From Guide
+
+All gain computation techniques inherit from ```GainComputationBase``` (see ```partition/refinement/gains/gain_compute_base.h```). The base class has two template parameters: the derived class and the attributed gain implementation of the objective function (curiously recurring template pattern, avoids vtable lookups). The base class calls the ```precomputeGains(...)``` function of the derived class, which has the following interface:
+```cpp
+template<typename PartitionedHypergraph>
+void precomputeGains(const PartitionedHypergraph& phg,
+                     const HypernodeID hn,
+                     RatingMap& tmp_scores,
+                     Gain& isolated_block_gain);
+```
+We split the gain computation in two steps: 
+1) compute the gain of moving the node into an isolated *= non-adjasent* block (stored in ```isolated_block_gain```) [0 by me, as they are different for different non-adjasent blocks &rArr; have to be in `tmp_scores` - analog. to steiner tree]
+2) moving the node from the isolated block to all adjacent blocks (stored in ```tmp_scores```). ```tmp_scores``` can be used similar to an ```std::vector``` and has exactly k entries. The gain of moving a node to a block ```to``` can then be computed by ```isolated_block_gain - tmp_scores[to]``` [**not for conductance: there just `tmp_scores[to]`**] (a negative value means that moving the node to block ```to``` improves the objective function). However, the derived class still implements a function that computes the gain to a particular block:
+```cpp
+HyperedgeWeight gain(const Gain to_score, // tmp_scores[to]
+                     const Gain isolated_block_gain);
+```
+The implementation of this function is most likely ```isolated_block_gain - to_score``` (except for the Steiner tree metric, where it is `to_score` &rArr; **by conductance, too**).
+
+##### Conductance Global
+All lookups for gain of a node in `gain_computation_base.h` pass through `gain(to_score, isolated_block_gain)` &rArr; should be ok to set `isolated_block_gain = 0`
 
 \+ `conductance_global_gain_computation.h`
-+ \+ `ConductanceGlobalGainComputation`
++ \+ `ConductanceGlobalGainComputation`:
+	+ `private ds::Bitset _all_blocks`, `private tbb::enumerable_thread_specific<ds::Bitset> _local_adjacent_blocks` - bit-sets for iterating over concidered blocks [took from `steiner_tree_gain_computation.h`], set in constructor, changed in `changeNumberOfBlocksImpl(new_k)`
+	+ `static constexpr size_t BITS_PER_BLOCK = ds::StaticBitset::BITS_PER_BLOCK` - also took from `steiner_tree_gain_computation.h`
+	+ \+ [my] `setPreSyncUpdataData<artitionedHypergraph>(phg, ...)` - sets `to`, `volume_to_after`, `cut_weight_to_after`, `cut_weight_from_after` - almost all the data needed for the emulation of sync_update. Note: cut weights have to be adjusted later in the `precomputeGains(..)` method
+	- `void precomputeGains(const &phg, const hn, &tmp_scores, &isolatedBlockGain, consider_non_adjacent_blocks)`: 
+		- analog. to steiner tree gets a "list" of all considered blocks;
+		- gets current conductance objective value via `compute_conductance_objective(..)` of `ConductanceGlobalAttributedGains`
+		- for each considered block:
+			- collects data needed for simulation of `sync_update` for a conductance objective (via `void setPreSyncUpdataData(&..)` + cut weights adjusted in a loop);
+			- calls `ConductanceGlobalAttributedGains::gain(sync_update)` to get gain
+			- sets `tmp_scores[to] = conductance_after - conductance_now`
+	- `HyperedgeWeight gain(to_score, isolated_block_gain)`: returns `to_score`
+
+##### Conductance Local
+Computes the "gain" of move as change in maximal conductance between to and from blocks. Otherwise analog. to Conductance Global
+
+\+ `conductance_local_gain_computation.h`:
+- \+ `ConductanceLocalGainComputation`
+	+ `private ds::Bitset _all_blocks`, `private tbb::enumerable_thread_specific<ds::Bitset> _local_adjacent_blocks` - bit-sets for iterating over concidered blocks [took from `steiner_tree_gain_computation.h`], set in constructor, changed in `changeNumberOfBlocksImpl(new_k)`
+	+ `static constexpr size_t BITS_PER_BLOCK = ds::StaticBitset::BITS_PER_BLOCK` - also took from `steiner_tree_gain_computation.h`
+	+ \+ [my] `setPreIncidentEdgeLoopData<artitionedHypergraph>(phg, ...)` - sets `cut_weight_from_before`, `cut_weight_to_before`, `cut_weight_from_after`, `cut_weight_to_after`, `volume_to_before` [used version], `volume_to_after`[used version]: \
+	&larr; almost all the data needed for the emulation of a move. \
+	Note: cut weights have to be adjusted later in the `precomputeGains(..)` method
+	- `void precomputeGains(const &phg, const hn, &tmp_scores, &isolatedBlockGain, consider_non_adjacent_blocks)`: 
+		- analog. to steiner tree gets a "list" of all considered blocks;
+		- gets current from fraction
+		- for each considered block:
+			- gets current to fraction 
+			- &rarr; computes current local conductance objective value of maximal fraction between from and to via `compute_conductance_objective(..)` of `ConductanceGlobalAttributedGains`  (at least one part isn't empty &rArr; max. isn't $0 / 0$)
+			- collects data needed for simulation for move (via `void setPreIncidentEdgeLoopData(&..)` + cut weights adjusted in a loop);
+			- gets new to and from fractions
+			- &rarr; computes new local conductance objective value of maximal fraction between from and to via `compute_conductance_objective(..)` of `ConductanceGlobalAttributedGains`  (at least one part isn't empty &rArr; max. isn't $0 / 0$)
+			- sets `tmp_scores[to] = local_conductance_after - local_conductance_before`
+	- `HyperedgeWeight gain(to_score, isolated_block_gain)`: returns `to_score`
