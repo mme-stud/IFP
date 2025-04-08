@@ -38,6 +38,7 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/connectivity_info.h"
 #include "mt-kahypar/datastructures/streaming_vector.h"
+#include "mt-kahypar/datastructures/delta_val.h"
 #include "mt-kahypar/datastructures/conductance_pq.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
@@ -921,6 +922,7 @@ class PartitionedHypergraph {
     const HypernodeWeight wu = nodeWeight(u);
     const HypernodeWeight to_weight_after = _part_weights[to].add_fetch(wu, std::memory_order_relaxed);
     if (to_weight_after <= max_weight_to) {
+      needsConductancePriorityQueue(); // to initialize it
       _part_ids[u] = to;
       _part_weights[from].fetch_sub(wu, std::memory_order_relaxed);
 
@@ -956,20 +958,22 @@ class PartitionedHypergraph {
       sync_update.target_graph = _target_graph;
       sync_update.edge_locks = &_pin_count_update_ownership;
       // (new) for conductance objective
-      sync_update.k = _k;
-      sync_update.top_three_conductance_info_before = _conductance_pq.topThree();
-      // use _conductance_pq.topThree() istead of topThreePartConductanceInfos() 
-      // to avoid ASSERT(hasConductancePriorityQueue())
-      if (_conductance_pq_uses_original_stats) {
-        sync_update.volume_from_after = orig_vol_from_after;
-        sync_update.volume_to_after = orig_vol_to_after;
-        sync_update.weighted_degree = node_original_weighted_deg_u;
-        sync_update.total_volume = originalTotalVolume();
-      } else {
-        sync_update.volume_from_after = vol_from_after;
-        sync_update.volume_to_after = vol_to_after;
-        sync_update.weighted_degree = node_weighted_deg_u;
-        sync_update.total_volume = totalVolume();
+      if (needsConductancePriorityQueue()) {
+        sync_update.k = _k;
+        sync_update.top_three_conductance_info_before = _conductance_pq.topThree();
+        // use _conductance_pq.topThree() istead of topThreePartConductanceInfos() 
+        // to avoid ASSERT(hasConductancePriorityQueue())
+        if (_conductance_pq_uses_original_stats) {
+          sync_update.volume_from_after = orig_vol_from_after;
+          sync_update.volume_to_after = orig_vol_to_after;
+          sync_update.weighted_degree = node_original_weighted_deg_u;
+          sync_update.total_volume = originalTotalVolume();
+        } else {
+          sync_update.volume_from_after = vol_from_after;
+          sync_update.volume_to_after = vol_to_after;
+          sync_update.weighted_degree = node_weighted_deg_u;
+          sync_update.total_volume = totalVolume();
+        }
       }
       if (collectiveSyncUpdatesEnabled()) {
         // conductance objective support only collective sync_updates
@@ -985,10 +989,11 @@ class PartitionedHypergraph {
         // TODO (?): SPLIT INTO TWO FUNCTIONS? -> no... We need to update _part_cut_weights behind the lock
       }
       
-      // Set cut weights in sync_update
-      sync_update.cut_weight_from_after = partCutWeight(from);
-      sync_update.cut_weight_to_after = partCutWeight(to);
-      
+      if (needsConductancePriorityQueue()) {
+        // Set cut weights in sync_update
+        sync_update.cut_weight_from_after = partCutWeight(from);
+        sync_update.cut_weight_to_after = partCutWeight(to);
+      }
       if (collectiveSyncUpdatesEnabled()) {
         // conductance objective support only collective sync_updates
         delta_func(sync_update);

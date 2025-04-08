@@ -340,6 +340,8 @@ Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDelta
 	+ \+ operators `+=, -=, -, +, >, <, ==, !=` for arithmetics with other `DeltaValue` or `NonnegariveNumT`. **!!!** `NonnegativeNumT` shouldn't go first (?)
 	- all arithmetical operators use `operator+= (NonnegativeNumT)` or `operator-= (NonnegativeNumT)` which contain an assertion about overflow.
 
+&rarr; `partitioned_hypergraph`: include `delta_val.h` before `conductace_pq.h`
+
 ##### ConductancePQ
 `hypergraph_commons.h`: [debug: here to avoid include loop]
 - include `nonnegative_fraction.h`
@@ -347,6 +349,7 @@ Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDelta
 - \+ `struct ds::ConductanceInfo { ConductanceFraction, PartitionID}` 
 
 \+ `conductance_pq.h`:
+- include `delta_val.h`
 - `~~ConductanceFraction := NonnegativeFraction<HypergraphVolume>`~~ moved to `hypergraph_common.h`
 - \+ class `ConductancePriorityQueue< PartitionedHypergraph > : protected ExclusiveHandleHeap< MaxHeap< PartitionID, ConductanceFraction > >` - addressible max heap with `id = PartitionID`, `key = Conductance`:
 	- \+ *private* method `build()`: builds an already filled heap in $\mathcal{O}(k)$
@@ -398,7 +401,7 @@ Update of `_conductance_pq` (if enabled):
 
 
 `partitioned_hypergraph.h`:
-+ \+ `#include "conductance_pq.h"`
++ \+ `#include "delta_val.h", "conductance_pq.h"`
 + \+ `ConductancePriorityQueue<Self> _conductance_pq` - attribute
 
 + \+ `private bool _has_conductance_pq = fasle` - is set to `true` **at the end** of initialization, `_conductance_pq` 
@@ -433,9 +436,11 @@ Update of `_conductance_pq` (if enabled):
 - `setNodePart(u, p)` - sets partition for the first time \
 	&rArr; `_conductance_pq` shouldn't be initialized yet \
 	&rArr; not touched
-- `changeNodePart(u, from, to, ...)`: call ~~`adjustKey()`~~ `adjustKeyByDeltas(..)` for `from` and `to`  to avoid needing heaby locks and to not break `_conductance_pq` \
-	!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight \
-	**!!!** ~~lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] ~~ [debug + adjustKeyByDeltas] 
+- `changeNodePart(u, from, to, ...)`: 
+	- call `needcConducatncePriorityQueue()` before the start of changing node part (i.e. if weight was approbed) - so they won't pause updates to initialize pq in the process &rArr; a bit better parallelizm... 
+	- call ~~`adjustKey()`~~ `adjustKeyByDeltas(..)` for `from` and `to`  to avoid needing heavy locks and to not break `_conductance_pq` \
+		!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight \
+		**!!!** ~~lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] ~~ [debug + adjustKeyByDeltas] 
 - &rArr; force `updatePinCountOfHyperedge(..)` to return deltas of `part_cut_weights` pf `from` and `to` as `vec<DeltaValue<hypergraphVolume>>` (`<from, to>`)
 - `initializePartition()` - for now initialized pq here--- \
 	&rarr; **TODO** initialize `_conductance_pq` somewhere for the case of conductance objective fuction	
@@ -662,7 +667,7 @@ My changes:
 **Sanity check**: compiles, passes the test suite
 
 ### Part 2.2.1 Side trip: Disabling single-pin net removal
-Note: enabling collective sync_update is discussed in the secion about `SyncronizedEdgeUpdate`. The new atributes, set0up functions and getters / setters are analogous to single-pin net removal
+Note: enabling collective sync_update is discussed in the section about Attributed Gain (Problem with `SyncronizedEdgeUpdate`). The new atributes, set-up functions and getters / setters are analogous to single-pin net removal
 
 #### Rationale
 
@@ -1011,13 +1016,14 @@ When we move a node from its *source* (```from```) to a *target* block (```to```
 Initialize new members of `SynchronizedEdgeUpdate` (looked for mentions: skipped lambdas, tests):
 - `partitioned_hypergraph.h`:
 	- `changeNodePart(u, from, to, ..)`: 
-		- after `// Construct sync_update` (before iterating through incident nets) set:
+		- after `// Construct sync_update` (before iterating through incident nets) set **if `needsConductancePriorityQueue()`** :
 			- `k`, `top_three_conductance_info_before`
 			-  `volume_from_after`, `volume_to_after`, `weighted_degree`, `total_volume` [used version only]
 		- after iterating through incident nets 
-			- call `notify_func(sync_update)`, if collective sync_update is enabled
 			- set `cut_weight_to_after`, `cut_weight_from_after`
-			- call `delta_func(sync_update)`, if collective sync_update is enabled
+		- if collective sync_update is enabled:
+			- call `notify_func(sync_update)` before loop over incident edges
+			- call `delta_func(sync_update)` after loop + setting the rest of `sync_update`
 
 - `global_rollback.cpp`:
 	- `recalculateGainForHyperedgeViaAttributedGains(&phg, FMShareData&, &e)`, `recalculateGainForGraphEdgeViaAttributedGains()`: 
