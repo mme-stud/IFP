@@ -1134,13 +1134,13 @@ private:
   // ! Get the partition with the hightes conductance: not supported
   ConductanceInfo topPartConductanceInfo() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
-    return 0;
+    return ConductanceInfo();
   }
 
   // ! Get the partition with the second highest conductance: not supported
   ConductanceInfo secondTopPartConductanceInfo() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
-    return 0;
+    return ConductanceInfo();
   }
 
   // ! Get top 3 partitions with the highest conductance: not supported

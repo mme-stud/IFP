@@ -36,6 +36,7 @@
 #include "mt-kahypar/parallel/tbb_initializer.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/datastructures/array.h"
+#include "mt-kahypar/datastructures/nonnegative_fraction.h" // for ConductanceFraction
 
 #ifndef KAHYPAR_DISABLE_HWLOC
   #include "mt-kahypar/parallel/hardware_topology.h"
@@ -152,7 +153,15 @@ class DynamicGraph;
 class DynamicHypergraph;
 class ConnectivityInfo;
 class SparseConnectivityInfo;
-class ConductanceInfo;
+}
+
+namespace ds {
+  using ConductanceFraction = NonnegativeFraction<HypergraphVolume>;
+
+  struct ConductanceInfo {
+    ConductanceFraction fraction;
+    PartitionID partID;
+  };
 }
 
 struct SynchronizedEdgeUpdate {

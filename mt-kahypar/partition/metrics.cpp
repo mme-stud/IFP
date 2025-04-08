@@ -33,7 +33,7 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/mapping/target_graph.h"
 #include "mt-kahypar/utils/exception.h"
-// include "mt-kahypar/datastructures/conductance_pq.h"
+#include "mt-kahypar/datastructures/hypergraph_common.h"
 
 namespace mt_kahypar::metrics {
 
@@ -80,7 +80,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
 
-    const ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+    const ds::ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
     const PartitionID top_part = top_conductance_info.partID;
     const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, top_part);
     ASSERT(0 <= top_part && top_part < phg.k());
@@ -126,7 +126,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
 
-    const ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+    const ds::ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
     const PartitionID top_part = top_conductance_info.partID;
     const HypernodeID pin_count_he_in_part = phg.pinCountInPart(he, top_part);
     ASSERT(0 <= top_part && top_part < phg.k());
@@ -170,7 +170,7 @@ template<typename PartitionedHypergraph>
 HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) {
   ASSERT( !PartitionedHypergraph::is_graph, "Conductance objective is not supported for graphs" );
   ASSERT(phg.hasConductancePriorityQueue());
-  const ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
+  const ds::ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
   const HypergraphVolume top_part_cut_weight = top_conductance_info.fraction.getNumerator();
   const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
 

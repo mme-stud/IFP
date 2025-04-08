@@ -16,6 +16,8 @@
 
 namespace mt_kahypar {
 namespace ds {
+  
+/* Moved to hypergraph_common.h
 
 using ConductanceFraction = NonnegativeFraction<HypergraphVolume>;
 
@@ -23,6 +25,7 @@ struct ConductanceInfo {
   ConductanceFraction fraction;
   PartitionID partID;
 };
+*/
 
 
 /**
