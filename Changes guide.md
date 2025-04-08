@@ -629,6 +629,7 @@ My changes:
 	- `CMakeLists.txt`: ~~\+ add `target_compile_definitions(mtkahypar PUBLIC KAHYPAR_ENABLE_CLUSTERING_FEATURES)`~~ [not nere now] &rarr; done in `../CMakeLists.txt`
 	- `mtkahypar.cpp`:
 		- `to_preset_type(preset)`: \+ case `CLUSTER`
+		- [my] `from_preset_type(preset)`: \+ case `PresetType::cluster`
 		- `mt_kahypar_create_hypergraph(context, ...)`: do nothing here &rarr; add case `cluster` to `create_hypergraph(context, ..)` in `include/lib_helper_functions.h` \
 		analog.: `mt_kahypar_create_graph(context, ...)`, `mt_kahypar_create_partitioned_hypergraph(hg, context, ...)`\
 		analog. but solved by adding case `MULTILEVEL_HYPERGRAPH_CLUSTERING` to `switch_phg(phg, f)`in `include/lib_generic_impls.h`: \
@@ -1189,3 +1190,64 @@ Computes the "gain" of move as change in maximal conductance between to and from
 			- &rarr; computes new local conductance objective value of maximal fraction between from and to via `compute_conductance_objective(..)` of `ConductanceGlobalAttributedGains`  (at least one part isn't empty &rArr; max. isn't $0 / 0$)
 			- sets `tmp_scores[to] = local_conductance_after - local_conductance_before`
 	- `HyperedgeWeight gain(to_score, isolated_block_gain)`: returns `to_score`
+
+### Part 2.4 Guide: Extending the Library Interface with a Custom Objective Function
+
+#### C Interface
+
+- ```include/mtkahypartypes.h```: Add a enum type to ```mt_kahypar_objective_t``` representing your new objective function:
+	+ \+ `CONDUCTANCE_LOCAL`, `CONDUCTANCE_GLOBAL` [`CLUSTER` is also there]
+- ```lib/mtkahypar.cpp```: [`CLUSTER` is also there] Create a mapping between the enum types ```mt_kahypar_objective_t``` and ```Objective``` in 
+	- ```mt_kahypar_set_context_parameter(...)``` : `"conductance_local"`, `"conductance_global"`
+	- ```mt_kahypar_set_partitioning_parameters(...)```: `CONDUCTANCE_LOCAL`, `CONDUCTANCE_GLOBAL`
+- ```include/mtkahypar.h```: Add a function that takes a ```mt_kahypar_partitioned_hypergraph_t``` and computes your objective function (similar to ```mt_kahypar_cut(...)``` and ```mt_kahypar_km1```):
+	+ \+ `mt_kahypar_conductance_local`, `mt_kahypar_conductance_global` (only declarations)
+	+ [my] &rArr; in `mtkahypar.cpp`:
+		- \+ implementations of `mt_kahypar_conductance_local`, `mt_kahypar_conductance_global` [analog. to `mt_kahypar_cut(...)`]: both call `lib::conductance_..(phg)` with `Throwing=true`
+		- \+ in `mt_kahypar_get_objective(context)` add cases `Objective::conductance_local`, `Objective::conductance_global`
+	+ [my] &rarr; `lib_generic_impl.h`: 
+		+ \+ `conductance_global(p)`, `conductance_local(p)`: call `metrics::quality` with their `Objective` (analog. to `soed<Throwing>(phg)`)
+
+#### Python Interface
+
+The Python interface is defined in ```python/module.cpp```. 
+
+You only have to add a mapping between a string representation of your new objective function and our ```Objective``` enum type in the enum type section of the file:
+- ```python/module.cpp```:
+	- Objectives
+	```cpp
+	using mt_kahypar::Objective;
+	py::enum_<Objective>(m, "Objective", py::module_local())
+		.value("CUT", Objective::cut)
+		.value("KM1", Objective::km1)
+		.value("SOED", Objective::soed)
+		.value("CONDUCTANCE_LOCAL", Objective::conductance_local)
+		.value("CONDUCTANCE_GLOBAL", Objective::conductance_global);
+	```
+	- preset cluster **!!!**:
+	```cpp
+  using mt_kahypar::PresetType;
+  py::enum_<PresetType>(m, "PresetType", py::module_local())
+    .value("DETERMINISTIC", PresetType::deterministic)
+    .value("LARGE_K", PresetType::large_k)
+    .value("DEFAULT", PresetType::default_preset)
+    .value("QUALITY", PresetType::quality)
+    .value("HIGHEST_QUALITY", PresetType::highest_quality)
+    .value("CLUSTER", PresetType::cluster);
+	```
+
+ Afterwards, add function to the ```PartitionedGraph```, ```PartitionedHypergraph``` and ```SparsePartitionedHypergraph``` class that computes the value of your objective function:
+ `python/module.cpp`:
+ -  PartitionedHypergraph:
+```cpp
+  // ####################### Partitioned Hypergraph #######################
+
+  phg_class
+  	...
+    .def("soed", &lib::soed<true>,
+      "Computes the sum-of-external-degree metric of the partition")
+    .def("conductance_local", &lib::conductance_local<true>,
+      "Computes the local conductance metric of the partition")
+    .def("conductance_global", &lib::conductance_global<true>,
+      "Computes the global conductance metric of the partition")
+```

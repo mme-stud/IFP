@@ -108,7 +108,9 @@ typedef enum {
 typedef enum {
   CUT,
   KM1,
-  SOED
+  SOED,
+  CONDUCTANCE_LOCAL,
+  CONDUCTANCE_GLOBAL
 } mt_kahypar_objective_t;
 
 /**

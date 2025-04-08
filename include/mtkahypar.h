@@ -522,6 +522,16 @@ MT_KAHYPAR_API mt_kahypar_hyperedge_weight_t mt_kahypar_km1(const mt_kahypar_par
 MT_KAHYPAR_API mt_kahypar_hyperedge_weight_t mt_kahypar_soed(const mt_kahypar_partitioned_hypergraph_t partitioned_hg);
 
 /**
+ * Computes the conductance_local metric.
+ */
+MT_KAHYPAR_API mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_local(const mt_kahypar_partitioned_hypergraph_t partitioned_hg);
+
+/**
+ * Computes the conductance_global metric.
+ */
+MT_KAHYPAR_API mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_global(const mt_kahypar_partitioned_hypergraph_t partitioned_hg);
+
+/**
  * Computes the steiner tree metric.
  */
 MT_KAHYPAR_API mt_kahypar_hyperedge_weight_t mt_kahypar_steiner_tree(const mt_kahypar_partitioned_hypergraph_t partitioned_hg,

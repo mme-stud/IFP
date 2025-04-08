@@ -142,13 +142,16 @@ PYBIND11_MODULE(mtkahypar, m) {
     .value("LARGE_K", PresetType::large_k)
     .value("DEFAULT", PresetType::default_preset)
     .value("QUALITY", PresetType::quality)
-    .value("HIGHEST_QUALITY", PresetType::highest_quality);
+    .value("HIGHEST_QUALITY", PresetType::highest_quality)
+    .value("CLUSTER", PresetType::cluster);
 
   using mt_kahypar::Objective;
   py::enum_<Objective>(m, "Objective", py::module_local())
     .value("CUT", Objective::cut)
     .value("KM1", Objective::km1)
-    .value("SOED", Objective::soed);
+    .value("SOED", Objective::soed)
+    .value("CONDUCTANCE_LOCAL", Objective::conductance_local)
+    .value("CONDUCTANCE_GLOBAL", Objective::conductance_global);
 
   // ####################### Exceptions #######################
 
@@ -645,6 +648,10 @@ Construct a partitioned hypergraph from this hypergraph.
       "Computes the connectivity metric of the partition")
     .def("soed", &lib::soed<true>,
       "Computes the sum-of-external-degree metric of the partition")
+    .def("conductance_local", &lib::conductance_local<true>,
+      "Computes the local conductance metric of the partition")
+    .def("conductance_global", &lib::conductance_global<true>,
+      "Computes the global conductance metric of the partition")
     .def("steiner_tree",
       [&](mt_kahypar_partitioned_hypergraph_t p, mt_kahypar_py_target_graph_t graph) {
         return lib::switch_phg<PartitionID, true>(p, [&](auto& phg) {

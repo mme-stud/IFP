@@ -377,4 +377,20 @@ HyperedgeWeight soed(mt_kahypar_partitioned_hypergraph_t p) {
   });
 }
 
+// [my]
+template<bool Throwing>
+HyperedgeWeight conductance_local(mt_kahypar_partitioned_hypergraph_t p) {
+  return switch_phg<HyperedgeWeight, Throwing>(p, [&](const auto& phg) {
+    return metrics::quality(phg, Objective::conductance_local);
+  });
+}
+
+// [my]
+template<bool Throwing>
+HyperedgeWeight conductance_global(mt_kahypar_partitioned_hypergraph_t p) {
+  return switch_phg<HyperedgeWeight, Throwing>(p, [&](const auto& phg) {
+    return metrics::quality(phg, Objective::conductance_global);
+  });
+}
+
 } // namespace lib

@@ -105,6 +105,7 @@ bool is_compatible(mt_kahypar_hypergraph_t hypergraph, mt_kahypar_preset_type_t 
     case DEFAULT:
     case QUALITY:
     case DETERMINISTIC:
+    case CLUSTER:
     case LARGE_K:
       return hypergraph.type == STATIC_GRAPH || hypergraph.type == STATIC_HYPERGRAPH;
     case HIGHEST_QUALITY:
