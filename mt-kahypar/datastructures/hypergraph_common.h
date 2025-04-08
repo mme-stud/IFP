@@ -161,6 +161,14 @@ namespace ds {
   struct ConductanceInfo {
     ConductanceFraction fraction;
     PartitionID partID;
+
+    ConductanceInfo() :
+      fraction(0, 0),
+      partID(kInvalidPartition) { }
+
+    ConductanceInfo(const ConductanceFraction& f, const PartitionID& p) :
+      fraction(f),
+      partID(p) { }
   };
 }
 

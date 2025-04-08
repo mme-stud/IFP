@@ -305,8 +305,8 @@ public:
   // ! Get the partition with the highest conductance: const version
   ConductanceInfo top() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::top()" << std::endl;
-    ConductanceInfo first = SuperPQ::heap[0];
-    return first;
+    auto first = SuperPQ::heap[0];
+    return ConductanceInfo(first.key, first.id);
   }
 
   // ! Get the partition with the highest conductance: synchronizable version
@@ -322,12 +322,12 @@ public:
   ConductanceInfo secondTop() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::secondTop()" << std::endl;
     ASSERT(SuperPQ::size() > 1);
-    ConductanceInfo second = SuperPQ::heap[1];
+    auto second = SuperPQ::heap[1];
     // ConductancePriorityQueue is a MaxHeap => binary tree
     if (size() > 2 && SuperPQ::heap[1].key < SuperPQ::heap[2].key) {
       second = SuperPQ::heap[2];
     }
-    return second;
+    return ConductanceInfo(second.key, second.id);
   }
   
   // ! Get the partition with the second highest conductance: synchronizable version
@@ -343,9 +343,10 @@ public:
   // ! (Works only for a binary heap)
   vec<ConductanceInfo> topThree() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::topThree()" << std::endl;
-    vec<ConductanceInfo> top_three(3, ConductanceInfo { ConductanceFraction(0, 0), kInvalidPartition});
+    vec<ConductanceInfo> top_three(3, ConductanceInfo());
     for (size_t i = 0; i < 3 && i < _size; ++i) {
-      top_three[i] = SuperPQ::heap[i]; // HeapElement { KeyT, IdT }
+      auto elem = SuperPQ::heap[i]; // HeapElement { KeyT, IdT }
+      top_three[i] = ConductanceInfo(elem.key, elem.id);
     }
     return top_three;
   }
