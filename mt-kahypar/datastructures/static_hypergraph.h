@@ -452,6 +452,7 @@ class StaticHypergraph {
     _community_ids(std::move(other._community_ids)),
     _fixed_vertices(std::move(other._fixed_vertices)),
     _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)),
+    _enable_collective_sync_update(other._enable_collective_sync_update),
     _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal) {
     _fixed_vertices.setHypergraph(this);
     other._tmp_contraction_buffer = nullptr;
@@ -480,6 +481,7 @@ class StaticHypergraph {
     _fixed_vertices.setHypergraph(this);
     _tmp_contraction_buffer = std::move(other._tmp_contraction_buffer);
     _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
+    _enable_collective_sync_update = other._enable_collective_sync_update;
     other._tmp_contraction_buffer = nullptr;
     return *this;
   }
@@ -774,6 +776,18 @@ class StaticHypergraph {
 
   FixedVertexSupport<StaticHypergraph> copyOfFixedVertexSupport() const {
     return _fixed_vertices.copy();
+  }
+
+  // #################### Flags for PHG (here for now) #####################
+
+  // ! To enable collective sync updates in phg
+  void enableCollectiveSyncUpdates() {
+    /// [debug] std::cerr << "StaticHypergraph::enableCollectiveSyncUpdates()" << std::endl;
+    _enable_collective_sync_update = true;
+  }
+  bool areCollectiveSyncUpdatesEnabled() const {
+    /// [debug] std::cerr << "StaticHypergraph::areCollectiveSyncUpdatesEnabled()" << std::endl;
+    return _enable_collective_sync_update;
   }
 
   // ####################### Single-Pin Nets Removal #######################
@@ -1089,6 +1103,9 @@ class StaticHypergraph {
   // ! Data that is reused throughout the multilevel hierarchy
   // ! to contract the hypergraph and to prevent expensive allocations
   TmpContractionBuffer* _tmp_contraction_buffer;
+
+  // ! Option for enabling sync_updates in phg
+  bool _enable_collective_sync_update = false;
 
   // ! Option for disabling the removal of single-pin nets
   bool _disable_single_pin_nets_removal = false;

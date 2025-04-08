@@ -845,6 +845,19 @@ class DynamicGraph {
   // ! Only for testing
   bool verifyIncidenceArrayAndIncidentNets();
 
+  // ! Interface mirroring
+    
+  // ##################### Mirroring interface ##########################
+
+  // ! Not supported in static graphs
+  void enableCollectiveSyncUpdates() {
+    throw UnsupportedOperationException(
+      "enableCollectiveSyncUpdates() not supported in static graph");
+  }
+  bool areCollectiveSyncUpdatesEnabled() {
+    return false;
+  }
+
  private:
   friend class DynamicGraphFactory;
   template<typename Hypergraph>

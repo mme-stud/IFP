@@ -71,6 +71,7 @@ struct PartitioningParameters {
   bool csv_output = false;
   bool write_partition_file = false;
   bool deterministic = false;
+  bool enable_collective_sync_updates = false;
 
   std::string graph_filename { };
   std::string fixed_vertex_filename { };
@@ -300,9 +301,11 @@ class Context {
   
   void setupSinglePinNetsRemoval();
 
+  bool enableCollectiveSyncUpdates() const;
+
   // ! \brief This function sets the global flag SyncUpdatePreferences::collective_sync_updates_in_phg
   // ! based on the partitioning objective.
-  void setupSyncUpdatePreference() const;
+  void setupSyncUpdatePreference();
 
   void setupPartWeights(const HypernodeWeight total_hypergraph_weight);
 

@@ -529,6 +529,9 @@ namespace mt_kahypar::ds {
     hypergraph._total_weight = _total_weight;   // didn't lose any vertices
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._tmp_contraction_buffer = _tmp_contraction_buffer;
+    // set flags
+    hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
+    hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
     _tmp_contraction_buffer = nullptr;
     return hypergraph;
   }
@@ -549,6 +552,7 @@ namespace mt_kahypar::ds {
     hypergraph._total_volume = _total_volume;
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+    hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
     tbb::parallel_invoke([&] {
       hypergraph._hypernodes.resize(_hypernodes.size());
@@ -597,6 +601,7 @@ namespace mt_kahypar::ds {
     hypergraph._total_volume = _total_volume;
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+    hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
     hypergraph._hypernodes.resize(_hypernodes.size());
     memcpy(hypergraph._hypernodes.data(), _hypernodes.data(),

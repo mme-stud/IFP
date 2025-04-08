@@ -830,6 +830,16 @@ private:
   bool isSinglePinNetsRemovalDisabled() const {
     return _hg->isSinglePinNetsRemovalDisabled();
   }
+  // ##################### Sync_update flag (mirrored) ################
+  // ! Always false in partitioned graohs 
+  bool collectiveSyncUpdatesEnabled() const {
+    return false;
+  }
+  // ! Enables collective sync_updates in changeNodePart
+  void enableCollectiveSyncUpdates() {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableCollectiveSyncUpdates()" << std::endl;
+    _hg->enableCollectiveSyncUpdates();
+  }
 
   // ####################### Memory Consumption #######################
 

@@ -60,6 +60,7 @@ namespace mt_kahypar {
     str << "  Number of V-Cycles:                 " << params.num_vcycles << std::endl;
     str << "  Ignore HE Size Threshold:           " << params.ignore_hyperedge_size_threshold << std::endl;
     str << "  Large HE Size Threshold:            " << params.large_hyperedge_size_threshold << std::endl;
+    str << "  Collective Sync Updates:            " << std::boolalpha << params.enable_collective_sync_updates << std::endl;
     if ( params.use_individual_part_weights ) {
       str << "  Individual Part Weights:            ";
       for ( const HypernodeWeight& w : params.max_part_weights ) {
@@ -285,17 +286,21 @@ namespace mt_kahypar {
     }
   }
 
-  // ! \brief This function sets the global flag sync_update::collective_sync_updates_in_phg
+  bool Context::enableCollectiveSyncUpdates() const {
+    return partition.enable_collective_sync_updates;
+  }
+  // ! \brief This function sets a flag enable_collective_sync_updates
   // ! based on the partitioning objective.
-  void Context::setupSyncUpdatePreference() const {
+  // ! If set, partitioned HYPERGRAPH will send one sync_update per changeNodePart
+  void Context::setupSyncUpdatePreference() {
     switch (partition.objective) {
       case Objective::conductance_local:
       case Objective::conductance_global:
-        mt_kahypar::SyncUpdatePreferences::collective_sync_updates_in_phg = true; 
+        partition.enable_collective_sync_updates = true;
         LOG << "Collective sync updates in PHG are enabled.";
         break;
       default:
-        mt_kahypar::SyncUpdatePreferences::collective_sync_updates_in_phg = false; break;
+        partition.enable_collective_sync_updates = false;
     }
   }
 
@@ -450,8 +455,8 @@ namespace mt_kahypar {
         throw UnsupportedOperationException(
           "Conductance objective functions are only supported for cluster preset type.");
       }
-      if (! SyncUpdatePreferences::collective_sync_updates_in_phg ) {
-        SyncUpdatePreferences::collective_sync_updates_in_phg = true;
+      if (! partition.enable_collective_sync_updates ) {
+        partition.enable_collective_sync_updates = true;
         LOG << "Conductance objective function needs collective sync updates in hypergraphs: "
             << "Switching to collective sync updates.";
       }

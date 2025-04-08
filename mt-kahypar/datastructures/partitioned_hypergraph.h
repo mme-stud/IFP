@@ -424,6 +424,7 @@ class PartitionedHypergraph {
   vec<ConductanceInfo> topThreePartConductanceInfos() const {
     /// [debug] std::cerr << "PartitionedHypergraph::topThreePartConductanceInfos()" << std::endl;
     ASSERT(hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
+    ASSERT(collectiveSyncUpdatesEnabled(), "Collective sync_updates are not enabled");
     return _conductance_pq.topThree();
   }
 
@@ -445,7 +446,12 @@ class PartitionedHypergraph {
   // ! (Needed for conductance objective)
   bool collectiveSyncUpdatesEnabled() const {
     /// [debug] std::cerr << "PartitionedHypergraph::collectiveSyncUpdatesEnabled()" << std::endl;
-    return mt_kahypar::SyncUpdatePreferences::collective_sync_updates_in_phg;
+    return _hg->areCollectiveSyncUpdatesEnabled();
+  }
+  // ! Enables collective sync_updates in changeNodePart
+  void enableCollectiveSyncUpdates() {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableCollectiveSyncUpdates()" << std::endl;
+    _hg->enableCollectiveSyncUpdates();
   }
 
   // ####################### Iterators #######################
@@ -1452,6 +1458,9 @@ class PartitionedHypergraph {
     if (isSinglePinNetsRemovalDisabled()) {
       extracted_block.hg.disableSinglePinNetsRemoval();
     }
+    if (collectiveSyncUpdatesEnabled()) {
+      extracted_block.hg.enableCollectiveSyncUpdates();
+    }
     
     // Set community ids
     doParallelForAllNodes([&](const HypernodeID& hn) {
@@ -1594,6 +1603,10 @@ class PartitionedHypergraph {
       // disable single-pin nets removal if was disabled
       if (isSinglePinNetsRemovalDisabled()) {
         extracted_blocks[p].hg.disableSinglePinNetsRemoval();
+      }
+      // enable collective sync updates if was enabled  
+      if (collectiveSyncUpdatesEnabled()) {
+        extracted_blocks[p].hg.enableCollectiveSyncUpdates();
       }
     });
 

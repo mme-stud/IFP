@@ -214,6 +214,9 @@ DynamicHypergraphFactory::compactify(const DynamicHypergraph& hypergraph) {
   compactified_hypergraph._removed_degree_zero_hn_weight = hypergraph._removed_degree_zero_hn_weight;
   compactified_hypergraph._total_weight += hypergraph._removed_degree_zero_hn_weight;
   compactified_hypergraph._original_total_volume = hypergraph._original_total_volume;
+  // set flags
+  compactified_hypergraph._disable_single_pin_nets_removal = hypergraph._disable_single_pin_nets_removal;
+  compactified_hypergraph._enable_collective_sync_update = hypergraph._enable_collective_sync_update;
 
   tbb::parallel_invoke([&] {
     // Set community ids and original weighted degrees

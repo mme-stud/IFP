@@ -788,6 +788,7 @@ namespace mt_kahypar {
              po::value<std::string>()->value_name("<string>")->required()->notifier([&](const std::string& s) {
                context.partition.objective = objectiveFromString(s);
                context.setupSinglePinNetsRemoval();
+               context.setupSyncUpdatePreference();
              }),
              "Objective: \n"
              " - cut : cut-net metric (FM only supports km1 metric) \n"

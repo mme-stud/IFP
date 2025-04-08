@@ -465,7 +465,8 @@ class DynamicHypergraph {
     _he_bitset(std::move(other._he_bitset)),
     _removable_single_pin_and_parallel_nets(std::move(other._removable_single_pin_and_parallel_nets)),
     _fixed_vertices(std::move(other._fixed_vertices)),
-    _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal) {
+    _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal),
+    _enable_collective_sync_update(other._enable_collective_sync_update) {
       /// [debug] std::cerr << "DynamicHypergraph(DynamicHypergraph&& other)" << std::endl;
     _fixed_vertices.setHypergraph(this);
     _total_volume.store(other._total_volume);
@@ -502,6 +503,7 @@ class DynamicHypergraph {
     _fixed_vertices = std::move(other._fixed_vertices);
     _fixed_vertices.setHypergraph(this);
     _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
+    _enable_collective_sync_update = other._enable_collective_sync_update;
     return *this;
   }
 
@@ -823,6 +825,17 @@ class DynamicHypergraph {
 
   FixedVertexSupport<DynamicHypergraph> copyOfFixedVertexSupport() const {
     return _fixed_vertices.copy();
+  }
+  // ################### Flags for PHG (here for now) ######################
+
+  //! Enable collective sync update
+  void enableCollectiveSyncUpdates() {
+    /// [debug] std::cerr << "DynamicHypergraph::enableCollectiveSyncUpdates()" << std::endl;
+    _enable_collective_sync_update = true;
+  }
+  bool areCollectiveSyncUpdatesEnabled() const {
+    /// [debug] std::cerr << "DynamicHypergraph::areCollectiveSyncUpdatesEnabled()" << std::endl;
+    return _enable_collective_sync_update;
   }
 
   // ####################### Single-Pin Nets Removal #######################
@@ -1243,6 +1256,9 @@ class DynamicHypergraph {
 
   // ! Option for disabling the removal of single-pin nets
   bool _disable_single_pin_nets_removal = false;
+
+  // ! Option for enabling collective sync update for phg
+  bool _enable_collective_sync_update = false;
 };
 
 } // namespace ds

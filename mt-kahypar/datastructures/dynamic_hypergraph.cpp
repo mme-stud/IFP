@@ -467,6 +467,7 @@ DynamicHypergraph DynamicHypergraph::copy(parallel_tag_t) const {
   hypergraph._version = _version;
   hypergraph._contraction_index.store(_contraction_index.load());
   hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+  hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
   tbb::parallel_invoke([&] {
     hypergraph._hypernodes.resize(_hypernodes.size());
@@ -530,6 +531,7 @@ DynamicHypergraph DynamicHypergraph::copy() const {
   hypergraph._version = _version;
   hypergraph._contraction_index.store(_contraction_index.load());
   hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+  hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
   hypergraph._hypernodes.resize(_hypernodes.size());
   memcpy(hypergraph._hypernodes.data(), _hypernodes.data(),

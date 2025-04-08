@@ -661,7 +661,9 @@ My changes:
 
 **Sanity check**: compiles, passes the test suite
 
-### Part 2.2.1 Side trip: Disabling single-pin removal
+### Part 2.2.1 Side trip: Disabling single-pin net removal
+Note: enabling collective sync_update is discussed in the secion about `SyncronizedEdgeUpdate`. The new atributes, set0up functions and getters / setters are analogous to single-pin net removal
+
 #### Rationale
 
 **Problem**: removal of single-pin net(s) changes weighted degrees, volumes &rArr; conductances
@@ -690,7 +692,9 @@ My changes:
 		- `contract(communities, deterministic)`: [removes single-pin nets from contracted hg] adjust to disable single-pin nets removal: \
 			`## Stage 2 ##`: treat single-pin as `size > 1` if single-pin nets removal is disabled
 		- `copy()`, `copy(parallel_tag_t)`: copy `_disable_single_pin_nets_removal`
-	- `static_hypergraph_factory.h / .cpp`: `copmactify(SHg)` is not supported &rArr; no changes
+	- `static_hypergraph_factory.h / .cpp`: 
+		- `contract(?)`: copy flag
+		- `copmactify(SHg)` is not supported &rArr; no changes
 ##### Dynamic Hypergraph
 - `mt-kahypar/datastructures/`:
 	- `dynamic_hypergraph.h`:
@@ -706,7 +710,8 @@ My changes:
 			- add an assertion to ensure that only parallel single-pin nets are removed 
 			if single-pin nets removal is disabled
 		- `copy()`, `copy(parallel_tag_t)`: copy `_disable_single_pin_nets_removal`
-	- `hynamic_hypergraph_factory.h / .cpp`: nothing to do
+	- `hynamic_hypergraph_factory.h / .cpp`: 
+		- `compactify(?)`: set flag
 
 ##### Partitioned Hypergraph
 - `mt-kahypar/datastructures/`:
@@ -743,7 +748,7 @@ Mirroring interfaces in `partitioned_graph.h`:`
 			- \+ `void setupSinglePinNetsRemoval()` - to be called after Objective is set up
 	- `partitioner.cpp`:
 		- `setupContext(&hg, &context, ..)`: 
-			- befor all other: if conductance `Objective`, disable single-pin nets in `context`
+			- before all other: if conductance `Objective`, disable single-pin nets in `context`
 			- after setup calls [as `context.partition.instance_type` could be initializes there]: if `hypergaph` (*not graph*), disable single-pin nets in `hg`
 - `mt-kahypar/application/`:
 	- `mt_kahypar.cc`:
@@ -752,7 +757,7 @@ Mirroring interfaces in `partitioned_graph.h`:`
 			- before that call `context.setupSinglePinNetsRemoval()` 
 - `mt-kahypar/io/`:
 	- `command_line_options.cpp`: 
-		- in `processComandLineInput(&context, ..)` call `context.setupsetupSinglePinNetsRemoval()` after `context.partition.objective = objectiveFromString(s);`
+		- in `processCommandLineInput(&context, ..)` call `context.setupsetupSinglePinNetsRemoval()` after `context.partition.objective = objectiveFromString(s);`
 
 #### Assertions about edge size
 - `mt-kahypar/partition/coarsening/multilevel_vertex_pair_rater.h`: - used in by `multilevel_coarsener.h`
@@ -1029,27 +1034,80 @@ The gain of a node move can change between its initial calculation and execution
 	static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update);
 	```
 ##### Problem: I can only calculate collective AttributedGain of a move (not a sum for all edges)
-&rarr; slightly analog. to `_disable_single_pin_nets_removal`
+&rarr; analog. to `_disable_single_pin_nets_removal`
 
-`hypergraph_common.h`:
-+ \+ struct `mt_kahypar::SyncUpdatePreferences` with `static bool collective_sync_updates_in_phg`
+###### Hypergraphs
+####### Static Hypergraph
+- `mt-kahypar/datastructures`:
+	- `static_hypergraph.h`:
+		- \+ `void enableCollectiveSyncUpdates()`
+		- \+ `bool areCollectiveSyncUpdatesEnabled() const`
+		- \+ `private bool _enable_collective_sync_update = false`
+		- &rArr; adjust ~~copy and~~ move constructor and `operator=` [copy is deleted]
+	- `static_hypergraph.cpp`:
+		- `contract(communities, deterministic)`: set flag of the constructed hypergraph
+		- `copy()`, `copy(parallel_tag_t)`: copy `_enable_collective_sync_update`
+	- `static_hypergraph_factory.h / .cpp`: `copmactify(SHg)` is not supported &rArr; no changes
+####### Dynamic Hypergraph
+- `mt-kahypar/datastructures/`:
+	- `dynamic_hypergraph.h`:
+		- \+ `bool areCollectiveSyncUpdatesEnabled() const`
+		- \+ `void enableCollectiveSyncUpdates()`
+		- \+ `private bool _enable_collective_sync_update = false`
+		- &rArr; adjust ~~copy and~~ move constructor and `operator=` [copy is deleted]
+	- `dynamic_hypergraph.cpp`:
+		- `copy()`, `copy(parallel_tag_t)`: copy `_enable_collective_sync_update`
+	- `hynamic_hypergraph_factory.h / .cpp`: 
+		- `compactify(..)`: set flag to the constructed hypergraph
 
-`partitioned_hypergraph.h`:
-+ \+ `bool collectiveSyncUpdatesEnabled() bool `
-- `changeNodePart(..)`: if collective sync_update is enabled
-	- call `notify_func(sync_update)` in before changing pin counts
-	- call `delta_func(sync_update)` after changing pin counts
-- `updatePinCountOfHyperedge(..)`: call `notify_func(sync_update)`, `delta_func(sync_update)` only is collective sync_update is disabled
+####### Partitioned Hypergraph
+- `mt-kahypar/datastructures/`:
+	- `partitioned_hypergraph.h`:
+		- \+ `bool collectiveSyncUpdatesEnabled() const`, `void enableCollectiveSyncUpdates()`:			
+			- `changeNodePart(..)`: if collective sync_update is enabled
+				- call `notify_func(sync_update)` in before changing pin counts
+				- call `delta_func(sync_update)` after changing pin counts
+			- `updatePinCountOfHyperedge(..)`: call `notify_func(sync_update)`, `delta_func(sync_update)` only is collective sync_update is disabled
+		- `extract(block, ..)`: 
+			- set the flag for `extracted_block.hg` if is desabled for `_hg`
+		- `extractAllBlocks(k, ..)`: 
+			- analog. to `extract(block, ..)` but in parallel for all blocks
+		+ add assertions to `topThreePartConductanceInfos()`
 
+###### Graphs
+Mirroring interfaces in `static_graph.h`, `dynamic_graph.h`:
+- \+ `void enableCollectiveSyncUpdates()`: unsupported
+- \+ `bool areCollectiveSyncUpdatesEnabled() const`: `false`
+
+Mirroring interfaces in `partitioned_graph.h`:`
+- \+ `bool collectiveSyncUpdatesEnabled() const`: `false`
+- \+ `void enableCollectiveSyncUpdates()`: unsupported
+
+###### Context
+
+call `context.setupCollectiveSyncUpdates()` as early as possible after setting `Objective`
 - `mt-kahypar/partition`:
-	- `context.cpp`:
-		- \+ `setupSyncUpdatePreference() const`: if conductance objective, enable collective sync_update (if not yet) and write in `LOG` [analog. to `setupSinglePinNetsRemoval()`]
-		- `sanityCheck(..)`: if conductance objective, enable collective sync_update (if not yet) and write in `LOG`
-	- `context.h`: declare `setupSyncUpdatePreference() const`
+	- `context.h, cpp`:
+		- `PartitioningParameters`: 
+			- \+ attribute `bool enable_collective_sync_updates = false` 
+			- `operator<< (os, PartitioningParameters)`: print out if single-pin nets removal is enabled / disabled
+		- `Context`: 
+			- \+ `bool enableCollectiveSyncUpdates() const` - getter
+			- \+ `void setupSyncUpdatePreference()`: if conductance objective, enable collective sync_update (if not yet) and write in `LOG` [analog. to `setupSinglePinNetsRemoval()`]
+			- `sanityCheck()` also sets the flag in context
 	- `partitioner.cpp`:
 		- `setupContext(&hg, &context, ..)`: 
-			- call `context.setupSyncUpdatePreference()` after `setupSinglePinNetsRemoval()`
-			- after setup calls [as `context.partition.instance_type` could be initializes there]: if `hypergaph` (*not graph*), disable single-pin nets in `hg`
+			- before all other: if conductance `Objective`, set up sync_update preference in `context`
+			- after setup calls [as `context.partition.instance_type` could be initializes there]: if `hypergaph` (*not graph*), enable sync_updates in `hg` (if context says so)
+
+- `mt-kahypar/io/`:
+	- `command_line_options.cpp`: 
+		- in `processCommandLineInput(&context, ..)` call `context.setupSyncUpdatePreference()` after `context.partition.objective = objectiveFromString(s);`
+
+###### Serialization of hg, context
+`/mt-kahypar/io/sql_plottools_serializer.cpp`:
+- \+ write out `context.partition.enable_collective_sync_updates` to serialize `context` correctly \
+	[debug: needed in `mt-kahypar/tests/io/sql_plottools_serializer_test.cc` `ASqlPlotSerializerTest.ChecksIfSomeParametersFromContextAreMissing`, removed whitespaces in empty line in `context.h` - they break serialization!]
 
 ##### Conductance Global
 **As far as I know** [*to be disproven by failing quality assertions...*], `contribution(phg, he)` is called only by `partitioner.cpp` in the `POSTPROCESSING` phase: `restoreLargeHyperedges()`. So `AttributedGain` is compared to the `quaality(phg)`, which can be (and now is) calculated almost exact (rounded max conductance). Therefore to calculate `AttributedGains` for conductance (both use global version), I compute the difference on new and old rounded conductances (and do this by enabled **collective** sync_updates)

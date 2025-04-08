@@ -62,6 +62,7 @@ namespace mt_kahypar {
 
     // Should be called as early as possible, but after setting Objective
     context.setupSinglePinNetsRemoval();
+    context.setupSyncUpdatePreference();
 
     context.partition.large_hyperedge_size_threshold = std::max(hypergraph.initialNumNodes() *
                                                                 context.partition.large_hyperedge_size_threshold_factor, 100.0);
@@ -70,9 +71,14 @@ namespace mt_kahypar {
     context.setupContractionLimit(hypergraph.totalWeight());
     context.setupThreadsPerFlowSearch();
 
-    if (context.partition.instance_type == InstanceType::hypergraph
-      && context.disableSinglePinNetsRemoval()) {
-        hypergraph.disableSinglePinNetsRemoval();   
+    // Set new hypergraph flags needed for conductance objective
+    if (context.partition.instance_type == InstanceType::hypergraph) {
+      if (context.disableSinglePinNetsRemoval()) {
+        hypergraph.disableSinglePinNetsRemoval(); 
+      }
+      if (context.enableCollectiveSyncUpdates()) {
+        hypergraph.enableCollectiveSyncUpdates();
+      }
     }
 
     if ( context.partition.gain_policy == GainPolicy::steiner_tree ) {
