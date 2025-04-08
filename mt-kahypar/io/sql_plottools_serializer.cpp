@@ -194,6 +194,14 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
       if ( context.partition.objective != Objective::soed ) {
         oss << " soed=" << metrics::quality(hypergraph, Objective::soed);
       }
+      if (context.partition.objective != Objective::conductance_local
+          && !hypergraph.is_graph) {
+        oss << " conductance_local=" << metrics::quality(hypergraph, Objective::conductance_local);
+      }
+      if (context.partition.objective != Objective::conductance_global
+          && !hypergraph.is_graph) {
+        oss << " conductance_global=" << metrics::quality(hypergraph, Objective::conductance_global);
+      }
       oss << " imbalance=" << metrics::imbalance(hypergraph, context);
     }
     oss << " totalPartitionTime=" << elapsed_seconds.count();

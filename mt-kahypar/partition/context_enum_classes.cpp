@@ -331,6 +331,10 @@ namespace mt_kahypar {
       return Objective::km1;
     } else if (obj == "soed") {
       return Objective::soed;
+    } else if (obj == "conductance_local") {
+      return Objective::conductance_local;
+    } else if (obj == "conductance_global") {
+      return Objective::conductance_global;
     } else if (obj == "steiner_tree") {
       return Objective::steiner_tree;
     }
