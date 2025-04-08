@@ -12,6 +12,16 @@ project(MtKaHyPar
         LANGUAGES CXX C)
 set(PROJECT_URL "https://github.com/kahypar/mt-kahypar")
 
+#################################################################
+## Solve "undefined reference to symbol 'pthread_getspecific@@GLIBC_2.2.5'""
+#################################################################
+
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_HAVE_THREADS_LIBRARY 1)
+set(CMAKE_USE_WIN32_THREADS_INIT 0)
+set(CMAKE_USE_PTHREADS_INIT 1)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 #################################################################
 ## Sanity checks and policies                                  ##
