@@ -50,8 +50,10 @@ struct ConductanceGlobalAttributedGains {
   // - top_three_conductance_info_before: the top three conductance info of the conductanve_pq before the move
   // - k: the number of partitions
   static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
-    ASSERT(SyncUpdatePreferences::collective_sync_updates_in_phg, 
-      "Synchronized gain updates should be enabled for Conductance Attribted Gains");
+    // ASSERT(SyncUpdatePreferences::collective_sync_updates_in_phg, 
+    //  "Synchronized gain updates should be enabled for Conductance Attribted Gains");
+    // Note: can't check if collective sync_updates are enabled, 
+    //       but PartitionedHypergraph::topThreePartConductanceInfos() asserts it
     ASSERT(sync_update.top_three_conductance_info_before.size() == 3, 
       "Top three conductance info vector isn't: " << V(sync_update.top_three_conductance_info_before.size()));
     

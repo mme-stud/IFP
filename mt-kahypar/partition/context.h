@@ -302,9 +302,10 @@ class Context {
   void setupSinglePinNetsRemoval();
 
   bool enableCollectiveSyncUpdates() const;
-
-  // ! \brief This function sets the global flag SyncUpdatePreferences::collective_sync_updates_in_phg
+  
+  // ! \brief This function sets a flag enable_collective_sync_updates
   // ! based on the partitioning objective.
+  // ! If set, partitioned HYPERGRAPH will send one sync_update per changeNodePart
   void setupSyncUpdatePreference();
 
   void setupPartWeights(const HypernodeWeight total_hypergraph_weight);
