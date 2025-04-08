@@ -80,7 +80,14 @@ struct ConductanceGlobalAttributedGains {
     }
     
     // Calculate the new max conductance fraction
-    ds::ConductanceFraction new_top_fraction = std::max(new_fraction_from, new_fraction_to, top_fraction_other);
+    // std::max(new_fraction_from, new_fraction_to, top_fraction_other);
+    ds::ConductanceFraction new_top_fraction = new_fraction_from;
+    if (new_fraction_to > new_top_fraction) {
+      new_top_fraction = new_fraction_to;
+    }
+    if (top_fraction_other > new_top_fraction) {
+      new_top_fraction = top_fraction_other;
+    }
     
     HyperedgeWeight new_conductance = compute_conductance_objective(sync_update.total_volume,
                                                                     new_top_fraction,
