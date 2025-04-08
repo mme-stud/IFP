@@ -595,7 +595,7 @@ std::vector<option> load_clustering_preset() {
     create_option("r-fm-type", "unconstrained_fm"),
     create_option("r-fm-multitry-rounds", "10"),
     create_option("r-fm-unconstrained-rounds", "8"),
-    create_option("r-fm-rollback-parallel", "true"),
+    create_option("r-fm-rollback-parallel", "false"),
     create_option("r-fm-rollback-balance-violation-factor", "1.0"),
     create_option("r-fm-threshold-border-node-inclusion", "0.7"),
     create_option("r-fm-imbalance-penalty-min", "0.2"),
