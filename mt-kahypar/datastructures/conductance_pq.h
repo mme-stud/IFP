@@ -114,7 +114,7 @@ public:
   void globalUpdate(const PartitionedHypergraph& hg, bool synchronized = false) {
     /// [debug] std::cerr << "ConductancePriorityQueue::globalUpdate(hg, " << V(synchronized) << ")" << std::endl;
     lock(synchronized);
-    ASSERT(_initialized && _size == hg.k());
+    ASSERT(_initialized && _size == hg.k() && _size == static_cast<PartitionID>(size()));
     if (_uses_original_stats) {
       ASSERT(_total_volume == hg.originalTotalVolume(), "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << hg.originalTotalVolume());
     }
@@ -184,7 +184,7 @@ public:
 
   bool isHeap() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::isHeap()" << std::endl;
-    for (PosT i = 1; i < size(); ++i) {
+    for (PartitionID i = 1; i < size(); ++i) {
       if (heap[parent(i)].key < heap[i].key) {
         LOG << "heap property violation" << V(i) << V(parent(i))  << V(heap[i].key) << V(heap[parent(i)].key);
         return false;
@@ -344,7 +344,7 @@ public:
   vec<ConductanceInfo> topThree() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::topThree()" << std::endl;
     vec<ConductanceInfo> top_three(3, ConductanceInfo());
-    for (size_t i = 0; i < 3 && i < _size; ++i) {
+    for (PartitionID i = 0; i < 3 && i < _size; ++i) {
       auto elem = SuperPQ::heap[i]; // HeapElement { KeyT, IdT }
       top_three[i] = ConductanceInfo(elem.key, elem.id);
     }
@@ -367,7 +367,7 @@ public:
     return e;
   }
 
-  size_t size() const {
+  PartitionID size() const {
     /// [debug] std::cerr << "ConductancePriorityQueue::size()" << std::endl;
     ASSERT(static_cast<PosT>(_size) == SuperPQ::size());
     return _size;
