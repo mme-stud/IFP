@@ -59,6 +59,7 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " file_format=" << context.partition.file_format
         << " partition_type=" << context.partition.partition_type
         << " k=" << context.partition.k
+        << " initial_k=" << context.partition.initial_k
         << " epsilon=" << context.partition.epsilon
         << " seed=" << context.partition.seed
         << " num_vcycles=" << context.partition.num_vcycles

@@ -551,18 +551,18 @@ std::vector<option> load_clustering_preset() {
     create_option("c-rating-acceptance-criterion", "best_prefer_unmatched"),
     // main -> initial_partitioning
     create_option("i-mode", "direct"),
-    create_option("i-runs", "1"),
+    create_option("i-runs", "5"),
     { "i-enabled-ip-algos", {
             "0",    // greedy_round_robin_fm
             "0",    // greedy_global_fm
             "0",    // greedy_sequential_fm
-            "0",    // random
+            "1",    // random
             "0",    // bfs
             "0",    // label_propagation
             "0",    // greedy_round_robin_max_net
             "0",    // greedy_global_max_net
             "0",    // greedy_sequential_max_net
-            "1",    // singleton
+            "0",    // singleton
     } },
     create_option("i-use-adaptive-ip-runs", "false"),
     create_option("i-min-adaptive-ip-runs", "1"),
@@ -587,14 +587,14 @@ std::vector<option> load_clustering_preset() {
     // main -> refinement -> label_propagation
     create_option("r-lp-type", "label_propagation"),
     create_option("r-lp-unconstrained", "true"),
-    create_option("r-lp-maximum-iterations", "5"),
+    create_option("r-lp-maximum-iterations", "20"),
     create_option("r-lp-rebalancing", "false"),
     create_option("r-lp-he-size-activation-threshold", "100"),
     create_option("r-lp-relative-improvement-threshold", "0.001"),
     // main -> refinement -> fm
     create_option("r-fm-type", "unconstrained_fm"),
-    create_option("r-fm-multitry-rounds", "10"),
-    create_option("r-fm-unconstrained-rounds", "8"),
+    create_option("r-fm-multitry-rounds", "18"),
+    create_option("r-fm-unconstrained-rounds", "10"),
     create_option("r-fm-rollback-parallel", "false"),
     create_option("r-fm-rollback-balance-violation-factor", "1.0"),
     create_option("r-fm-threshold-border-node-inclusion", "0.7"),
