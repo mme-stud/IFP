@@ -113,23 +113,26 @@ namespace {
     PartitionedHypergraph& phg = uncoarseningData.coarsestPartitionedHypergraph();
 
     ////////////// The k value can be changed here 
+    // Only with clustering, singleton sets k = num_nodes !!!
     PartitionID new_k = context.partition.k; 
     if (context.partition.preset_type == PresetType::cluster) {
       // k was set to 2 in setupContext() of partitioner.cpp
       // to make weight constraints as large as possible
       new_k = context.partition.initial_k;
-    }
-    if (context.initial_partitioning.enabled_ip_algos
-                  [static_cast<size_t>(InitialPartitioningAlgorithm::singleton)]) {
-      PartitionID num_nodes = phg.initialNumNodes();
-      if (num_nodes > 1) {
-        // if we call singleton, we need to set k = num_nodes
-        new_k = num_nodes;
-      } 
+      // With clustering, singleton sets k = num_nodes
+      // Else: no!!!
+      if (context.initial_partitioning.enabled_ip_algos
+                    [static_cast<size_t>(InitialPartitioningAlgorithm::singleton)]) {
+        PartitionID num_nodes = phg.initialNumNodes();
+        if (num_nodes > 1) {
+          // if we call singleton, we need to set k = num_nodes
+          new_k = num_nodes;
+        } 
+      }
     }
     //////////////////////////////// Change k
     if (new_k != context.partition.k && new_k > 1) {
-        context.partition.k = new_k;
+      context.partition.k = new_k;
       phg.setK(context.partition.k, input_he_count);
       context.setupPartWeights(hypergraph.totalWeight());
       context.setupContractionLimit(hypergraph.totalWeight());
