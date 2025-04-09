@@ -726,15 +726,17 @@ My changes:
 		- &rArr; in `context.cpp, .h`: \+ attribute `PartitionID context.partition.initial_k = -1` \
 			&rArr; in `mt-kahypar/io/sql_plottools_serializer.cpp` in `serialize()` print out `"initial_k=..."` (experience of prior debugging...) 
 
-**Sanity check**: compiles, passes the test suite [for the old implementation!]
+**Sanity check**: compiles, passes the test suite [for the Adil's original implementation!]
 
 #### IP Algorithms
 Cluster uses `random_initial_partitioner` ber default, but can run with `singleton_initial_partitioner`.
 
 `singleton_initial_partitioner` acts exactly like `random_initial_partitioner` if `k != num_nodes`.
 
+**Only** if `clustering` + `singleton`: specifically set k = num_nodes.
+
 My changes:
-- use `setOnlyNodePart(..)` + `initializePartition()` in both `singleton_initial_partitioner` and `random_initial_partitioner`. This way program doesn't hang... [**TODO** sometime later: find out, what's wrong with `setNodePart()`!!!]
+- use ~~`setOnlyNodePart(..)` + `initializePartition()`~~ [no, because fixed vertices are already set with `setNodePart()` &rarr; breakes assetion in `initializePartition()`] call `.needsConductancePriorityQueue()` at the end in both `singleton_initial_partitioner` and `random_initial_partitioner`. Hopefully, this way program doesn't hang... [**TODO** sometime later: find out, what's wrong with `setNodePart()`!!!]
 
 ### Part 2.2.1 Side trip: Disabling single-pin net removal
 Note: enabling collective sync_update is discussed in the section about Attributed Gain (Problem with `SyncronizedEdgeUpdate`). The new atributes, set-up functions and getters / setters are analogous to single-pin net removal
@@ -1320,3 +1322,62 @@ You only have to add a mapping between a string representation of your new objec
     .def("conductance_global", &lib::conductance_global<true>,
       "Computes the global conductance metric of the partition")
 ```
+
+### Notes:
+#### Ideas for fm refinement: 
+
+- use `UnconstrainedStrategy` (belongs to `UnconstrainedFMStrategyDispatcher`, which is binded (?) to `FMAlgorithm::unconstrained_fm` - not clear): 
+
+#### Call hierarchy of FM-Refinement:
+
+`multilevel_partitioning(..)` of `multilevel.cpp` \
+&rarr; `uncoarsener->uncoarsen()` of `i_uncoarsener.h` \
+&rarr; `refine()` of `i_uncoarsener.h` \
+&rarr; `projectToNextLevelAndRefineImpl()` of `multilevel_uncoarsener.cpp` (ASSERTS QUALITY AT THE END OF EACH ROUND...)
+&rarr; `refine(..)` of `i_uncoarsener.h` \ 
+&rarr; `refineImpl(..)` of `multilevel_uncoarsener.cpp` \
+&rarr; `_fm->refine(..)` of `i_refiner.h` \
+&rarr; `refineImpl(..)` of  `multitry_kway_fm.cpp`:
+- &rarr; `fm_strategy->findMoves(..)` of `IFMStrategy`:
+	- &rarr;`findMovesImpl(..)` of `unconstrained_strategy.h`'
+		- &rarr; `findMovesWithConcreteStrategy<Derived>(..)` of `i_fm_strategy.h` for `Derived = UnconstrainedStrategy` calls in **parallel**:
+			- &rarr; `dispatchedFindMoves(..)` of `UnconstrainedStrategy`
+				- &rarr; `findMoves(..)` of `lokalized_kway_fm_core.cpp` acquires some nodes
+					- &rarr; `internlFindMoves(..)` of `lokalized_kway_fm_core.cpp`: it goes sequentially through local moves and calls `phg.changeNodePart(gain_cache, ..)` on the global partition (but the whole prozess is parallel &rArr; parallel `changeNodePart(..)`...)
+- &rarr; `improvement = globalRollbacl.revertToBestPrefix(...)` of `global_rollback.h`: looks, of `context.refinement.fm.rollback_parallel == true`. If so:
+	- `revertToBestPrefixSequential(..)` of `global_rollback.cpp`:
+		- reverts all moves in parallel: `moveVertex(phg, m.node, m.to, m.from);`
+		- moves all vertices sequentially ans calls `gain_sum -= AttributedGains::gain(sync_update);` in each `changeNodePart(..)`
+```cpp
+auto attributed_gains = [&](const SynchronizedEdgeUpdate& sync_update) {
+      gain_sum -= AttributedGains::gain(sync_update);
+    };
+```
+========================================================================
+- use `GlobalRollback::revertToBestPrefixSequential(..)` to calculate correct attributed gains:
+	- set `context.refinement.fm.rollback_parallel` to true \
+	&rarr; use `multitry_kway_fm` like `highest_quality_preset.ini`
+```ini
+# main -> refinement -> label_propagation
+r-lp-type=label_propagation
+r-lp-maximum-iterations=5
+r-lp-rebalancing=true
+r-lp-he-size-activation-threshold=100
+# main -> refinement -> fm
+r-fm-type=kway_fm
+r-fm-multitry-rounds=10
+r-fm-rollback-parallel=false
+r-fm-rollback-balance-violation-factor=1.25
+r-fm-seed-nodes=5
+r-fm-release-nodes=true
+r-fm-min-improvement=-1.0
+r-fm-obey-minimal-parallelism=false
+r-fm-time-limit-factor=0.25
+```
+
+
+
+==========================================================
+#### Conclusion from the guide about disabling fm-refinement
+
+At this point, you should be able to run the ```default``` configuration of Mt-KaHyPar in debug mode without failing assertions if you disable the FM algorithm. To test this, add the following command line parameters to the Mt-KaHyPar call: ```--i-r-fm-type=do_nothing``` and ```--r-fm-type=do_nothing```. If you discover failing assertions, please check the implementations of the techniques described in the initial partitioning and label propagation section for bugs.

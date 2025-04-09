@@ -174,7 +174,7 @@ mt_kahypar_status_t mt_kahypar_set_context_parameter(mt_kahypar_context_t* conte
       } else if ( objective == "soed" ) {
         c.partition.objective = Objective::soed;
         return mt_kahypar_status_t::SUCCESS;
-      } else if ( objective = "conductance_local" ) {
+      } else if ( objective == "conductance_local" ) {
         c.partition.objective = Objective::conductance_local;
         return mt_kahypar_status_t::SUCCESS;
       } else if ( objective == "conductance_global" ) {
@@ -679,12 +679,12 @@ mt_kahypar_hyperedge_weight_t mt_kahypar_soed(const mt_kahypar_partitioned_hyper
 
 // [my]
 mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_local(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
-  return lib::conductance_local<true>(partitioned_hq);
+  return lib::conductance_local<true>(partitioned_hg);
 }
 
 // [my]
 mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_global(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
-  return lib::conductance_global<true>(partitioned_hq);
+  return lib::conductance_global<true>(partitioned_hg);
 }
 
 mt_kahypar_hyperedge_weight_t mt_kahypar_steiner_tree(const mt_kahypar_partitioned_hypergraph_t partitioned_hg,
