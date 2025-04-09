@@ -41,7 +41,7 @@ void SingletonInitialPartitioner<TypeTraits>::partitionImpl() {
     if (hg.initialNumNodes() == static_cast<HypernodeID>(_context.partition.k)) {
       PartitionID cur_block = 0;
       for (const HypernodeID &hn: hg.nodes()) {
-        hg.setOnlyNodePart(hn, cur_block++);
+        hg.setNodePart(hn, cur_block++);
       }
     } else {
       std::uniform_int_distribution<PartitionID> select_random_block(0, _context.partition.k - 1);
@@ -63,11 +63,10 @@ void SingletonInitialPartitioner<TypeTraits>::partitionImpl() {
               break;
             }
           }
-          hg.setOnlyNodePart(hn, current_block);
+          hg.setNodePart(hn, current_block);
         }
       }
     }
-    hg.initializePartition();
     hg.needsConductancePriorityQueue();
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
