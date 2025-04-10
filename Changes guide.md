@@ -848,7 +848,9 @@ Mirroring interfaces in `partitioned_graph.h`:`
 
 Also done:
 - in `mt-kahypar/partition/context.cpp`:
-	- `sanityCheck(..)`: if conductance `Objective`, but not `PresetType::cluster`, throw an `UncupportedOperationException`. 
+	- `sanityCheck(..)`: if conductance `Objective`, ~~but not `PresetType::cluster`, throw an `UncupportedOperationException`. ~~ :
+		- disalbe all IP except for random and singleton (`LOG`)
+		- if none enabled, enable random (`LOG`)
 
 - *Call hierarchy*:
 		- `Context::sanityCheck(..)`

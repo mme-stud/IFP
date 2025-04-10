@@ -449,12 +449,31 @@ namespace mt_kahypar {
       }
     }
 
+    // Configure initial partitioning algorithms, sequential sync_updates
     if ( partition.objective == Objective::conductance_local ||
          partition.objective == Objective::conductance_global ) {
-      if ( partition.preset_type != PresetType::cluster ) {
-        throw UnsupportedOperationException(
-          "Conductance objective functions are only supported for cluster preset type.");
+      // Set up compatible initial partitioning algorithms (onlu random and singleton)
+      bool other = false;
+      uint8_t random_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::random);
+      uint8_t singleton_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::singleton);
+      uint8_t num_algs = static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED);
+      for ( uint8_t alg = 0; alg < num_algs; ++alg ) {
+        if (initial_partitioning.enabled_ip_algos[alg]) {
+          if ( alg == random_alg || alg == singleton_alg) {
+            other = true;
+          } else {
+            initial_partitioning.enabled_ip_algos[alg] = false;
+            LOG << "Conductance objective function is not supported for initial partitioning algorithm " 
+            << (static_cast<InitialPartitioningAlgorithm>(alg)) << ". Disabling this IP.";
+          }
+        }
       }
+      if ( !other ) {
+        initial_partitioning.enabled_ip_algos[random_alg] = true;
+        LOG << "As no other initial partitioning algorithm is enabled, "
+            << "using random initial partitioning for conductance objective function.";
+      }
+
       if (! partition.enable_collective_sync_updates ) {
         partition.enable_collective_sync_updates = true;
         LOG << "Conductance objective function needs collective sync updates in hypergraphs: "
