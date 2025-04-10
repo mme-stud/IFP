@@ -107,6 +107,9 @@ struct ConductanceGlobalAttributedGains {
     unused(total_volume_version);
     const HypergraphVolume& top_part_cut_weight = fraction.getNumerator();
     const HypergraphVolume& top_part_min_volume = fraction.getDenominator();
+    if ( top_part_min_volume == 0 ) {
+      return std::numeric_limits<HyperedgeWeight>::max();
+    }
     ASSERT(top_part_min_volume != 0);
     // ASSERT(total_volume_version != 0);
     // ASSERT(top_part_cut_weight <= top_part_min_volume);
