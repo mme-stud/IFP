@@ -551,7 +551,7 @@ std::vector<option> load_clustering_preset() {
     create_option("c-rating-acceptance-criterion", "best_prefer_unmatched"),
     // main -> initial_partitioning
     create_option("i-mode", "direct"),
-    create_option("i-runs", "5"),
+    create_option("i-runs", "10"),
     { "i-enabled-ip-algos", {
             "0",    // greedy_round_robin_fm
             "0",    // greedy_global_fm
@@ -592,8 +592,9 @@ std::vector<option> load_clustering_preset() {
     create_option("r-lp-he-size-activation-threshold", "100"),
     create_option("r-lp-relative-improvement-threshold", "0.001"),
     // main -> refinement -> fm
-    create_option("r-fm-type", "unconstrained_fm"),
-    create_option("r-fm-multitry-rounds", "18"),
+    // create_option("r-fm-type", "unconstrained_fm"),
+    create_option("r-fm-type", "do_nothing"),
+    /* create_option("r-fm-multitry-rounds", "18"),
     create_option("r-fm-unconstrained-rounds", "10"),
     create_option("r-fm-rollback-parallel", "false"),
     create_option("r-fm-rollback-balance-violation-factor", "1.0"),
@@ -607,6 +608,7 @@ std::vector<option> load_clustering_preset() {
     create_option("r-fm-obey-minimal-parallelism", "true"),
     create_option("r-fm-time-limit-factor", "0.25"),
     create_option("r-fm-iter-moves-on-recalc", "true"),
+    */
     // main -> refinement -> flows
     create_option("r-flow-algo", "do_nothing"),
     // main -> mapping
