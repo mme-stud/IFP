@@ -455,7 +455,7 @@ namespace mt_kahypar::ds {
 
     auto setup_hypernodes = [&] {
       // Remap hyperedge ids in temporary incident nets to hyperedge ids of the
-      // coarse hypergraph and remove singple-pin/parallel hyperedges.
+      // coarse hypergraph and remove single-pin/parallel hyperedges.
       // (new!) At the same time compute weighted degree of each coarsened vertex
       tbb::parallel_for(ID(0), num_hypernodes, [&](const HypernodeID& id) {
         const size_t incident_nets_start =  tmp_hypernodes[id].firstEntry();

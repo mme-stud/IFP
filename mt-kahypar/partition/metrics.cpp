@@ -29,6 +29,7 @@
 
 #include <cmath>
 #include <algorithm>
+// #include <tbb/parallel_reduce.h>
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/mapping/target_graph.h"
@@ -173,7 +174,7 @@ HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) 
   const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
 
   if (top_part_min_volume == 0) {
-    // only one black => bad partition
+    // only one block => bad partition
     return std::numeric_limits<HyperedgeWeight>::max();
   }
   // const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
@@ -353,6 +354,39 @@ double compute_double_conductance(const PartitionedHypergraph& phg) {
   const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
   return static_cast<double_t>(top_part_cut_weight) /
          static_cast<double_t>(top_part_min_volume);
+  /* 
+    double conductance = tbb::parallel_reduce(
+    tbb::blocked_range<PartitionID>(PartitionID(0), phg.k()),
+      0, [&](const tbb::blocked_range<PartitionID>& range, double init) {
+        if ( init >= 1 ) {
+          return init;
+        }
+        double my_range_conductance = init;
+        HypergraphVolume total_volume = phg.totalVolume();
+        for (PartitionID p = range.begin(); p < range.end(); ++p) {
+          HypergraphVolume part_volume = phg.partVolume(p);
+          if (part_volume == 0) {
+            continue;
+          } else if (part_volume == total_volume) {
+            my_range_conductance = 2;
+            break;
+          }
+          HypergraphVolume part_min_volume = std::min(part_volume, total_volume - part_volume);
+          HypergraphVolume part_cut_weight = phg.partCutWeight(p);    
+          double part_conductance = static_cast<double>(part_cut_weight) /
+                                    static_cast<double>(part_min_volume);
+          my_range_conductance = std::max(my_range_conductance, part_conductance);
+          ASSERT(1 >= my_range_conductance);
+          if ( my_range_conductance == 1 ) {
+            break;
+          }
+        }
+        return my_range_conductance;
+      }, [](const double lhs, const double rhs) {
+            return std::max(lhs, rhs);
+      });
+  return conductance;
+  */
 }
 
 namespace {
