@@ -5,7 +5,7 @@
 - `using HypergraphVolume = uint64_t` (defined in `../datastructures/hypergraph_common.h`)
 
 ### Problems:
-- test `HasCorrectGainsAfterNLevelUncontractionWithLocalizedRefinement` didn't finish in several minutes, but no _conductance_pq.lock(1) was called. Non-stopping runs of actions on github started after implementing original hypergraph stats (original volumes, original weighted degrees, ...)
+- ~~test `HasCorrectGainsAfterNLevelUncontractionWithLocalizedRefinement` didn't finish in several minutes, but no _conductance_pq.lock(1) was called. Non-stopping runs of actions on github started after implementing original hypergraph stats (original volumes, original weighted degrees, ...)~~ &rArr; solved
 
 ### Potential problems:
 - uncontraction in relative contraction order?: reversed 
@@ -27,7 +27,7 @@
 ### TODO: 
 - change `sync_update` to contain info for calculating concuctance gain (1-st and 2-nd max cond cuts; total val; ...)
     - &rarr; **Problem**: conductance gain depends on both whole parts, not just the edge
-- disable single pin removal for objective conductance (`Objective::conductance_local`,`Objective::conductance_global`) &rArr; check assertions / tests that assure that all single pin nets are removed at coarsening stares etc.
+- disable single pin removal for objective conductance (`Objective::conductance_local`,`Objective::conductance_global`) &rArr; check assertions / tests that assure that all single pin nets are removed at coarsening stares etc. &rArr; done
 
 ### Next steps:
 - implement `_total_volume`, weighted degrees + "their" functions in `static_hypergraph.h/.cpp`: *done*
@@ -41,6 +41,7 @@
 - *STOPPED HERE*
 - follow the guide to implement a custom objective function \
 	&rarr; adjust `sync_update` (see TODO above)
+	&rarr; *done*
 - debug (potentially many times :( )
 ...
 - outlook: implement new Partitioning Configurations (`include/lib_helper_functions.h`)
