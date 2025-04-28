@@ -1,3 +1,24 @@
+# Conductance-Based Hypergraph Clustering
+
+This repository contains a modified version of MtKaHyPar partitioner. The resulting algorithm supports conductance-based clustering of a hypergraph.
+
+*This repository is a part of a beginner's programming project.*
+
+## Running details
+
+Input: 
+- a hypergraph in HMETIS format
+- `k` - an upper approximation of the number of true clusters
+- local search mode: `conductance_local` or `conductance_global` (implemented as objectives in MtKaHyPar)
+
+To cluster a hypergraph:
+1. build the modified version of MtKaHyPar (the same way as described below)
+2. run it on a given hypergraph with the preset-type `cluster`, objective `conductance_local` or `conductance_global` and parameter `k`:
+`-h <path-to-graph> --preset-type=cluster -o <objective> -k <approximation of cluster number>`
+3. optionally, the number of threads `t` can be specified:
+`-h <path-to-graph> --preset-type=cluster -o <objective> -k <approximation of cluster number> -t <# threads>`
+
+
 <h1 align="center">Mt-KaHyPar - Multi-Threaded Karlsruhe Graph and Hypergraph Partitioner</h1>
 
 License|Linux, MacOS & Windows Build|Code Coverage|Zenodo
