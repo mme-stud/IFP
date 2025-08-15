@@ -38,7 +38,9 @@ void SingletonInitialPartitioner<TypeTraits>::partitionImpl() {
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::singleton) ) {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
-    if (hg.initialNumNodes() == static_cast<HypernodeID>(_context.partition.k)) {
+
+    if (hg.initialNumNodes() <= static_cast<HypernodeID>(_context.partition.k)
+        && !hg.hasFixedVertices() ) {
       PartitionID cur_block = 0;
       for (const HypernodeID &hn: hg.nodes()) {
         hg.setNodePart(hn, cur_block++);

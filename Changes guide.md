@@ -732,7 +732,7 @@ My changes:
 #### IP Algorithms
 Cluster uses `random_initial_partitioner` ber default, but can run with `singleton_initial_partitioner`.
 
-`singleton_initial_partitioner` acts exactly like `random_initial_partitioner` if `k != num_nodes`.
+`singleton_initial_partitioner` acts exactly like `random_initial_partitioner` if `k > num_nodes` or hg has fixed vertices (`hg.hasFixedVertices()`).
 
 **Only** if `clustering` + `singleton`: specifically set k = num_nodes.
 
