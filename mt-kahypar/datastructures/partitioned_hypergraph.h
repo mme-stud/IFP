@@ -1004,7 +1004,7 @@ class PartitionedHypergraph {
         // _conductance_pq.lock(true /* synchronized */); - update by deltsas => no locks => sync in adjust..
           _conductance_pq.adjustKeyByDeltas(from, d_cut_weight_from, d_part_volume_ver_from, true /* synchronized */);
           _conductance_pq.adjustKeyByDeltas(to, d_cut_weight_to, d_part_volume_ver_to, true /* synchronized */);
-        // _conductance_pq.unlock(true /* synchronized */); - update by deltas => no locks => sync in adiust..
+        // _conductance_pq.unlock(true /* synchronized */); - update by deltas => no locks => sync in adjust..
       }
       return true;
     } else {

@@ -329,7 +329,7 @@ TODO: write a TODO list for this section :)
 		this way, parts with zero weight edges are not disturbed &rarr; TODO: check if suitable 
 	- \+ `bool small()`, `isLessQuick(other)`, `isEqualQuick(other)` - by $a/b < c/d \equiv a \cdot d < b \cdot c$ \
 		**!!!** only suitable for *small* fractions (i.e. in `uint32_t`, to cause no overflow), not null cases (or else everything is equal to $0/0$ &rArr; heap problems) [debug]
-	- \+ `isLess_zeroCases(other)`, `isEqual_zeroCases(other)` - to chech for comparing fractions with zeroes in numerator **or** denumerator
+	- \+ `isLess_zeroCases(other)`, `isEqual_zeroCases(other)` - to check for comparing fractions with zeroes in numerator **or** denumerator
 	- \+ `gcd(a, b)`, `reduce(), ``isLessSlow(one, other)`, `isEqualSlow(one, other)` - tricks with integral division and reduction: regulary check for `.._zeroCases(..)`, `small()`
 
 ##### Delta Value 
@@ -367,10 +367,10 @@ Needed for `changeNodePart(..)` of `partitioned_hypergraph.h`, `adjustKeyByDelta
 		**!!!** `SuperPQ::adjustKey(..)` does nothing when fractions are equal as fractions \
 		&rArr; the new numerator and denumerator are not set automaticly, if proportion is the same \
 		&rArr; manualy change key in the `SuperPQ::heap` **after** calling `SuperPQ::adjustKey(..)` [debug] \
-		**!!!** isn't used by any function (previously used by `changeNodePart`), but due to synchronization problems is replaced by `adjustKeyByDeltas`
-	+ \+ ``adjustKeyByDeltas()` - used by `changeNodePart(..)` of `partitioned_hypergraph.h` to accumulate changes in `_part_cut_weights[p]` and `_part_volumes[p]` / `_part_original_volumes[p]` and apply them only once they look 'reasonable' (nonnegative cut weights or part volumes; cut weights or part volumes that are greater than `_total_volume`; cut weights and part volumes that are as sum greater than `_total_volume`) \
+		**!!!** isn't used by any function (previously used by `changeNodePart`, but due to synchronization problems is replaced by `adjustKeyByDeltas`)
+	+ \+ `adjustKeyByDeltas()` - used by `changeNodePart(..)` of `partitioned_hypergraph.h` to accumulate changes in `_part_cut_weights[p]` and `_part_volumes[p]` / `_part_original_volumes[p]` and apply them only once they look 'reasonable' (nonnegative cut weights or part volumes; cut weights or part volumes that are greater than `_total_volume`; cut weights and part volumes that are as sum greater than `_total_volume`) \
 	After calling `SuoerPQ::adjustKey(p, f)` we still (as in `adjustLKey(..)`) need to set `SuperPQ::heap[position[p]] = f`
-	+ \+ `vec<DeltaV> _delta_part_volumes, _delta_cut_weights` with `using DeltaV = DeltaValue<HypergraphVolume>` - set empty in constructor, filled with `0` in `initialize()`, cleared in `reset()`, asserted as filles with `0` in `flobalUpdate(hg)`, `check(hg)`, `uodateTotalVolume(..)` \
+	+ \+ `vec<DeltaV> _delta_part_volumes, _delta_cut_weights` with `using DeltaV = DeltaValue<HypergraphVolume>` - set empty in constructor, filled with `0` in `initialize()`, cleared in `reset()`, asserted as filles with `0` in `globalUpdate(hg)`, `check(hg)`, `uodateTotalVolume(..)` \
 	used for `adjustKeyByDeltas(..)`  to accumulate changes in `_part_cut_weights[p]` and the correct version of part volumes (current or original), that are clearly not yet finished (due to simultaneous calles of `changeNodePart` of `partitioned_hypergraph.h`). This changed are applied once they look *reasonable* (see `adjustKeyByDeltas(..)`)
 	- \+ `ConductanceInfo top(sync)`,`ConductanceInfo secondTop(sync)` - return `ConductanceInfo {ConductanceFraction, PartitionID}` of the first, second conductance-wise maximal partitions
 	- \+ `vec<ConductanceInfo> topThree(sync)` - returns an **unsorted** vector with `ConductanceInfo {ConductanceFraction, PartitionID}` of the top 3 partitions (last elements are `{0/0, kInvalid}`, if `k` < 3). It should help to calculate the gain of a move from $C_i$ to $C_j$ in $\mathcal{O}(3) = \mathcal{O}(1)$ time.
@@ -438,7 +438,7 @@ Update of `_conductance_pq` (if enabled):
 	&rArr; `_conductance_pq` shouldn't be initialized yet \
 	&rArr; not touched
 - `changeNodePart(u, from, to, ...)`: 
-	- call `needcConducatncePriorityQueue()` before the start of changing node part (i.e. if weight was approbed) - so they won't pause updates to initialize pq in the process &rArr; a bit better parallelizm... 
+	- call `needsConducatncePriorityQueue()` before the start of changing node part (i.e. if weight was approbed) - so they won't pause updates to initialize pq in the process &rArr; a bit better parallelizm... 
 	- call ~~`adjustKey()`~~ `adjustKeyByDeltas(..)` for `from` and `to`  to avoid needing heavy locks and to not break `_conductance_pq` \
 		!!! update conductance pq after `updatePinCountOfHyperedge(...)` as it updates part cut weight \
 		**!!!** ~~lock `_conductance_pq` when changing part volumes, as `changeNodePart` can be called concurrently &rArr; some threads will be calling `_conductance_pq.adjustKey(..)`, when others are changing part (original & current) volumes [debug] ~~ [debug + adjustKeyByDeltas] 
@@ -469,7 +469,7 @@ in `mt-kahypar/partition/multilevel.cpp`:
 	- `operator<< (os, Objective)` and `operator<< (os, GainPolicy)` for `conductance_local`, `conductance_global` (mapping from enum to string)
 3. `partition/metrics.cpp`: 
 	- \+ `ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local>` and `conductance_global` analog.-  template specializations for new `Objective` enum type:
-		- &rarr; `operator()(phg, he)` returns 0 if `he` isn't in the most expensive cut, otherwise returns edge weight divided by $min{_part_volume(p), _total_volume - _part_volume(p)}$
+		- &rarr; `operator()(phg, he)` returns 0 if `he` isn't in the most expensive cut, otherwise returns edge weight divided by ``min{_part_volume(p), _total_volume - _part_volume(p)}``
 		- &rArr; depends on `conductance_pq` of `PartitionedHypergraph`
 		- **TODO**: What if several parts have the biggest conductance?
 		- **Problem**: value of `ObjectiveFunction` has to be `HyperedgeWeight`:
@@ -478,7 +478,7 @@ in `mt-kahypar/partition/multilevel.cpp`:
 			&rArr; `hypergraph_common.h`: \+ constant `mt_kahypar::scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;` (**TODO**: think of a good way to make it a power of ten for clearer visual, but still dynamicly dependend on `HyperedgeWeight` )
 		- if the contribution is too big, a message is printed (`LOG`), the returned value is `std::numeric_limits<HyperedgeWeight>::max()`
 	- `contribution(...)`, `quality(...)`: add new objective functions to the switch statements
-	+ \+ `HyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets. Returns `std::numerical_limits<HyperedgeWeight>::max()` if `top_part_min_volume = 0` (for the edgecase, that only one block exists: conductance was previausly -infinity, which discouraged moves from that "block"...)
+	+ \+ `HyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets. Returns `std::numerical_limits<HyperedgeWeight>::max()` if `top_part_min_volume = 0` (for the edgecase, that only one block exists: conductance was previously -infinity, which discouraged moves from that "block"...)
 	+ \+ [my]: `double compute_double_conductance(phg)` in `metrics.cpp / .h` to print out double conductance at the end:
 		- to instantiate this method: [debug: **important** is to instantiate, declare and define methods in the same order]
 			- \+`#define CONDUCTANCE_DOUBLE(X) double compute_double_conductance(const X& phg)`
@@ -1191,7 +1191,7 @@ call `context.setupCollectiveSyncUpdates()` as early as possible after setting `
 	[debug: needed in `mt-kahypar/tests/io/sql_plottools_serializer_test.cc` `ASqlPlotSerializerTest.ChecksIfSomeParametersFromContextAreMissing`, removed whitespaces in empty line in `context.h` - they break serialization!]
 
 ##### Conductance Global
-**As far as I know** [*to be disproven by failing quality assertions...*], `contribution(phg, he)` is called only by `partitioner.cpp` in the `POSTPROCESSING` phase: `restoreLargeHyperedges()`. So `AttributedGain` is compared to the `quaality(phg)`, which can be (and now is) calculated almost exact (rounded max conductance). Therefore to calculate `AttributedGains` for conductance (both use global version), I compute the difference on new and old rounded conductances (and do this by enabled **collective** sync_updates)
+**As far as I know** [*to be disproven by failing quality assertions...*], `contribution(phg, he)` is called only by `partitioner.cpp` in the `POSTPROCESSING` phase: `restoreLargeHyperedges()`. So `AttributedGain` is compared to the `quality(phg)`, which can be (and now is) calculated almost exact (rounded max conductance). Therefore to calculate `AttributedGains` for conductance (both use global version), I compute the difference on new and old rounded conductances (and do this by enabled **collective** sync_updates)
 
 \+ `conductance_global_attributed_gain.h`:
 + \+ `ConductanceGlobalAttributedGains`:
@@ -1347,7 +1347,7 @@ You only have to add a mapping between a string representation of your new objec
 			- &rarr; `dispatchedFindMoves(..)` of `UnconstrainedStrategy`
 				- &rarr; `findMoves(..)` of `lokalized_kway_fm_core.cpp` acquires some nodes
 					- &rarr; `internlFindMoves(..)` of `lokalized_kway_fm_core.cpp`: it goes sequentially through local moves and calls `phg.changeNodePart(gain_cache, ..)` on the global partition (but the whole prozess is parallel &rArr; parallel `changeNodePart(..)`...)
-- &rarr; `improvement = globalRollbacl.revertToBestPrefix(...)` of `global_rollback.h`: looks, of `context.refinement.fm.rollback_parallel == true`. If so:
+- &rarr; `improvement = globalRollback.revertToBestPrefix(...)` of `global_rollback.h`: looks, of `context.refinement.fm.rollback_parallel == true`. If so:
 	- `revertToBestPrefixSequential(..)` of `global_rollback.cpp`:
 		- reverts all moves in parallel: `moveVertex(phg, m.node, m.to, m.from);`
 		- moves all vertices sequentially ans calls `gain_sum -= AttributedGains::gain(sync_update);` in each `changeNodePart(..)`
