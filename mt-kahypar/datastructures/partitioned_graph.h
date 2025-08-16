@@ -841,6 +841,33 @@ private:
     _hg->enableCollectiveSyncUpdates();
   }
 
+  // ###################### AON PARAMETER FORWARDERS (Not supported) ###############
+
+  // Not supported for graphs
+  inline double beta (std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "beta(k) is not supported for partitioned graph");
+    return 0.0;
+  }
+  // Not supported for graphs
+  inline double gamma (std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "gamma(k) is not supported for partitioned graph");
+    return 0.0;
+  }
+  // Not supported for graphs
+  inline double omegaIn (std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaIn(k) is not supported for partitioned graph");
+    return 0.0;
+  }
+  // Not supported for graphs
+  inline double omegaOut (std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaOut(k) is not supported for partitioned graph");
+    return 0.0;
+  }
+
   // ####################### Memory Consumption #######################
 
   void memoryConsumption(utils::MemoryTreeNode* parent) const {

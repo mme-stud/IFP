@@ -268,6 +268,13 @@ namespace mt_kahypar {
   }
 
   template<typename Hypergraph>
+  void precomputeHyperModularityParameters(Hypergraph& hypergraph, Context& context) {
+    if(!context.initial_partitioning.enabled_ip_algos[InitialPartitioningAlgorithm::aon_hypermodularity]) return;
+    LOG << "Precomputing the parameters for AON-Hypermodularity IP";
+    hypergraph.computeAONParameters();
+  }
+
+  template<typename Hypergraph>
   void preprocess(Hypergraph& hypergraph, Context& context, TargetGraph* target_graph) {
     bool use_community_detection = context.preprocessing.use_community_detection;
     bool is_graph = false;
@@ -304,6 +311,8 @@ namespace mt_kahypar {
         io::printCommunityInformation(hypergraph);
       }
     }
+
+    precomputeHyperModularityParameters(hypergraph, context);
 
     precomputeSteinerTrees(hypergraph, target_graph, context);
 

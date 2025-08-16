@@ -639,6 +639,41 @@ class DynamicGraph {
     });
   }
 
+  // ###################### AON-Hypermodularity (not supported) #########
+
+  // ! AON HyperModularity Clustering is not supported in dynamic graphs
+  bool hasAON() const { return false; }
+
+  // ! Not supported for dynamic graphs
+  inline double beta(std::size_t k) const { 
+    throw NonSupportedOperationException(
+      "beta(k) is not supported for dynamic graph");
+      return 0.0;
+    }
+    // ! Not supported for dynamic graphs
+  inline double gamma(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "gamma(k) is not supported for dynamic graph");
+    return 0.0;
+  }
+  // ! Not supported for dynamic graphs
+  inline double omegaIn(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaIn(k) is not supported for dynamic graph");
+    return 0.0;
+  }
+  // ! Not supported for dynamic graphs
+  inline double omegaOut(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaOut(k) is not supported for dynamic graph");
+            return 0.0;
+  }
+  // ! Not supported for dynamic graphs
+  inline void computeAONParameters(double eps = 1e-12) {
+    throw NonSupportedOperationException(
+       "computeAONParameters is not supported in dynamic graph");
+  }
+
   // ####################### Fixed Vertex Support #######################
 
   void addFixedVertexSupport(FixedVertexSupport<DynamicGraph>&& fixed_vertices) {

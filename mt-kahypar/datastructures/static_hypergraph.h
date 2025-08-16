@@ -426,7 +426,9 @@ class StaticHypergraph {
     _original_weighted_degrees(),
     _community_ids(0),
     _fixed_vertices(),
-    _tmp_contraction_buffer(nullptr) { }
+    _tmp_contraction_buffer(nullptr),
+    _beta(1, 0.0), _gamma(1, 0.0), _omega(1, {0.0, 0.0})
+    { }
 
   StaticHypergraph(const StaticHypergraph&) = delete;
   StaticHypergraph & operator= (const StaticHypergraph &) = delete;
@@ -453,7 +455,10 @@ class StaticHypergraph {
     _fixed_vertices(std::move(other._fixed_vertices)),
     _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)),
     _enable_collective_sync_update(other._enable_collective_sync_update),
-    _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal) {
+    _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal),
+    _beta(std::move(other._beta)), _gamma(std::move(other._gamma)),
+        _omega(std::move(other._omega)) 
+  {
     _fixed_vertices.setHypergraph(this);
     other._tmp_contraction_buffer = nullptr;
   }
@@ -483,6 +488,9 @@ class StaticHypergraph {
     _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
     _enable_collective_sync_update = other._enable_collective_sync_update;
     other._tmp_contraction_buffer = nullptr;
+    _beta = std::move(other._beta);
+    _gamma = std::move(other._gamma);
+    _omega = std::move(other._omega);
     return *this;
   }
 
@@ -738,6 +746,147 @@ class StaticHypergraph {
   void setCommunityID(const HypernodeID u, const PartitionID community_id) {
     _community_ids[u] = community_id;
   }
+
+  // ######################## AON-Hypermodularity #######################
+  
+  // ! AON HyperModularity Clustering
+  // ! true once the three vectors were filled at the finest level
+  bool hasAON() const { return !_beta.empty(); }
+
+  // ! Get \beta for AON HyperModularity Clustering
+  // ! Constant-time access by edge size d (d ≥ 0, d < _beta.size())
+  double beta(std::size_t d) const noexcept {
+    ASSERT(0 <= d && d < _beta.size(),
+           "d = " << d << " is out of bounds for beta vector of size " << _beta.size());
+    return _beta[d];
+    // return d < _beta .size() ? _beta [d]      : 0.0;
+  }
+
+  // ! Get \gamma for AON HyperModularity Clustering
+  // ! Constant-time access by edge size d (d ≥ 0, d < _gamma.size())
+  double gamma(std::size_t d) const noexcept {
+    ASSERT(0 <= d && d < _gamma.size(),
+           "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size());
+    return _gamma[d];
+    // return d < _gamma.size() ? _gamma[d]      : 0.0;
+  }
+
+  // ! Get \omega_{d0} for AON HyperModularity Clustering
+  // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
+  double omegaIn(std::size_t d) const noexcept {
+    ASSERT(0 <= d && d < _omega.size(),
+           "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
+    return _omega[d][0];
+    // return d < _omega.size() ? _omega[d][0]   : 0.0;
+  }
+
+  // ! Get \omega_{d1} for AON HyperModularity Clustering
+  // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
+  double omegaOut(std::size_t d) const noexcept {
+    ASSERT(0 <= d && d < _omega.size(),
+           "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
+    return _omega[d][1];
+    // return d < _omega.size() ? _omega[d][1]   : 0.0;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  /// (Re)compute β, γ, ω for the **current** community assignment
+  /// `_community_ids`.
+  ///
+  /// *   β[k]   = log(ω_in/ω_out)   for edge-size k (k ≥ 2)
+  /// *   γ[k]   = ω_in − ω_out
+  /// *   ω[k] = { ω_in , ω_out }
+  /// 
+  /// [Mariia: _beta = - \beta, _gamma = - \beta * \gamma 
+  ///           with \beta, \gamma from the Hypermodularity article]
+  ///
+  /// After the call the three member vectors `_beta`, `_gamma`, `_omega` are
+  /// filled and can be queried with beta(k), gamma(k), omegaIn/Out(k).
+  inline void computeAONParameters(double eps = 1e-12) {
+    const std::size_t dmax = static_cast<std::size_t>(_max_edge_size);
+    // if (dmax < 2) { _beta.clear(); _gamma.clear(); _omega.clear(); return; }
+
+    /* ------------------------------------------------------------
+     * 1. cluster volumes  Vol_c = Σ_{v∈c} nodeVolume(v)
+     *    !!! No weights
+     * ---------------------------------------------------------- */
+    PartitionID L = 0;
+    for (HypernodeID v : nodes()) // get maximum cluster label
+      L = std::max<PartitionID>(L, communityID(v));
+    ++L; // clusters are 0-based
+
+    std::vector<double> ClusVol(L, 0.0);
+    for (HypernodeID v : nodes())
+      ClusVol[communityID(v)] += static_cast<double>(nodeDegree(v));
+      // [mariia's suggestion] 
+      // ClusVol[communityID(v)] += static_cast<double>(nodeWeightedDegree(v));
+
+    const double vol_H = initialTotalVertexDegree();
+    // [mariia's suggestion] const double vol_H = totalVolume();
+
+    /* ------------------------------------------------------------
+     * 2. count edges and cut edges per size k
+     * ---------------------------------------------------------- */
+    // m_k - sum of edge weights per size k
+    std::vector<double> m_k(dmax + 1, 0.01); // small bias avoids log(0)
+    // cut_k - sum of cut edge weights per size k
+    std::vector<double> cut_k(dmax + 1, 0.0);
+
+    for (HyperedgeID e : edges()) {
+      const std::size_t d = static_cast<std::size_t>(edgeSize(e));
+      if (d < 2) // ignore single pin nets
+        continue;
+      const double w = static_cast<double>(edgeWeight(e));
+
+      bool cutting = false;
+      PartitionID first_c = communityID(*pins(e).begin());
+      for (HypernodeID pin : pins(e))
+        if (communityID(pin) != first_c) {
+          cutting = true;
+          break;
+        }
+
+      m_k[d] += w;
+      if (cutting)
+        cut_k[d] += w;
+    }
+
+    /* ------------------------------------------------------------
+     * 3. turn counts into ω, β, γ
+     * ---------------------------------------------------------- */
+    _beta.assign(dmax + 1, 0.0);
+    _gamma.assign(dmax + 1, 0.0);
+    _omega.assign(dmax + 1, {0.0, 0.0});
+
+    for (std::size_t d = 2; d <= dmax; ++d) {
+      // sum of d-th powers of community volumes (no weights!!!)
+      double vol_in = 0.0; 
+      for (double vc : ClusVol)
+        vol_in += std::pow(vc, static_cast<int>(d));
+      
+      const double vol_out = std::pow(vol_H, static_cast<int>(d)) - vol_in;
+
+      // double omega_in  = (m_k[d] - cut_k[d]) / std::max(vol_in , eps);
+      // double omega_out =  cut_k[d]            / std::max(vol_out, eps);
+
+      // omega_in  = std::max(omega_in , eps);
+      // omega_out = std::max(omega_out, eps);
+
+      double omega_in = (m_k[d] - cut_k[d]) / vol_in;
+      double omega_out = cut_k[d] / vol_out;
+
+      _omega[d] = {omega_in, omega_out};
+      // _beta[d] = std::log(omega_in / omega_out);
+      _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: this is -\beta_k from (15)]
+      if (!std::isfinite(_beta[d])) {
+        _beta[d] = (_beta[d] > 0 ? 1e3 : -1e3);
+      }
+      _gamma[d] = omega_in - omega_out; // [mariia: this is -\beta_k * \gamma_k from (15)]
+      LOG << "For edge size d = " << d << ": beta_d = " << _beta[d]
+          << ", gamma_d = " << _gamma[d];
+    }
+  }
+  // ═══ AON MOD END ═══════════════════════════════════════════════════════
 
   // ####################### Fixed Vertex Support #######################
 
@@ -1109,6 +1258,12 @@ class StaticHypergraph {
 
   // ! Option for disabling the removal of single-pin nets
   bool _disable_single_pin_nets_removal = false;
+
+  
+  // AON HyperModularity Clustering Coefficients
+  vec<double> _beta;                 ///< -β_k
+  vec<double> _gamma;                ///< -β_k * γ_k
+  vec<std::array<double, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
 };
 
 } // namespace ds

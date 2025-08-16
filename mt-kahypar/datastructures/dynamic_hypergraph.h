@@ -787,6 +787,40 @@ class DynamicHypergraph {
     ASSERT(!hypernode(u).isDisabled(), "Hypernode" << u << "is disabled");
     return hypernode(u).setCommunityID(community_id);
   }
+  // ###################### AON-Hypermodularity (not supported) #########
+
+  // ! AON HyperModularity Clustering is not supported in dynamic hypergraphs
+  bool hasAON() const { return false; }
+
+  // ! Not supported for dynamic hypergraphs
+  inline double beta(std::size_t k) const { 
+    throw NonSupportedOperationException(
+      "beta(k) is not supported for dynamic hypergraph");
+      return 0.0;
+    }
+    // ! Not supported for dynamic hypergraphs
+  inline double gamma(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "gamma(k) is not supported for dynamic hypergraph");
+    return 0.0;
+  }
+  // ! Not supported for dynamic hypergraphs
+  inline double omegaIn(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaIn(k) is not supported for dynamic hypergraph");
+    return 0.0;
+  }
+  // ! Not supported for dynamic hypergraphs
+  inline double omegaOut(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaOut(k) is not supported for dynamic hypergraph");
+            return 0.0;
+  }
+  // ! Not supported for dynamic hypergraphs
+  inline void computeAONParameters(double eps = 1e-12) {
+    throw NonSupportedOperationException(
+       "computeAONParameters is not supported in dynamic hypergraph");
+  }
 
   // ####################### Fixed Vertex Support #######################
 

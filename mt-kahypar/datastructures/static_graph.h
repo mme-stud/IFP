@@ -716,8 +716,43 @@ class StaticGraph {
     _community_ids[u] = community_id;
   }
 
-  // ####################### Fixed Vertex Support #######################
+  // ###################### AON-Hypermodularity (not supported) #########
 
+  // ! AON HyperModularity Clustering is not supported in static graphs
+  bool hasAON() const { return false; }
+
+  // ! Not supported for static graphs
+  inline double beta(std::size_t k) const { 
+    throw NonSupportedOperationException(
+      "beta(k) is not supported for static graph");
+      return 0.0;
+    }
+    // ! Not supported for static graphs
+  inline double gamma(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "gamma(k) is not supported for static graph");
+    return 0.0;
+  }
+  // ! Not supported for static graphs
+  inline double omegaIn(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaIn(k) is not supported for static graph");
+    return 0.0;
+  }
+  // ! Not supported for static graphs
+  inline double omegaOut(std::size_t k) const { 
+    throw NonSupportedOperationException(
+            "omegaOut(k) is not supported for static graph");
+            return 0.0;
+  }
+  // ! Not supported for static graphs
+  inline void computeAONParameters(double eps = 1e-12) {
+    throw NonSupportedOperationException(
+       "computeAONParameters is not supported in static graph");
+  }
+
+  // ####################### Fixed Vertex Support #######################
+  
   void addFixedVertexSupport(FixedVertexSupport<StaticGraph>&& fixed_vertices) {
     _fixed_vertices = std::move(fixed_vertices);
     _fixed_vertices.setHypergraph(this);

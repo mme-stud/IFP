@@ -1353,6 +1353,24 @@ class PartitionedHypergraph {
     return _hg->isSinglePinNetsRemovalDisabled();
   }
 
+  // ###################### AON PARAMETER FORWARDERS #######################
+  //  Access βk , γk , ωin/out(k) directly from a PartitionedHypergraph
+  //  without exposing the whole vectors.
+
+  // ! Getter for _beta[k]
+  inline double beta   (std::size_t k) const { return _hg->beta   (k); }
+  // ! Getter for _gamma[k]
+  inline double gamma  (std::size_t k) const { return _hg->gamma  (k); }
+  // ! Getter for _omegaIn[k]
+  inline double omegaIn (std::size_t k) const { return _hg->omegaIn (k); }
+  // ! Getter for _omegaOut[k]
+  inline double omegaOut(std::size_t k) const { return _hg->omegaOut(k); }
+
+  // ! _beta vector for AON-Hypermodularity
+  inline const vec<double>& betaVector()  const { return _hg->_beta;  }
+  // ! _gamma vector for AON-Hypermodularity
+  inline const vec<double>& gammaVector() const { return _hg->_gamma; }
+
   // ####################### Memory Consumption #######################
 
   // ! No info about the memory consumption of the conductance priority queue

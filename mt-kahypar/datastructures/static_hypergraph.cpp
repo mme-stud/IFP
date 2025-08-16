@@ -387,6 +387,11 @@ namespace mt_kahypar::ds {
       hypergraph._weighted_degrees.resize(num_hypernodes, 0);
     }, [&] {
       hypergraph._original_weighted_degrees.resize(num_hypernodes, 0);
+    },
+      // Copy AON-Hypermodularity parameters
+       [&] { hypergraph._beta = _beta; },
+       [&] { hypergraph._gamma = _gamma; },
+       [&] { hypergraph._omega = _omega; },
     });
 
     const HyperedgeID num_hyperedges = he_mapping.total_sum();
@@ -578,11 +583,14 @@ namespace mt_kahypar::ds {
       hypergraph._original_weighted_degrees.resize(_original_weighted_degrees.size());
       memcpy(hypergraph._original_weighted_degrees.data(), _original_weighted_degrees.data(),
              sizeof(HypergraphVolume) * _original_weighted_degrees.size());
-    }, [&] {
-      hypergraph._community_ids = _community_ids;
-    }, [&] {
-      hypergraph.addFixedVertexSupport(_fixed_vertices.copy());
-    });
+    }, [&] { hypergraph._community_ids = _community_ids; }
+       [&] { hypergraph._beta = _beta; },
+       [&] { hypergraph._gamma = _gamma; },
+       [&] { hypergraph._omega = _omega; },
+       [&] {
+        hypergraph.addFixedVertexSupport(_fixed_vertices.copy());
+      }
+    );
     return hypergraph;
   }
 
@@ -624,6 +632,10 @@ namespace mt_kahypar::ds {
            sizeof(HypergraphVolume) * _original_weighted_degrees.size());
 
     hypergraph._community_ids = _community_ids;
+    hypergraph._beta = _beta;
+    hypergraph._gamma = _gamma;
+    hypergraph._omega = _omega;
+
     hypergraph.addFixedVertexSupport(_fixed_vertices.copy());
 
     return hypergraph;
@@ -638,6 +650,9 @@ namespace mt_kahypar::ds {
     parent->addChild("Weighted Degrees", sizeof(HypergraphVolume) * _weighted_degrees.size());
     parent->addChild("Original Weighted Degrees", sizeof(HypergraphVolume) * _original_weighted_degrees.size());
     parent->addChild("Communities", sizeof(PartitionID) * _community_ids.capacity());
+    parent->addChild("Beta", sizeof(float) * _beta.size());
+    parent->addChild("Gamma", sizeof(float) * _gamma.size());
+    parent->addChild("Omega", sizeof(float) * _omega.size());
     if ( hasFixedVertices() ) {
       parent->addChild("Fixed Vertex Support", _fixed_vertices.size_in_bytes());
     }
