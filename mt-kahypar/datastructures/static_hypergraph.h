@@ -817,12 +817,13 @@ class StaticHypergraph {
 
     std::vector<double> ClusVol(L, 0.0);
     for (HypernodeID v : nodes())
-      ClusVol[communityID(v)] += static_cast<double>(nodeDegree(v));
-      // [mariia's suggestion] 
-      // ClusVol[communityID(v)] += static_cast<double>(nodeWeightedDegree(v));
+      // ClusVol[communityID(v)] += static_cast<double>(nodeDegree(v));
+      // [mariia's suggestion]:
+      ClusVol[communityID(v)] += static_cast<double>(nodeWeightedDegree(v));
 
-    const double vol_H = initialTotalVertexDegree();
-    // [mariia's suggestion] const double vol_H = totalVolume();
+    // const double vol_H = initialTotalVertexDegree();
+    // [mariia's suggestion]:
+    const double vol_H = totalVolume();
 
     /* ------------------------------------------------------------
      * 2. count edges and cut edges per size k
