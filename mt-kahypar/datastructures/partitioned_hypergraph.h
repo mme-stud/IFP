@@ -1354,6 +1354,9 @@ class PartitionedHypergraph {
   }
 
   // ###################### AON PARAMETER FORWARDERS #######################
+  
+  inline bool hasAON() { return _hg->hasAON(); }
+  
   //  Access βk , γk , ωin/out(k) directly from a PartitionedHypergraph
   //  without exposing the whole vectors.
 

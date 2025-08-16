@@ -843,6 +843,9 @@ private:
 
   // ###################### AON PARAMETER FORWARDERS (Not supported) ###############
 
+  // Always false for graphs
+  inline bool hasAON() { return false; }
+
   // Not supported for graphs
   inline double beta (std::size_t k) const { 
     throw NonSupportedOperationException(
