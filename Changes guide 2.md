@@ -3,6 +3,8 @@
 ## Ideas:
 - in `computeAONParameters`, use `nodeWeightedDegree` for `ClosVol` instead of `nodeDegree` \
 (as cutting edges are considered vith weights) and `totalVolume` instead of `initialTotalVertexDegree` for `vol_H` &rarr; done (for now)
+- **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
+
 
 ## TODO:
 - TODO: ensure, that `use_community_detection` is enabled by `aon_hypermodularity` IP [`partitioner.cpp preprocess(..)`] 
@@ -48,11 +50,62 @@ Reference: [commit](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bb
 
 
 ### Implement AON-Hypermodularity IP
+Original Algorithm: [Generative hypergraph clustering: from blockmodels to modularity](https://arxiv.org/pdf/2101.09611)
+
+#### Code Structure 
+("Template": `mt-kahypar/partition/initial_partitioning/random_initial_partitioner.h, .cpp`)
 
 - `aon_hypermodularity_initial_partitioner.h, .cpp`:
-    - "Template": `mt-kahypar/partition/initial_partitioning/random_initial_partitioner.h, .cpp`
-Plan:
-0. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs:
+```cpp
+      // save current edge sizes, weighted degrees and total volume
+      H.snapshotOriginalEdgeSizes();
+      H.snapshotOriginalWeightedDegreesAndTotalVolume();
+      H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+      H.disableSinglePinNetsRemoval(); // to not lose contracted edges
+
+      //          1. Singleton initial partitioning
+      //                         <...>
+      //          2. AllOrNothingHMLL: Louvain Cycle   
+      while (z_changed) {
+        /** -------------------- Collapse: --------------------
+         *  - The community structure on H_new is collapsed by 
+         *    merging nodes within the same community;
+         *  - H_new_partitioned is rewrited with a singleton
+         *    partition on H_new;
+         *  - map_z stores the mapping from communityIDs in z
+         *    to the HypernodeIDs in H_new which are used as
+         *    PartitionIDs in H_new_partitioned.
+         */
+        collapse(H_new, H_new_partitioned, map_z);
+
+        /** ------------------ Louvain Step: ------------------
+         *  - Nodes are moved to neighbouring partitions as
+         *    long as it improves the modularity gain;
+         *  - map_z is updated accordingly.
+         */
+        louvainStep(H_new, H_new_partitioned, map_z);
+
+        /** --------------------- Expand: ---------------------
+         *  - If H_new_partitioned is still in a singleton 
+         *    partition, false is returned;
+         *  - otherwise, the community structure on H_new is
+         *    updated according to the new partition on 
+         *    H_new_partitioned;
+         *  - z (communities for H) is updated via map_z;
+         *  - true is returned.
+         */
+        
+        z_changed = expand(H, H_new, H_new_partitioned, map_z, z);
+      }
+      
+      //             3. Finalize Partitioning
+      //                        <...>
+
+```
+
+#### Needed Additional Functionality (Static Hypergraph, Partitioned Hypergraph)
+
+1. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs:
 ```cpp
    class Hyperedge { // copy constructor in contract() should preserve all information -> no changes needed
     /// ...
@@ -72,7 +125,7 @@ Plan:
             HypernodeID _original_max_edge_size; // set at the moment of snapshot
     };
 ```
-1. coarsest_underlying_hg should forget initial weighted degrees etc (as otherwise the original edge sizes are too big => delta to slow) /
+2. coarsest_underlying_hg should forget initial weighted degrees etc (as otherwise the original edge sizes are too big => delta to slow) /
     ~~-> use factory to copy the hypergraph (check before doing!) [doesn't work]~~
     + add forgetting functions to `static_hypergraph.h`, `partitioned_hypergraph.h` and mirroring interface to others:
     ```cpp
@@ -96,15 +149,58 @@ Plan:
         void snapshotOriginalPartVolumes();
     };
     ```
-2. contract static hg, make partitioned from it = collapse
-3. after collapse save mapping to map: 
-	for new_hn: map[community_id[new_hn]] = new_hn
-   before each move update map:
-	map[community_id[hn]] = map[community_id[hn_of_new_label]]
-	(hn_of_new_label should be availible via he in A_i)
-4. at expand adjust z:
-	for hn in H:
-		z[hn] = map[z[hn]]
+3. `enableSinglePinNetsRemoval()` in `StaticHypergraph` (+ mirroring in dynamic + graphs) - to remove all single-pin nets in the coarsest hypergraph \ 
+    ~~**Rationale**: ~~\
+    ~~The edge size of the original hypergraph is potentially too big to compute Hypermodularity gains~~ \
+    &rArr; ~~I run AON-Hypermodularity on the actual stats of the coarsest hypergraph~~ \
+    &rArr; ~~single-pin nets are never cut~~ \
+    &rArr; ~~are interesting only for value~~ \
+    &rarr; ~~can be removed after saving original volumes and weighted degrees~~ \
+    [actually irrelevant, as parallel single pin nets are removed]
+4. `useOriginalSizeInParallelNetsDetection(bool yes)` in `StaticHypergraph` (+ mirroring in dynamic + graphs) - to stop removal of parallel nets of different original sizes (otherwise the gain is incorrect) :
+    ```cpp
+    void useOriginalSizeInParallelNetsDetection(bool yes = true) {
+        _use_original_size_in_parallel_nets_detection = yes;
+    }
+    bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
+        return _use_original_size_in_parallel_nets_detection;
+    }
+
+    ```
+
+
+
+#### Implementation Details
+0. The underlying hypergraph `H` can have too many single-pin hyperedges \ 
+&rArr; I contract it's singleton communities and after that disabled single-pin nets removal
+1. Louvain `Collapse(..)` and `Expand(..)`:
+    ![Algorithm 3](<Algorithm 3: AllOrNothingHMLL.png>)
+    - **Main idea**: contract static hg (*= the result of the last contraction*) and create a partitioned hg from it = collapse
+    - after `collapse(..)` save mapping to `map_z`: \
+    	`map_z[communityID(collapsed_hn)] = collapsed_hn`
+    - at `expand(..)` adjust `z` (*= the best found partitioning of the given coarsest hypergraph*): \
+	    ```
+        for hn in H:
+            z_new[hn] = map_z[z[hn]]
+        z = z_new
+        ```
+2. Louvain step:
+    ![Algorithm 4](<Algorithm 4: AONLouvainStep.png>)
+   - before each move update `map_z`:
+	`map_z[community_id[hn]] = <new_partition_id>` \
+	~~`map_z[community_id[hn]] = map_z[community_id[hn_of_new_label]]`~~
+	~~(`hn_of_new_label` should be equal to the new `CommunityID A`)~~
+3. Q_AON Gain:
+    ![Algorithm 5](<Algorithm 5: QAON gain.png>)
+    Here:
+    - $d$ - the original (by me weighted) degree in $H$
+    - $vol$ - the original (by me weighted) volume in $H$
+    - $- \beta_k$ is stored in `_beta`
+    - $- \beta_k \cdot \gamma_k$ is stored in `_gamma`
+    - $k^{\_}$ is the maximal edge size in `H`
+    - $s^{\_}$ is the original edge size in $H$ *(removal of parallel edges is not a problem)*
+    
+    **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
 
 ### Introduce of the new IP to the framework
 
