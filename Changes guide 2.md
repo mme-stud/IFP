@@ -49,6 +49,41 @@ Reference: [commit](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bb
 
 ### Implement AON-Hypermodularity IP
 
+- `aon_hypermodularity_initial_partitioner.h, .cpp`:
+    - "Template": `mt-kahypar/partition/initial_partitioning/random_initial_partitioner.h, .cpp`
+Plan:
+0. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs:
+```cpp
+   class Hyperedge { // copy constructor in contract() should preserve all information -> no changes needed
+    /// ...
+    private:
+        size_t original_size; // Number of pins at the moment of snapshot
+        size_t originalSize() const;
+        void setOriginalSize(size_t size);
+    };
+
+    class StaticHypergraph {
+        // ...
+        public:
+            void snapshotOriginalEdgeSizes(); // saves sizes
+            HypernodeID originalEdgeSize(HyperedgeID e) const;
+            HypernodeID originalMaxEdgeSize(HyperedgeID e) const; 
+        private:
+            HypernodeID _original_max_edge_size; // set at the moment of snapshot
+    };
+```
+1. coarsest_underlying_hg should forget initial weighted degrees etc (as otherwise the original edge sizes are too bog => delta to slow)
+   -> use factory to copy the hypergraph (check before doing!)
+2. contract static hg, make partitioned from it = collapse
+3. after collapse save mapping to map: 
+	for new_hn: map[community_id[new_hn]] = new_hn
+   before each move update map:
+	map[community_id[hn]] = map[community_id[hn_of_new_label]]
+	(hn_of_new_label should be availible via he in A_i)
+4. at expand adjust z:
+	for hn in H:
+		z[hn] = map[z[hn]]
+
 ### Introduce of the new IP to the framework
 
 ### Problems

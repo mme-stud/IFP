@@ -470,6 +470,23 @@ private:
     return _hg->edgeIsEnabled(e);
   }
 
+  // ----------- Snapshot edge sizes ----------------
+
+  // ! Save current edge sizes as original edge sizes
+  void snapshotOriginalEdgeSizes() {
+    _hg->snapshotOriginalEdgeSizes();
+  }
+
+  // ! Get the edge size at the moment of the last snapshot
+  HypernodeID originalEdgeSize(HyperedgeID e) const {
+    return _hg->originalEdgeSize(e);
+  }
+
+  // ! Get the maximum edge size at the moment of the last snapshot
+  HypernodeID originalMaxEdgeSize() const {
+    return _hg->originalMaxEdgeSize();
+  }
+
   // ####################### Uncontraction #######################
 
   template<typename GainCache>

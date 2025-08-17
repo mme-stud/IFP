@@ -787,6 +787,33 @@ class DynamicHypergraph {
     ASSERT(!hypernode(u).isDisabled(), "Hypernode" << u << "is disabled");
     return hypernode(u).setCommunityID(community_id);
   }
+  // ----------- Snapshot edge sizes (not supported) ----------------
+
+  // ! Save current edge sizes as original edge sizes
+  // ! not supported for dynamic hypergraphs
+  void snapshotOriginalEdgeSizes() {
+    throw NonSupportedOperationException(
+      "snapshotOriginalEdgeSizes is not supported for dynamic hypergraph");
+  }
+
+  // ! Get the edge size at the moment of the last snapshot
+  // ! not supported for dynamic hypergraphs
+  HypernodeID originalEdgeSize(HyperedgeID e) const {
+    ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+    unused(e);
+    throw NonSupportedOperationException(
+      "originalEdgeSize is not supported for dynamic hypergraph");
+    return 2;
+  }
+
+  // ! Get the maximum edge size at the moment of the last snapshot
+  // ! not supported for dynamic hypergraphs
+  HypernodeID originalMaxEdgeSize() const {
+    throw NonSupportedOperationException(
+      "originalMaxEdgeSize is not supported for dynamic hypergraph");
+    return 2;
+  }
+
   // ###################### AON-Hypermodularity (not supported) #########
 
   // ! AON HyperModularity Clustering is not supported in dynamic hypergraphs

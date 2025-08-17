@@ -716,6 +716,27 @@ class StaticGraph {
     _community_ids[u] = community_id;
   }
 
+  // ----------- Snapshot edge sizes ----------------
+
+  // ! Save current edge sizes as original edge sizes
+  void snapshotOriginalEdgeSizes() {
+    // In static graphs, edge sizes are always 2, so we do not need to do anything
+    // here. This function is only provided to have a common interface with dynamic
+    // hypergraphs.
+  }
+
+  // ! Get the edge size at the moment of the last snapshot
+  HypernodeID originalEdgeSize(HyperedgeID e) const {
+    ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+    unused(e);
+    return 2;
+  }
+
+  // ! Get the maximum edge size at the moment of the last snapshot
+  HypernodeID originalMaxEdgeSize() const {
+    return 2;
+  }
+
   // ###################### AON-Hypermodularity (not supported) #########
 
   // ! AON HyperModularity Clustering is not supported in static graphs

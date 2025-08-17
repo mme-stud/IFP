@@ -170,6 +170,7 @@ class StaticHypergraph {
     Hyperedge() :
       _begin(0),
       _size(0),
+      _original_size(0),
       _weight(1),
       _valid(false) { }
 
@@ -177,6 +178,7 @@ class StaticHypergraph {
     Hyperedge(const size_t begin) :
       _begin(begin),
       _size(0),
+      _original_size(0),
       _weight(1),
       _valid(false) { }
 
@@ -222,6 +224,16 @@ class StaticHypergraph {
       _size = size;
     }
 
+    size_t originalSize() const {
+      ASSERT(!isDisabled());
+      return _original_size;
+    }
+
+    void setOriginalSize(size_t original_size) {
+      ASSERT(!isDisabled());
+      _original_size = original_size;
+    }
+
     HyperedgeWeight weight() const {
       ASSERT(!isDisabled());
       return _weight;
@@ -245,6 +257,8 @@ class StaticHypergraph {
     size_t _begin;
     // ! Number of pins
     size_t _size;
+    // ! Number of pins **at the moment of snapshot**
+    size_t _original_size;
     // ! hyperedge weight
     HyperedgeWeight _weight;
     // ! Flag indicating whether or not the element is active.
@@ -747,6 +761,26 @@ class StaticHypergraph {
     _community_ids[u] = community_id;
   }
 
+  // ----------- Snapshot edge sizes ----------------
+
+  // ! Save current edge sizes as original edge sizes
+  void snapshotOriginalEdgeSizes() {
+    for (HyperedgeID e : edges()) {
+      hyperedge(e).setOriginalSize(hyperedge(e).size());
+    }
+  }
+
+  // ! Get the edge size at the moment of the last snapshot
+  HypernodeID originalEdgeSize(HyperedgeID e) const {
+    ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+    return hyperedge(e).originalSize();
+  }
+
+  // ! Get the maximum edge size at the moment of the last snapshot
+  HypernodeID originalMaxEdgeSize() const {
+    return _original_max_edge_size;
+  }
+
   // ######################## AON-Hypermodularity #######################
   
   // ! AON HyperModularity Clustering
@@ -1219,6 +1253,8 @@ class StaticHypergraph {
   HyperedgeID _num_removed_hyperedges;
   // ! Maximum size of a hyperedge
   HypernodeID _max_edge_size;
+  // ! Maximum size of a hyperedge at the moment of the last snapshot
+  HypernodeID _original_max_edge_size;
   // ! Number of pins
   HypernodeID _num_pins;
   // ! Total degree of all vertices
