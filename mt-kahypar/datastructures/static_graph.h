@@ -969,6 +969,14 @@ class StaticGraph {
       "disableSinglePinNetsRemoval() not supported in static graph");
   }
 
+  // ! Enable single-pin nets removal
+  // ! (not supported in static graphs)
+  void enableSinglePinNetsRemoval() {
+    /// [debug] std::cerr << "StaticGraph::enableSinglePinNetsRemoval()" << std::endl;
+    throw UnsupportedOperationException(
+      "enableSinglePinNetsRemoval() not supported in static graph");
+  }
+
   // ! Check if single-pin nets removal is disabled
   // ! (always false in static graphs)
   bool isSinglePinNetsRemovalDisabled() const {

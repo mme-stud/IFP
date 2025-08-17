@@ -754,6 +754,14 @@ class DynamicGraph {
       "disableSinglePinNetsRemoval() not supported in dynamic graph");
   }
 
+  // ! Enable single-pin nets removal
+  // ! (not supported in dynamic graphs)
+  void enableSinglePinNetsRemoval() {
+    /// [debug] std::cerr << "DynamicGraph::enableSinglePinNetsRemoval()" << std::endl;
+    throw UnsupportedOperationException(
+      "enableSinglePinNetsRemoval() not supported in dynamic graph");
+  }
+
   // ! Check if single-pin nets removal is disabled
   // ! (always false in dynamic graphs)
   bool isSinglePinNetsRemovalDisabled() const {

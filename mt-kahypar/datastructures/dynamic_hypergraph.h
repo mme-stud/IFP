@@ -932,6 +932,13 @@ public:
     _disable_single_pin_nets_removal = true;
   }
 
+  // ! Enable single-pin nets removal
+  // ! Needed for AON-Hypermodularity IP
+  void enableSinglePinNetsRemoval() {
+    /// [debug] std::cerr << "DynamicHypergraph::enableSinglePinNetsRemoval()" << std::endl;
+    _disable_single_pin_nets_removal = false;
+  }
+
   // ! Check if single-pin nets removal is disabled
   bool isSinglePinNetsRemovalDisabled() const {
     return _disable_single_pin_nets_removal;
