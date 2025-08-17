@@ -787,6 +787,8 @@ class DynamicHypergraph {
     ASSERT(!hypernode(u).isDisabled(), "Hypernode" << u << "is disabled");
     return hypernode(u).setCommunityID(community_id);
   }
+
+  // ############################ Snapshots ###########################
   // ----------- Snapshot edge sizes (not supported) ----------------
 
   // ! Save current edge sizes as original edge sizes
@@ -812,6 +814,28 @@ class DynamicHypergraph {
     throw NonSupportedOperationException(
       "originalMaxEdgeSize is not supported for dynamic hypergraph");
     return 2;
+  }
+
+  // ------- Snapshot volumes and weighted degrees -------
+private:
+  // ! Save the current weighted degrees as original
+  // ! (private as weighted degrees should be consistent with the total volume)
+  void snapshotOriginalWeightedDegrees() {
+    for (HypernodeID u : nodes()) {
+      setNodeOriginalWeightedDegree(u, nodeWeightedDegree(u));
+    }
+  }
+  // ! Save the current total volume as original
+  // ! (private as total volume should be consistent with the weighted degrees)
+  void snapshotOriginalTotalVolume() {
+    _original_total_volume = totalVolume();
+  }
+public:
+  // ! Save the current weighted degrees and total volume as original stats
+  // ! (together for their consistency)
+  void snapshotOriginalWeightedDegreesAndTotalVolume() {
+    snapshotOriginalWeightedDegrees();
+    snapshotOriginalTotalVolume();
   }
 
   // ###################### AON-Hypermodularity (not supported) #########

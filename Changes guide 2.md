@@ -72,8 +72,30 @@ Plan:
             HypernodeID _original_max_edge_size; // set at the moment of snapshot
     };
 ```
-1. coarsest_underlying_hg should forget initial weighted degrees etc (as otherwise the original edge sizes are too bog => delta to slow)
-   -> use factory to copy the hypergraph (check before doing!)
+1. coarsest_underlying_hg should forget initial weighted degrees etc (as otherwise the original edge sizes are too big => delta to slow) /
+    ~~-> use factory to copy the hypergraph (check before doing!) [doesn't work]~~
+    + add forgetting functions to `static_hypergraph.h`, `partitioned_hypergraph.h` and mirroring interface to others:
+    ```cpp
+    class StaticHypergraph, DynamicHypergraph {
+    public:
+        // together for their consistency
+        void snapshotOriginalWeightedDegreesAndTotalVolume();
+    private:
+        void snapshotOriginalWeightedDegrees();
+        void snapshotOriginalTotalVolume();
+    };
+
+    class PartitionedHypergraph, PartitionedGraph {
+    public:
+        // together for their consistency
+        // recomputes conductance_pq if needed and uses original stats
+        void snapshotOriginalWeightedDegreesAndVolumes();
+    private:
+        void snapshotOriginalWeightedDegrees();
+        void snapshotOriginalTotalVolume();
+        void snapshotOriginalPartVolumes();
+    };
+    ```
 2. contract static hg, make partitioned from it = collapse
 3. after collapse save mapping to map: 
 	for new_hn: map[community_id[new_hn]] = new_hn

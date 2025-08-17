@@ -647,6 +647,7 @@ class PartitionedHypergraph {
     return false;
   }
 
+  // ######################### Snapshots ##########################
   // ----------- Snapshot edge sizes ----------------
 
   // ! Save current edge sizes as original edge sizes
@@ -664,7 +665,36 @@ class PartitionedHypergraph {
     return _hg->originalMaxEdgeSize();
   }
 
-  // ####################### Uncontraction #######################
+  // ------- Snapshot volumes and weighted degrees -------
+private:
+  // ! Save the current weighted degrees as original
+  // ! (private as weighted degrees should be consistent with the volumes)
+  void snapshotOriginalWeightedDegrees() {
+    _hg->snapshotOriginalWeightedDegrees();
+  }
+  // ! Save the current total volume as original
+  // ! (private as total volume should be consistent with the weighted degrees)
+  void snapshotOriginalTotalVolume() {
+    _hg->snapshotOriginalTotalVolume();
+  }
+  // ! Save the current partition volumes as original
+  void snapshotOriginalPartVolumes() {
+    _part_original_volumes = _part_volumes;
+  }
+public:
+  // ! Save the current weighted degrees and volumes as original stats
+  // ! Updates the conductance pq if needed (and uses original stats)
+  // ! (together for their consistency)
+  void snapshotOriginalWeightedDegreesAndVolumes() {
+    snapshotOriginalWeightedDegrees();
+    snapshotOriginalTotalVolume();
+    snapshotOriginalPartVolumes();
+    if (needsConductancePriorityQueue() && conductancePriorityQueueUsesOriginalStats()) {
+      _conductance_pq.globalUpdate(*this, true /* synchronized */);
+    }
+  }
+
+  // ######################### Uncontraction ##########################
 
   /**
    * Uncontracts a batch of contractions in parallel. The batches must be uncontracted exactly

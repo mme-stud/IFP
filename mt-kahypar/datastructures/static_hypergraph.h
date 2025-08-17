@@ -761,6 +761,7 @@ class StaticHypergraph {
     _community_ids[u] = community_id;
   }
 
+  // ########################### Snapshots ############################
   // ----------- Snapshot edge sizes ----------------
 
   // ! Save current edge sizes as original edge sizes
@@ -779,6 +780,26 @@ class StaticHypergraph {
   // ! Get the maximum edge size at the moment of the last snapshot
   HypernodeID originalMaxEdgeSize() const {
     return _original_max_edge_size;
+  }
+
+  // ------- Snapshot volumes and weighted degrees -------
+private:
+  // ! Save the current weighted degrees as original
+  // ! (private as weighted degrees should be consistent with the total volume)
+  void snapshotOriginalWeightedDegrees() {
+    _original_weighted_degrees = _weighted_degrees;
+  }
+  // ! Save the current total volume as original
+  // ! (private as total volume should be consistent with the weighted degrees)
+  void snapshotOriginalTotalVolume() {
+    _original_total_volume = totalVolume();
+  }
+public:
+  // ! Save the current weighted degrees and total volume as original stats
+  // ! (together for their consistency)
+  void snapshotOriginalWeightedDegreesAndTotalVolume() {
+    snapshotOriginalWeightedDegrees();
+    snapshotOriginalTotalVolume();
   }
 
   // ######################## AON-Hypermodularity #######################

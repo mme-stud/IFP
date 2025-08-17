@@ -716,12 +716,13 @@ class StaticGraph {
     _community_ids[u] = community_id;
   }
 
+  // ############################ Snapshots ###########################
   // ----------- Snapshot edge sizes ----------------
 
   // ! Save current edge sizes as original edge sizes
   void snapshotOriginalEdgeSizes() {
     // In static graphs, edge sizes are always 2, so we do not need to do anything
-    // here. This function is only provided to have a common interface with dynamic
+    // here. This function is only provided to have a common interface with static
     // hypergraphs.
   }
 
@@ -735,6 +736,16 @@ class StaticGraph {
   // ! Get the maximum edge size at the moment of the last snapshot
   HypernodeID originalMaxEdgeSize() const {
     return 2;
+  }
+
+  // ------- Snapshot volumes and weighted degrees -------
+
+  // ! Save the current weighted degrees and total volume as original stats
+  // ! (together for their consistency)
+  // ! Not supported for graphs
+  void snapshotOriginalWeightedDegreesAndTotalVolume() {
+    throw NonSupportedOperationException(
+      "snapshotOriginalWeightedDegreesAndTotalVolume is not supported for static graph");
   }
 
   // ###################### AON-Hypermodularity (not supported) #########

@@ -615,6 +615,38 @@ class DynamicGraph {
     return edgeSource(e) == edgeTarget(e);
   }
 
+  // ############################ Snapshots ###########################
+    // ----------- Snapshot edge sizes ----------------
+
+  // ! Save current edge sizes as original edge sizes
+  void snapshotOriginalEdgeSizes() {
+    // In graphs, edge sizes are always 2, so we do not need to do anything here.
+    // This function is only provided to have a common interface with static
+    // hypergraphs.
+  }
+
+  // ! Get the edge size at the moment of the last snapshot
+  HypernodeID originalEdgeSize(HyperedgeID e) const {
+    ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+    unused(e);
+    return 2;
+  }
+
+  // ! Get the maximum edge size at the moment of the last snapshot
+  HypernodeID originalMaxEdgeSize() const {
+    return 2;
+  }
+
+  // ------- Snapshot volumes and weighted degrees -------
+  
+  // ! Save the current weighted degrees and total volume as original stats
+  // ! (together for their consistency)
+  // ! Not supported for graphs
+  void snapshotOriginalWeightedDegreesAndTotalVolume() {
+    throw NonSupportedOperationException(
+      "snapshotOriginalWeightedDegreesAndTotalVolume is not supported for dynamic graph");
+  }
+
   // ####################### Community Information #######################
 
   // ! Community id which hypernode u is assigned to

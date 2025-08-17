@@ -470,6 +470,7 @@ private:
     return _hg->edgeIsEnabled(e);
   }
 
+  // ########################### Snapshots ############################
   // ----------- Snapshot edge sizes ----------------
 
   // ! Save current edge sizes as original edge sizes
@@ -485,6 +486,14 @@ private:
   // ! Get the maximum edge size at the moment of the last snapshot
   HypernodeID originalMaxEdgeSize() const {
     return _hg->originalMaxEdgeSize();
+  }
+
+  // ------- Snapshot volumes and weighted degrees (not supported) -------
+  // ! Save the current weighted degrees and volumes as original stats
+  // ! Not supported for graphs
+  void snapshotOriginalWeightedDegreesAndVolumes() {
+    throw UnsupportedOperationException(
+      "snapshotOriginalWeightedDegreesAndVolumes() is not supported for PartitionedGraph");
   }
 
   // ####################### Uncontraction #######################
