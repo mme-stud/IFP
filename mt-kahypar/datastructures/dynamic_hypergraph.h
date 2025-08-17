@@ -944,6 +944,22 @@ public:
     return _disable_single_pin_nets_removal;
   }
 
+  // ####################### Parallel Nets Removal #######################
+
+  // ! If yes = true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  // ! not supported in dynamic hypergraph
+  void useOriginalSizeInParallelNetsDetection(bool yes=true) {
+      throw UnsupportedOperationException(
+        "useOriginalSizeInParallelNetsDetection() not supported in dynamic hypergraph");
+  }
+
+  // ! If true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
+      return false;
+  }
+  
   // ####################### Contract / Uncontract #######################
 
   DynamicHypergraph contract(parallel::scalable_vector<HypernodeID>&, bool deterministic = false) {

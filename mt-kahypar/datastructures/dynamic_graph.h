@@ -768,6 +768,22 @@ class DynamicGraph {
     return false;
   }
 
+  // ####################### Parallel Nets Removal #######################
+
+  // ! If yes = true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  // ! not supported in dynamic graph
+  void useOriginalSizeInParallelNetsDetection(bool yes=true) {
+      throw UnsupportedOperationException(
+        "useOriginalSizeInParallelNetsDetection() not supported in dynamic graph");
+  }
+
+  // ! If true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
+      return false;
+  }
+
   // ####################### Contract / Uncontract #######################
 
   DynamicGraph contract(parallel::scalable_vector<HypernodeID>&, bool deterministic = false) {

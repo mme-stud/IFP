@@ -314,7 +314,10 @@ namespace mt_kahypar::ds {
                                                 const HyperedgeID rhs) {
       const Hyperedge& lhs_he = tmp_hyperedges[lhs];
       const Hyperedge& rhs_he = tmp_hyperedges[rhs];
-      if ( lhs_he.size() == rhs_he.size() ) {
+      if (isOriginalSizeUsageInParallelNetsDetectionEnabled()
+          && lhs_he.originalSize() != rhs_he.originalSize()) {
+        return false;
+      } else if ( lhs_he.size() == rhs_he.size() ) {
         const size_t lhs_start = lhs_he.firstEntry();
         const size_t rhs_start = rhs_he.firstEntry();
         for ( size_t i = 0; i < lhs_he.size(); ++i ) {

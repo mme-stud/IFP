@@ -983,6 +983,22 @@ class StaticGraph {
     return false;
   }
 
+  // ####################### Parallel Nets Removal #######################
+
+  // ! If yes = true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  // ! not supported in static graphs
+  void useOriginalSizeInParallelNetsDetection(bool yes=true) {
+      throw UnsupportedOperationException(
+        "useOriginalSizeInParallelNetsDetection() not supported in static graph");
+  }
+
+  // ! If true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
+      return false;
+  }
+
  private:
   friend class StaticGraphFactory;
   template<typename Hypergraph>

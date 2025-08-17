@@ -1016,6 +1016,20 @@ public:
     return _disable_single_pin_nets_removal;
   }
 
+  // ####################### Parallel Nets Removal #######################
+
+  // ! If yes = true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  void useOriginalSizeInParallelNetsDetection(bool yes = true) {
+      _use_original_size_in_parallel_nets_detection = yes;
+  }
+
+  // ! If true, only parallel nets of the same original size are removed
+  // ! (needed for AON-Hypermodularity)
+  bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
+      return _use_original_size_in_parallel_nets_detection;
+  }
+
   // ####################### Contract / Uncontract #######################
 
   /*!
@@ -1324,6 +1338,8 @@ public:
   // ! Option for disabling the removal of single-pin nets
   bool _disable_single_pin_nets_removal = false;
 
+  // ! Option for using original size in parallel nets detection
+  bool _use_original_size_in_parallel_nets_detection = false;
   
   // AON HyperModularity Clustering Coefficients
   vec<double> _beta;                 ///< -β_k
