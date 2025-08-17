@@ -341,6 +341,12 @@ class PartitionedHypergraph {
     _has_conductance_pq = true;
   }
 
+  // ! Determines the necessity of the conductance priority queue
+  void setNecessityOfConductancePriorityQueue(bool needs) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setNecessityOfConductancePriorityQueue()" << std::endl;
+    _needs_conductance_pq = needs;
+  }
+
   // ! Returns if the conductance priority queue is maintained
   bool hasConductancePriorityQueue() const {
     /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;

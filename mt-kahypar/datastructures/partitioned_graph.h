@@ -1192,6 +1192,18 @@ private:
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
   }
 
+  // ! mirroring
+  void enableConductancePriorityQueue() {
+    /// [debug] std::cerr << "PartitionedHypergraph::enableConductancePriorityQueue()" << std::endl;
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+  }
+
+  // ! mirroring
+  void setNecessityOfConductancePriorityQueue(bool needs) {
+    /// [debug] std::cerr << "PartitionedHypergraph::setNecessityOfConductancePriorityQueue()" << std::endl;
+    throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
+  }
+  
   // dummy
   bool hasConductancePriorityQueue() const {
     return false;

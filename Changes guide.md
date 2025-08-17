@@ -405,8 +405,8 @@ Update of `_conductance_pq` (if enabled):
 + \+ `#include "delta_val.h", "conductance_pq.h"`
 + \+ `ConductancePriorityQueue<Self> _conductance_pq` - attribute
 
-+ \+ `private bool _has_conductance_pq = fasle` - is set to `true` **at the end** of initialization, `_conductance_pq` 
-+ \+ `private bool _uses_conductance_pq = true` - if set to `false`, no conductance priority queue is not maintained
++ \+ `private bool _has_conductance_pq = false` - is set to `true` **at the end** of initialization, `_conductance_pq` 
++ \+ `private bool _needs_conductance_pq = true` - if set to `false`, no conductance priority queue is not maintained
 + \+ `bool needsConductancePriorityQueue()` - initializes pq, if it should be done, but wasnt done yet:
 	- ~~ **!!!** Called at the end of `partitionImpl()` for all defined partitioners!~~ \
 	[undone, because `multilevel.cpp` uses `setOnlyNodePart()` + `initializePartition()` &rArr; `_conductance_pq` is initialized after setting all the `PartitionID`-s]
@@ -416,6 +416,7 @@ Update of `_conductance_pq` (if enabled):
 + \+ `disableUsageOfOriginalStatsByConductancePriorityQueue()`, `enableUsageOfOriginalStatsByConductancePriorityQueue()`
 
 + \+ `enableConductancePriorityQueue()` - initializes pq
++ \+ `setNecessityOfConductancePriorityQueue(bool needs)` - to set `_needs_conductance_pq` (default: `_needs_conductance_pq = false` )
 - \+ `double_t conductance(p)` - calculates conductance of a partition without using `_conductance_pq` \
 	returns -1 if volume of partition is 0 &rArr; maybe should throw an exception **???** 
 - \+ `bool checkConductancePriorityQueue()` - for testing. True if not initialized.
