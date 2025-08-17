@@ -369,6 +369,10 @@ namespace mt_kahypar {
               coarsening.contraction_limit_multiplier * partition.k;
     }
 
+    if(partition.preset_type == PresetType::cluster) {
+      coarsening.contraction_limit = coarsening.contraction_limit_multiplier * 32;
+    }
+
     // Setup maximum allowed vertex and high-degree vertex weight
     setupMaximumAllowedNodeWeight(total_hypergraph_weight);
   }
@@ -452,15 +456,21 @@ namespace mt_kahypar {
     // Configure initial partitioning algorithms, sequential sync_updates
     if ( partition.objective == Objective::conductance_local ||
          partition.objective == Objective::conductance_global ) {
-      // Set up compatible initial partitioning algorithms (onlu random and singleton)
-      bool other = false;
+      // Set up compatible initial partitioning algorithms (only aon_hypermodularity, random and singleton)
+      
+      bool allowed_ip_used = false;
+      uint8_t num_algs = static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED);
+      std::vector<uint8_t> allowed_ip_algs(num_algs, false);
       uint8_t random_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::random);
       uint8_t singleton_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::singleton);
-      uint8_t num_algs = static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED);
+      uint8_t aon_hypergraph_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity);
+      allowed_ip_algs[random_alg] = true;
+      allowed_ip_algs[singleton_alg] = true;
+      allowed_ip_algs[aon_hypergraph_alg] = true;
       for ( uint8_t alg = 0; alg < num_algs; ++alg ) {
         if (initial_partitioning.enabled_ip_algos[alg]) {
-          if ( alg == random_alg || alg == singleton_alg) {
-            other = true;
+          if ( allowed_ip_algs[alg] ) {
+            allowed_ip_used = true;
           } else {
             initial_partitioning.enabled_ip_algos[alg] = false;
             LOG << "Conductance objective function is not supported for initial partitioning algorithm " 
@@ -468,7 +478,7 @@ namespace mt_kahypar {
           }
         }
       }
-      if ( !other ) {
+      if ( !allowed_ip_used ) {
         initial_partitioning.enabled_ip_algos[random_alg] = true;
         LOG << "As no other initial partitioning algorithm is enabled, "
             << "using random initial partitioning for conductance objective function.";
@@ -478,6 +488,14 @@ namespace mt_kahypar {
         partition.enable_collective_sync_updates = true;
         LOG << "Conductance objective function needs collective sync updates in hypergraphs: "
             << "Switching to collective sync updates.";
+      }
+    }
+
+    if (initial_partitioning.enabled_ip_algos[aon_hypergraph_alg]) {
+      if (! preprocessing.use_community_detection) {
+        preprocessing.use_community_detection = true;
+        LOG << "AON hypermodularity initial partitioning algorithm requires community detection. "
+            << "Enabling community detection.";
       }
     }
 

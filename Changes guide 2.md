@@ -7,7 +7,11 @@
 
 
 ## TODO:
-- TODO: ensure, that `use_community_detection` is enabled by `aon_hypermodularity` IP [`partitioner.cpp preprocess(..)`] 
+- TODO: ensure, that `use_community_detection` is enabled by `aon_hypermodularity` IP [`partitioner.cpp preprocess(..)`] &rarr; done in `context.cpp sanity_check(..)`
+- change `context.partition.k` in `multilevel.cpp` if `aon_hypernodularity` IP is used &rArr; done
+- introduce ClusteringMode to mark that `k` can be changed (?)
+- COMPILE
+- TRY
 
 ## Initial Partitioning: Hypermodularity
 
@@ -203,5 +207,53 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
 
 ### Introduce of the new IP to the framework
+
+1. Adjust the parameters of `cluster` preset:
+    - set `k` to 32 instead of 2 (Adil has done so -> TODO: ask):
+        - `mt-kahypar\partition\context.cpp` in `Context::setupContractionLimit(total_hypergraph_weight)`: \
+        for `cluster` preset, set `coarsening.contraction_limit` to `coarsening.contraction_limit_multiplier * 32` instead of `coarsening.contraction_limit_multiplier * partition.k`.
+        - `mt-kahypar\partition\partitioner.cpp` in `setupContext(& hypergraph, & context, *target_graph)`: \ 
+        set `k=32` for `cluster` preset
+    - [old changes guide] analog. to `singleton` introduce `aon_hypermodularity`:
+        - in `config/`:
+            - `cluster_preset.ini`: 
+                - set `i-enabled-ip-algos=1` only for `aon_hypermodularity`
+            - `large_k_preset.ini`: 
+                \+ `i-enabled-ip-algos=0` for aon-hypermodularity \
+            - (all other `.ini` use `initial_partitioning: i-mode=rb` [recursive bipartitioning] &rArr; no changes)
+        - `mt-kahypar/`:
+            - in `partition/`:
+                - `context_enum_classes.h`:
+                    - in `InitialPartitioningAlgorithm`:
+                    ```cpp
+                    enum class InitialPartitioningAlgorithm : uint8_t {
+                    ...
+                    aon_hypermodularity = 10,
+                    UNDEFINED = 11
+                    };
+                    ```
+                - `context_enum_classes.cpp`:
+                    - in `operator<<(or, algo)` and `initialPartitioningAlgorithmFromString(algo)` add transmations string <-> `InitialPartitioningAlgorithm` for `aon_hypermodularity`
+                - in `initial_partitioning/`: \+ `aon_hypermodularity_initial_partitioner.h, .cpp` :)
+                - in `registries/`:
+                    - `register_initial_partitioning_algorithms.cpp`
+                    - \+ `#include "../initial_partitioning/aon_hypermodularity_initial_partitioner.h"`
+                    - \+ define `AONHypermodularityPartitionerDispatcher`
+                    - in `register_initial_partitioning_algorithms()`: \+ register `AONHypermodularityPartitionerDispatcher`
+            - in `io/`:
+                - `command_line_options.cpp`: 
+                    - by `"i-enabled-ip-algos"` example add aon_hypermodularity IP (and change the number of IP-algos at the end of the example)
+                - `presets.cpp`:
+                    - in `load_large_k_preset()`: by`// main -> initial_partitioning` add entry for `aon_hypermodularity` (`"0"`) 
+                    - in `load_clustering_preset()`: 
+                        - `"0" // singleton" IP`, `"1" // aon_hypermodularity`
+
+3. `sanity_check(*target_graph)` in `context.cpp`:
+    - adjust conductance checks to allow `aon_hypermodularity` IP
+    - ensure, that `use_community_detection` is enabled if `aon_hypermodularity` IP is used
+
+4. ~~[Idea] Change `context.partition.k` if it changed after IP (due to `aon_hypernodularity`)  &rarr; not done, as `new_k` shouldn't be greater than the number of nodes~~
+4. change `context.partition.k` in `multilevel.cpp` if it `aon_hypernodularity` IP is used \ 
+[analog. to `cluster` + `singleton` &rArr; `new_k = #_nodes`] 
 
 ### Problems

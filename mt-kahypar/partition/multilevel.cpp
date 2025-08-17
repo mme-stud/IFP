@@ -116,8 +116,8 @@ namespace {
     // Only with clustering, singleton sets k = num_nodes !!!
     PartitionID new_k = context.partition.k; 
     if (context.partition.preset_type == PresetType::cluster) {
-      // k was set to 2 in setupContext() of partitioner.cpp
-      // to make weight constraints as large as possible
+      // k was set to 32 in setupContext() of partitioner.cpp
+      // ~~to make weight constraints as large as possible~~ [Adil changed k from 2 to 32]
       new_k = context.partition.initial_k;
       // With clustering, singleton sets k = num_nodes
       // Else: no!!!
@@ -129,8 +129,13 @@ namespace {
           new_k = num_nodes;
         } 
       }
-    }
-    //////////////////////////////// Change k
+    } else if (context.initial_partitioning.enabled_ip_algos
+                    [static_cast<size_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
+        // Change k to the number of active nodes, as aon_hypermodularity 
+        // finds as many clusters as it wants
+        new_k = phg.initialNumNodes();
+    }    
+    //////////////////////////////// Change k (1/2)
     if (new_k != context.partition.k && new_k > 1) {
       context.partition.k = new_k;
       phg.setK(context.partition.k, input_he_count);
@@ -138,7 +143,7 @@ namespace {
       context.setupContractionLimit(hypergraph.totalWeight());
       context.setupThreadsPerFlowSearch();
     }
-    /////////////////////////// End of changing k
+    /////////////////////////// End of changing k (1/2)
 
     if ( !is_vcycle ) {
       DegreeZeroHypernodeRemover<TypeTraits> degree_zero_hn_remover(context);
@@ -190,7 +195,19 @@ namespace {
       }
       #endif
     }
-    phg.needsConductancePriorityQueue(); // initializs _conductance_pq if needed
+    if (phg.needsConductancePriorityQueue()) { // initializs _conductance_pq if needed    
+      new_k = phg.k();
+      ASSERT(new_k > 1, "After IP phg.k() should be > 1, but is " << new_k);
+      ASSERT(new_k <= context.partition.k);
+      //if (new_k != context.partition.k) {
+      //  //////////////////////////////// Change k (2/2)
+      //  context.partition.k = new_k;
+      //  context.setupPartWeights(hypergraph.totalWeight());
+      //  context.setupContractionLimit(hypergraph.totalWeight());
+      //  context.setupThreadsPerFlowSearch();
+      //  /////////////////////////// End of changing k (2/2)
+      //}
+    }
 
     ASSERT([&] {
       bool success = true;

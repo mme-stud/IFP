@@ -150,7 +150,8 @@ enum class InitialPartitioningAlgorithm : uint8_t {
   greedy_global_max_net = 7,
   greedy_sequential_max_net = 8,
   singleton = 9,
-  UNDEFINED = 10
+  aon_hypermodularity = 10,
+  UNDEFINED = 11
 };
 
 enum class LabelPropagationAlgorithm : uint8_t {
