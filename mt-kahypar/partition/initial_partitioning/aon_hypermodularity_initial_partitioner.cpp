@@ -198,8 +198,39 @@ void AONHypermodularityPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& 
   }
 
   double delta_cut = 0.0;
+  for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
+    // stats needed to distinguish if he is / will be a cutting edge
+    HypernodeID pin_count_A = H_new_partitioned.pinCountInPart(he, A);
+    HypernodeID size = H_new_partitioned.edgeSize(he);
+    // values needed for the gain computation
+    double _beta_S_he = _beta[H_new_partitioned.originalEdgeSize(he)];
+    double weight_he = static_cast<double>(H_new_partitioned.edgeWeight(he));
+
+    // z_he
+    if (pin_count_part_i == size) {
+      // not a cutting edge <=> kroneker_delta(z_he) = 1
+      ASSERT(H_new_partitioned.connectivity(he) == 1, 
+             "Pin count isn't consistent with connectivity of hyperedge " << he
+              << ": connectivity: " << H_new_partitioned.connectivity(he)
+              << ": pin count in " << part_i << " : " << pin_count_part_i);
+      delta_cut += _beta_S_he  // plus as _beta[k] = - \beta_k
+                  * weight_he; // as some edges are combined in contraction
+    }
+    // z_he i -> A
+    if (pin_count_A + 1 == size) {
+      // won't be a cutting edge after i -> A  <=> kroneker_delta(z_he_i->A) = 1
+      ASSERT(H_new_partitioned.connectivity(he) > 1 || size == 1, 
+             "Pin count isn't consistent with connectivity of hyperedge " << he
+              << ": connectivity: " << H_new_partitioned.connectivity(he)
+              << ": pin count in " << A << " : " << pin_count_A);
+      delta_cut -= _beta_S_he  // minus as _beta[k] = - \beta_k
+                  * weight_he; // as some edges are combined in contraction
+    }
+  }
+
+  /* the same, but with 2 additional changeNodePart(..) => 2 loops through incidentEdges 
   // simulate a move i -> A to find new cutting edges
-  H_new_partitioned.changeNodePart(i, part_i /* from */, A /* to */);
+  H_new_partitioned.changeNodePart(i, part_i, A);
   for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
     if (H_new_partitioned.connectivity(he) == 1) { 
       // not a cutting edge <=> kroneker_delta(z_he) = 1
@@ -209,7 +240,7 @@ void AONHypermodularityPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& 
       }
   }
   // revert the move
-  H_new_partitioned.changeNodePart(i, A /* from */, part_i /* to */);
+  H_new_partitioned.changeNodePart(i, A, part_i);
   for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
     if (H_new_partitioned.connectivity(he) == 1) { 
       // not a cutting edge <=> kroneker_delta(z_he) = 1
@@ -218,6 +249,7 @@ void AONHypermodularityPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& 
                   * H_new_partitioned.edgeWeight(he);
     }
   }
+  */
   
   return delta_cut + delta_vol;
 }
