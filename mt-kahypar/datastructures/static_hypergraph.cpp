@@ -394,8 +394,8 @@ namespace mt_kahypar::ds {
       // Copy AON-Hypermodularity parameters
        [&] { hypergraph._beta = _beta; },
        [&] { hypergraph._gamma = _gamma; },
-       [&] { hypergraph._omega = _omega; },
-    });
+       [&] { hypergraph._omega = _omega; }
+    );
 
     const HyperedgeID num_hyperedges = he_mapping.total_sum();
     hypergraph._num_hypernodes = num_hypernodes;
@@ -554,12 +554,14 @@ namespace mt_kahypar::ds {
     hypergraph._num_hyperedges = _num_hyperedges;
     hypergraph._num_removed_hyperedges = _num_removed_hyperedges;
     hypergraph._max_edge_size = _max_edge_size;
+    hypergraph._original_max_edge_size = _original_max_edge_size;
     hypergraph._num_pins = _num_pins;
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
     hypergraph._total_volume = _total_volume;
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+    hypergraph._use_original_size_in_parallel_nets_detection = _use_original_size_in_parallel_nets_detection;
     hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
     tbb::parallel_invoke([&] {
@@ -586,7 +588,7 @@ namespace mt_kahypar::ds {
       hypergraph._original_weighted_degrees.resize(_original_weighted_degrees.size());
       memcpy(hypergraph._original_weighted_degrees.data(), _original_weighted_degrees.data(),
              sizeof(HypergraphVolume) * _original_weighted_degrees.size());
-    }, [&] { hypergraph._community_ids = _community_ids; }
+    }, [&] { hypergraph._community_ids = _community_ids; },
        [&] { hypergraph._beta = _beta; },
        [&] { hypergraph._gamma = _gamma; },
        [&] { hypergraph._omega = _omega; },
