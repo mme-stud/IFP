@@ -67,3 +67,4 @@ _experimental_results/medium_hg.txt
 _try*
 *.sh
 build*
+_debug
