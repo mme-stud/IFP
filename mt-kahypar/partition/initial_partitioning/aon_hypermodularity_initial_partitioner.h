@@ -40,7 +40,7 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   using UnderlyingHypergraph = typename PartitionedHypergraph::UnderlyingHypergraph;
 
  public:
-  RandomInitialPartitioner(const InitialPartitioningAlgorithm,
+  AONHypermodularityInitialPartitioner(const InitialPartitioningAlgorithm,
                            ip_data_container_t* ip_data,
                            const Context& context,
                            const int seed, const int tag) :
@@ -61,24 +61,20 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   }
 
   // Used if some vertices have fixed labels
-  void randomPartition(PartitionedHypergraph& hypergraph) final;
+  void randomPartition(PartitionedHypergraph& hypergraph);
 
   // Contract communities of the coarsest hypergraph and rewrites its partition
-  template<typename TypeTraits>
-  void AONHypermodularityPartitioner<TypeTraits>::collapse(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z);
+  void collapse(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z);
 
   // Perform the Louvain step on the collapsed hypergraph
-  template<typename TypeTraits>
-  void AONHypermodularityPartitioner<TypeTraits>::louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z);
+  void louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma);
 
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity gain function
-  template<typename TypeTraits>
-  void AONHypermodularityPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& H_new_partitioned, const HypernodeID i, const PartitionID A, const vec<double>& beta, const vec<double>& gamma);
+  double QAONGain(PartitionedHypergraph& H_new_partitioned, const HypernodeID i, const PartitionID A, const vec<double>& beta, const vec<double>& gamma);
 
   // Adjust current communities and check if they changed
-  template<typename TypeTraits>
-  bool AONHypermodularityPartitioner<TypeTraits>::expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
+  bool expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
 
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;

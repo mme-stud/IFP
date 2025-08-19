@@ -463,10 +463,10 @@ namespace mt_kahypar {
       std::vector<uint8_t> allowed_ip_algs(num_algs, false);
       uint8_t random_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::random);
       uint8_t singleton_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::singleton);
-      uint8_t aon_hypergraph_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity);
+      uint8_t aon_hypermodularity_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity);
       allowed_ip_algs[random_alg] = true;
       allowed_ip_algs[singleton_alg] = true;
-      allowed_ip_algs[aon_hypergraph_alg] = true;
+      allowed_ip_algs[aon_hypermodularity_alg] = true;
       for ( uint8_t alg = 0; alg < num_algs; ++alg ) {
         if (initial_partitioning.enabled_ip_algos[alg]) {
           if ( allowed_ip_algs[alg] ) {
@@ -491,7 +491,8 @@ namespace mt_kahypar {
       }
     }
 
-    if (initial_partitioning.enabled_ip_algos[aon_hypergraph_alg]) {
+    if (initial_partitioning.enabled_ip_algos[
+      static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
       if (! preprocessing.use_community_detection) {
         preprocessing.use_community_detection = true;
         LOG << "AON hypermodularity initial partitioning algorithm requires community detection. "
