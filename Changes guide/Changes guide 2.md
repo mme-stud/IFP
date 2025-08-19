@@ -194,6 +194,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 	`map_z[community_id[hn]] = <new_partition_id>` \
 	~~`map_z[community_id[hn]] = map_z[community_id[hn_of_new_label]]`~~
 	~~(`hn_of_new_label` should be equal to the new `CommunityID A`)~~
+    `eps = 0.0` - `if best_gain > eps` the move is made (0.00001?)
 3. Q_AON Gain:
     ![Algorithm 5](<Algorithm 5: QAON gain.png>)
     Here:
