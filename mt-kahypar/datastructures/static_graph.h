@@ -728,7 +728,6 @@ class StaticGraph {
 
   // ! Get the edge size at the moment of the last snapshot
   HypernodeID originalEdgeSize(HyperedgeID e) const {
-    ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
     unused(e);
     return 2;
   }
