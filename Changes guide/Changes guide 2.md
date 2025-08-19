@@ -161,7 +161,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     &rArr; ~~are interesting only for value~~ \
     &rarr; ~~can be removed after saving original volumes and weighted degrees~~ \
     [actually irrelevant, as parallel single pin nets are removed]
-4. `useOriginalSizeInParallelNetsDetection(bool yes)` in `StaticHypergraph` (+ mirroring in dynamic + graphs) - to stop removal of parallel nets of different original sizes (otherwise the gain is incorrect) :
+4. `useOriginalSizeInParallelNetsDetection(bool yes)` in `StaticHypergraph` (+ mirroring in dynamic + graphs) - to stop removal of parallel nets of different original sizes (otherwise the gain is incorrect) (**in both `copy(..)` in `static_hypergraph.cpp` copy `_use_original_size_in_parallel_nets_detection`**):
     ```cpp
     void useOriginalSizeInParallelNetsDetection(bool yes = true) {
         _use_original_size_in_parallel_nets_detection = yes;
@@ -234,7 +234,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
                     ```
                 - `context_enum_classes.cpp`:
                     - in `operator<<(or, algo)` and `initialPartitioningAlgorithmFromString(algo)` add transmations string <-> `InitialPartitioningAlgorithm` for `aon_hypermodularity`
-                - in `initial_partitioning/`: \+ `aon_hypermodularity_initial_partitioner.h, .cpp` :)
+                - in `initial_partitioning/`: 
+                    - \+ `aon_hypermodularity_initial_partitioner.h, .cpp` :)
+                    - **!!!** `CMakeLists.txt`: \+ `aon_hypermodularity_initial_partitioner.cpp`
                 - in `registries/`:
                     - `register_initial_partitioning_algorithms.cpp`
                     - \+ `#include "../initial_partitioning/aon_hypermodularity_initial_partitioner.h"`
