@@ -512,6 +512,7 @@ std::vector<option> load_large_k_preset() {
     create_option("r-lp-maximum-iterations", "5"),
     create_option("r-lp-rebalancing", "true"),
     create_option("r-lp-he-size-activation-threshold", "100"),
+    create_option("r-lp-relative-improvement-threshold", "0.001"),
     // main -> refinement -> fm
     create_option("r-fm-type", "do_nothing"),
     // main -> refinement -> flows
@@ -552,7 +553,7 @@ std::vector<option> load_clustering_preset() {
     create_option("c-rating-acceptance-criterion", "best_prefer_unmatched"),
     // main -> initial_partitioning
     create_option("i-mode", "direct"),
-    create_option("i-runs", "10"),
+    create_option("i-runs", "1"),
     { "i-enabled-ip-algos", {
             "0",    // greedy_round_robin_fm
             "0",    // greedy_global_fm

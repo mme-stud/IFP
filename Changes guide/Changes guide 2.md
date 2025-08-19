@@ -250,6 +250,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
                     - in `load_large_k_preset()`: by`// main -> initial_partitioning` add entry for `aon_hypermodularity` (`"0"`) 
                     - in `load_clustering_preset()`: 
                         - `"0" // singleton" IP`, `"1" // aon_hypermodularity`
+    - `config/cluster_preset.ini` and `mt-kahypar/io/presets.cpp`: in `# main -> initial_partitioning` set `i-runs=1` istead of 10 for `cluster` (as AON-hypermodularity is deterministic)
 
 3. `sanity_check(*target_graph)` in `context.cpp`:
     - adjust conductance checks to allow `aon_hypermodularity` IP
