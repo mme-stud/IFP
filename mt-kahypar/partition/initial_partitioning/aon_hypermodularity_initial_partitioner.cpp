@@ -213,7 +213,7 @@ void AONHypermodularityPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& 
              "Pin count isn't consistent with connectivity of hyperedge " << he
               << ": connectivity: " << H_new_partitioned.connectivity(he)
               << ": pin count in " << part_i << " : " << pin_count_part_i);
-      delta_cut += _beta_S_he  // plus as _beta[k] = - \beta_k
+      delta_cut -= _beta_S_he  // _beta[k] = \beta_k
                   * weight_he; // as some edges are combined in contraction
     }
     // z_he i -> A
@@ -223,7 +223,7 @@ void AONHypermodularityPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& 
              "Pin count isn't consistent with connectivity of hyperedge " << he
               << ": connectivity: " << H_new_partitioned.connectivity(he)
               << ": pin count in " << A << " : " << pin_count_A);
-      delta_cut -= _beta_S_he  // minus as _beta[k] = - \beta_k
+      delta_cut += _beta_S_he  // _beta[k] = \beta_k
                   * weight_he; // as some edges are combined in contraction
     }
   }

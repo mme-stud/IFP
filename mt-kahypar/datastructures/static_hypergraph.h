@@ -852,7 +852,7 @@ public:
   /// *   γ[k]   = ω_in − ω_out
   /// *   ω[k] = { ω_in , ω_out }
   /// 
-  /// [Mariia: _beta = - \beta, _gamma = - \beta * \gamma 
+  /// [Mariia: _beta = \beta, _gamma = \beta * \gamma 
   ///           with \beta, \gamma from the Hypermodularity article]
   ///
   /// After the call the three member vectors `_beta`, `_gamma`, `_omega` are
@@ -932,12 +932,11 @@ public:
       double omega_out = cut_k[d] / vol_out;
 
       _omega[d] = {omega_in, omega_out};
-      // _beta[d] = std::log(omega_in / omega_out);
-      _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: this is -\beta_k from (15)]
+      _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: this is \beta_k from (15)]
       if (!std::isfinite(_beta[d])) {
         _beta[d] = (_beta[d] > 0 ? 1e3 : -1e3);
       }
-      _gamma[d] = omega_in - omega_out; // [mariia: this is -\beta_k * \gamma_k from (15)]
+      _gamma[d] = omega_in - omega_out; // [mariia: this is \beta_k * \gamma_k from (15)]
       LOG << "For edge size d = " << d << ": beta_d = " << _beta[d]
           << ", gamma_d = " << _gamma[d];
     }

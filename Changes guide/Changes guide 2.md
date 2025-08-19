@@ -199,8 +199,8 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     Here:
     - $d$ - the original (by me weighted) degree in $H$
     - $vol$ - the original (by me weighted) volume in $H$
-    - $- \beta_k$ is stored in `_beta`
-    - $- \beta_k \cdot \gamma_k$ is stored in `_gamma`
+    - $\beta_k$ is stored in `_beta`
+    - $\beta_k \cdot \gamma_k$ is stored in `_gamma`
     - $k^{\_}$ is the maximal edge size in `H`
     - $s^{\_}$ is the original edge size in $H$ *(removal of parallel edges is not a problem)*
     
