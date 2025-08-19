@@ -606,12 +606,14 @@ namespace mt_kahypar::ds {
     hypergraph._num_hyperedges = _num_hyperedges;
     hypergraph._num_removed_hyperedges = _num_removed_hyperedges;
     hypergraph._max_edge_size = _max_edge_size;
+    hypergraph._original_max_edge_size = _original_max_edge_size;
     hypergraph._num_pins = _num_pins;
     hypergraph._total_degree = _total_degree;
     hypergraph._total_weight = _total_weight;
     hypergraph._total_volume = _total_volume;
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+    hypergraph._use_original_size_in_parallel_nets_detection = _use_original_size_in_parallel_nets_detection;
     hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
     hypergraph._hypernodes.resize(_hypernodes.size());

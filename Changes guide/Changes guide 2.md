@@ -109,7 +109,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 
 #### Needed Additional Functionality (Static Hypergraph, Partitioned Hypergraph)
 
-1. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs:
+1. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs, **in both `copy(..)` in `static_hypergraph.cpp` copy `_original_max_edge_size`**:
 ```cpp
    class Hyperedge { // copy constructor in contract() should preserve all information -> no changes needed
     /// ...

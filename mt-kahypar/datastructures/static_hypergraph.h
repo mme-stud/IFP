@@ -769,6 +769,7 @@ class StaticHypergraph {
     for (HyperedgeID e : edges()) {
       hyperedge(e).setOriginalSize(hyperedge(e).size());
     }
+    _original_max_edge_size = _max_edge_size;
   }
 
   // ! Get the edge size at the moment of the last snapshot
@@ -787,7 +788,12 @@ private:
   // ! Save the current weighted degrees as original
   // ! (private as weighted degrees should be consistent with the total volume)
   void snapshotOriginalWeightedDegrees() {
-    _original_weighted_degrees = _weighted_degrees;
+    // _original_weighted_degrees = _weighted_degrees; // Arrays have no copy semantics...
+    // _original_weighted_degrees.resize(_weighted_degrees.size(), 0);
+    ASSERT(_original_weighted_degrees.size() == _weighted_degrees.size());
+    for (std::size_t i = 0; i < _weighted_degrees.size(); ++i) {
+      _original_weighted_degrees[i] = _weighted_degrees[i];
+    }
   }
   // ! Save the current total volume as original
   // ! (private as total volume should be consistent with the weighted degrees)
