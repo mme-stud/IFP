@@ -118,6 +118,11 @@ struct ConductanceGlobalAttributedGains {
     //  (static_cast<double_t>(top_part_cut_weight) * static_cast<double_t>(total_volume_version)) /
     //  (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(k));
 
+    //if ( top_part_cut_weight > top_part_min_volume ) {
+    //  LOG << "Weights are wrong: " << V(top_part_cut_weight) << " > " << V(top_part_min_volume);
+    //} else {
+    //  LOG << "Weights are right";
+    //}
     if ( top_part_cut_weight <= top_part_min_volume ) {
       double_t scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
                                   / static_cast<double_t>(top_part_min_volume)

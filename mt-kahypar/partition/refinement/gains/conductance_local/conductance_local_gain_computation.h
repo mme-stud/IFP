@@ -184,7 +184,7 @@ ConductanceLocalGainComputation(const Context& context,
       ds::ConductanceFraction fraction_to_after(cut_weight_to_after, std::min(volume_to_after, total_volume - volume_to_after));
 
       // Get the new conductance objective      
-      ds::ConductanceFraction max_fraction_after = fraction_to_before;
+      ds::ConductanceFraction max_fraction_after = fraction_to_after;
       if (fraction_from_after > fraction_to_after) {
         max_fraction_after = fraction_from_after;
       }
