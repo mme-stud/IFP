@@ -32,11 +32,11 @@ Reference: [commit](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bb
     - private members (copied in constructors, `contract(..)`, `copy(..)`): 
     here `_beta`, `_gamma` are the coefficients needed in the objective function
     and not the $\beta, \gamma$ from the article. \ 
-    Explicitly, $\_beta[k] = - \beta_k$, $\_gamma[k] = - \beta_k * \gamma_k$
+    Explicitly, $\_beta[k] = \beta_k$, $\_gamma[k] = \beta_k * \gamma_k$
     ```cpp
         // AON HyperModularity Clustering Coefficients
-        vec<double> _beta;                 ///< -β_k
-        vec<double> _gamma;                ///< -β_k * γ_k
+        vec<double> _beta;                 ///< β_k
+        vec<double> _gamma;                ///< β_k * γ_k
         vec<std::array<double, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
 
         
@@ -195,7 +195,17 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 	`map_z[community_id[hn]] = <new_partition_id>` \
 	~~`map_z[community_id[hn]] = map_z[community_id[hn_of_new_label]]`~~
 	~~(`hn_of_new_label` should be equal to the new `CommunityID A`)~~
-    `eps = 0.0` - `if best_gain > eps` the move is made (0.00001?)
+    \+ **!!!** `eps = 0.0001` - `if best_gain > eps` the move is made. Otherwise never stops: 
+    >    ... \
+    >    Louvain: round 618 \
+    >    Louvain: node 0 \
+    >    Louvain: node 1000 \
+    >    Louvain: node 2000 \
+    >    Louvain: node 2874 -> 2874 (gain: **2.47727e-46**) \
+    >    Louvain: node 3000 \
+    >    Louvain: node 3853 -> 4414 (gain: **2.47727e-46**) \
+    >    ...
+
 3. Q_AON Gain:
     ![Algorithm 5](<Algorithm 5: QAON gain.png>)
     Here:

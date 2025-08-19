@@ -147,7 +147,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(UnderlyingHyperg
 template<typename TypeTraits>
 void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma) {
   bool improving = false;
-  double eps = 0.0;
+  double eps = 0.0001;
   do {
     improving = false;
     for (const HypernodeID &i : H_new_partitioned.nodes()) {
