@@ -874,28 +874,46 @@ private:
 
   // Not supported for graphs
   inline double beta (std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "beta(k) is not supported for partitioned graph");
     return 0.0;
   }
   // Not supported for graphs
   inline double gamma (std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "gamma(k) is not supported for partitioned graph");
     return 0.0;
   }
   // Not supported for graphs
   inline double omegaIn (std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaIn(k) is not supported for partitioned graph");
     return 0.0;
   }
   // Not supported for graphs
   inline double omegaOut (std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaOut(k) is not supported for partitioned graph");
     return 0.0;
   }
+
+  // ! _beta vector for AON-Hypermodularity
+  // ! Not supported for partitioned graphs
+  inline const vec<double>& betaVector()  const { 
+    throw UnsupportedOperationException(
+            "betaVector() is not supported for partitioned graph");
+  }
+  // ! _gamma vector for AON-Hypermodularity
+  // ! Not supported for partitioned graphs
+  inline const vec<double>& gammaVector() const { 
+    throw UnsupportedOperationException(
+            "gammaVector() is not supported for partitioned graph");
+  }
+
 
   // ####################### Memory Consumption #######################
 

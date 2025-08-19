@@ -50,7 +50,8 @@ Reference: [commit](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bb
         - sets `_beta`, `_gamma`, `_omega` vectors
 - mirroring interface in `dynamic_hypergraph.h`, `static_graph.h`, `dynamic_graph.h` 
   with `false` in `hasAON` and otherwise exceptions
-- getters in `partitioned_hypergraph.h` and a mirroring interface in `partitioned_graph.h`
+- getters in `partitioned_hypergraph.h`, `static_hypergraph.h` and a mirroring interface in `partitioned_graph.h` and other (hyper-)graphs
+    - &rArr; dummy empty double vectors in base classes to return, if AON is not supported :(
 
 
 ### Implement AON-Hypermodularity IP

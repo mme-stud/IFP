@@ -643,7 +643,7 @@ class DynamicGraph {
   // ! (together for their consistency)
   // ! Not supported for graphs
   void snapshotOriginalWeightedDegreesAndTotalVolume() {
-    throw NonSupportedOperationException(
+    throw UnsupportedOperationException(
       "snapshotOriginalWeightedDegreesAndTotalVolume is not supported for dynamic graph");
   }
 
@@ -678,31 +678,50 @@ class DynamicGraph {
 
   // ! Not supported for dynamic graphs
   inline double beta(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
       "beta(k) is not supported for dynamic graph");
       return 0.0;
     }
     // ! Not supported for dynamic graphs
   inline double gamma(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "gamma(k) is not supported for dynamic graph");
     return 0.0;
   }
   // ! Not supported for dynamic graphs
   inline double omegaIn(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaIn(k) is not supported for dynamic graph");
     return 0.0;
   }
   // ! Not supported for dynamic graphs
   inline double omegaOut(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaOut(k) is not supported for dynamic graph");
             return 0.0;
   }
+  // ! _beta vector for AON-Hypermodularity
+  // ! Not supported for dynamic graphs
+  inline const vec<double>& betaVector()  const { 
+    throw UnsupportedOperationException(
+      "betaVector() is not supported for dynamic graphs");
+    return _dummy_double_vector;
+  }
+  // ! _gamma vector for AON-Hypermodularity
+  // ! Not supported for dynamic graphs
+  inline const vec<double>& gammaVector() const { 
+    throw UnsupportedOperationException(
+      "gammaVector() is not supported for dynamic graphs");
+    return _dummy_double_vector;
+  }
   // ! Not supported for dynamic graphs
   inline void computeAONParameters(double eps = 1e-12) {
-    throw NonSupportedOperationException(
+    unused(eps);
+    throw UnsupportedOperationException(
        "computeAONParameters is not supported in dynamic graph");
   }
 
@@ -774,14 +793,15 @@ class DynamicGraph {
   // ! (needed for AON-Hypermodularity)
   // ! not supported in dynamic graph
   void useOriginalSizeInParallelNetsDetection(bool yes=true) {
-      throw UnsupportedOperationException(
-        "useOriginalSizeInParallelNetsDetection() not supported in dynamic graph");
+    unused(yes);
+    throw UnsupportedOperationException(
+      "useOriginalSizeInParallelNetsDetection() not supported in dynamic graph");
   }
 
   // ! If true, only parallel nets of the same original size are removed
   // ! (needed for AON-Hypermodularity)
   bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
-      return false;
+    return false;
   }
 
   // ####################### Contract / Uncontract #######################
@@ -1046,6 +1066,9 @@ class DynamicGraph {
 
   // ! Fixed Vertex Support
   FixedVertexSupport<DynamicGraph> _fixed_vertices;
+
+  // ! Dummy vectors for AON-Hypermodularity
+  static const vec<double> _dummy_double_vector;
 };
 
 } // namespace ds

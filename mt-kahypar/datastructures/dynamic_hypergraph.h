@@ -794,7 +794,7 @@ class DynamicHypergraph {
   // ! Save current edge sizes as original edge sizes
   // ! not supported for dynamic hypergraphs
   void snapshotOriginalEdgeSizes() {
-    throw NonSupportedOperationException(
+    throw UnsupportedOperationException(
       "snapshotOriginalEdgeSizes is not supported for dynamic hypergraph");
   }
 
@@ -803,7 +803,7 @@ class DynamicHypergraph {
   HypernodeID originalEdgeSize(HyperedgeID e) const {
     ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
     unused(e);
-    throw NonSupportedOperationException(
+    throw UnsupportedOperationException(
       "originalEdgeSize is not supported for dynamic hypergraph");
     return 2;
   }
@@ -811,7 +811,7 @@ class DynamicHypergraph {
   // ! Get the maximum edge size at the moment of the last snapshot
   // ! not supported for dynamic hypergraphs
   HypernodeID originalMaxEdgeSize() const {
-    throw NonSupportedOperationException(
+    throw UnsupportedOperationException(
       "originalMaxEdgeSize is not supported for dynamic hypergraph");
     return 2;
   }
@@ -845,31 +845,50 @@ public:
 
   // ! Not supported for dynamic hypergraphs
   inline double beta(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
       "beta(k) is not supported for dynamic hypergraph");
       return 0.0;
     }
     // ! Not supported for dynamic hypergraphs
   inline double gamma(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "gamma(k) is not supported for dynamic hypergraph");
     return 0.0;
   }
   // ! Not supported for dynamic hypergraphs
   inline double omegaIn(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaIn(k) is not supported for dynamic hypergraph");
     return 0.0;
   }
   // ! Not supported for dynamic hypergraphs
   inline double omegaOut(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaOut(k) is not supported for dynamic hypergraph");
             return 0.0;
   }
+  // ! _beta vector for AON-Hypermodularity
+  // ! Not supported for dynamic hypergraphs
+  inline const vec<double>& betaVector()  const { 
+    throw UnsupportedOperationException(
+      "betaVector() is not supported for dynamic hypergraphs");
+    return _dummy_double_vector;
+  }
+  // ! _gamma vector for AON-Hypermodularity
+  // ! Not supported for dynamic hypergraphs
+  inline const vec<double>& gammaVector() const { 
+    throw UnsupportedOperationException(
+      "gammaVector() is not supported for dynamic hypergraphs");
+    return _dummy_double_vector;
+  }
   // ! Not supported for dynamic hypergraphs
   inline void computeAONParameters(double eps = 1e-12) {
-    throw NonSupportedOperationException(
+    unused(eps);
+    throw UnsupportedOperationException(
        "computeAONParameters is not supported in dynamic hypergraph");
   }
 
@@ -950,14 +969,15 @@ public:
   // ! (needed for AON-Hypermodularity)
   // ! not supported in dynamic hypergraph
   void useOriginalSizeInParallelNetsDetection(bool yes=true) {
-      throw UnsupportedOperationException(
-        "useOriginalSizeInParallelNetsDetection() not supported in dynamic hypergraph");
+    unused(yes);
+    throw UnsupportedOperationException(
+      "useOriginalSizeInParallelNetsDetection() not supported in dynamic hypergraph");
   }
 
   // ! If true, only parallel nets of the same original size are removed
   // ! (needed for AON-Hypermodularity)
   bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
-      return false;
+    return false;
   }
   
   // ####################### Contract / Uncontract #######################
@@ -1367,6 +1387,9 @@ public:
 
   // ! Option for enabling collective sync update for phg
   bool _enable_collective_sync_update = false;
+
+  // ! Dummy vectors for AON-Hypermodularity
+  static const vec<double> _dummy_double_vector;
 };
 
 } // namespace ds

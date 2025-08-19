@@ -1423,9 +1423,9 @@ public:
   inline double omegaOut(std::size_t k) const { return _hg->omegaOut(k); }
 
   // ! _beta vector for AON-Hypermodularity
-  inline const vec<double>& betaVector()  const { return _hg->_beta;  }
+  inline const vec<double>& betaVector()  const { return _hg->betaVector();  }
   // ! _gamma vector for AON-Hypermodularity
-  inline const vec<double>& gammaVector() const { return _hg->_gamma; }
+  inline const vec<double>& gammaVector() const { return _hg->gammaVector(); }
 
   // ####################### Memory Consumption #######################
 

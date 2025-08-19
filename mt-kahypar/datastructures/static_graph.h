@@ -744,7 +744,7 @@ class StaticGraph {
   // ! (together for their consistency)
   // ! Not supported for graphs
   void snapshotOriginalWeightedDegreesAndTotalVolume() {
-    throw NonSupportedOperationException(
+    throw UnsupportedOperationException(
       "snapshotOriginalWeightedDegreesAndTotalVolume is not supported for static graph");
   }
 
@@ -755,31 +755,51 @@ class StaticGraph {
 
   // ! Not supported for static graphs
   inline double beta(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
       "beta(k) is not supported for static graph");
       return 0.0;
     }
     // ! Not supported for static graphs
   inline double gamma(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "gamma(k) is not supported for static graph");
     return 0.0;
   }
   // ! Not supported for static graphs
   inline double omegaIn(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaIn(k) is not supported for static graph");
     return 0.0;
   }
   // ! Not supported for static graphs
   inline double omegaOut(std::size_t k) const { 
-    throw NonSupportedOperationException(
+    unused(k);
+    throw UnsupportedOperationException(
             "omegaOut(k) is not supported for static graph");
             return 0.0;
   }
+  // ! _beta vector for AON-Hypermodularity
+  // ! Not supported for static graphs
+  inline const vec<double>& betaVector()  const { 
+    throw UnsupportedOperationException(
+      "betaVector() is not supported for static graph");
+    return _dummy_double_vector;
+  }
+  // ! _gamma vector for AON-Hypermodularity
+  // ! Not supported for static graphs
+  inline const vec<double>& gammaVector() const { 
+    throw UnsupportedOperationException(
+      "gammaVector() is not supported for static graph");
+    return _dummy_double_vector;
+  }
+
   // ! Not supported for static graphs
   inline void computeAONParameters(double eps = 1e-12) {
-    throw NonSupportedOperationException(
+    unused(eps);
+    throw UnsupportedOperationException(
        "computeAONParameters is not supported in static graph");
   }
 
@@ -989,14 +1009,15 @@ class StaticGraph {
   // ! (needed for AON-Hypermodularity)
   // ! not supported in static graphs
   void useOriginalSizeInParallelNetsDetection(bool yes=true) {
-      throw UnsupportedOperationException(
-        "useOriginalSizeInParallelNetsDetection() not supported in static graph");
+    unused(yes);
+    throw UnsupportedOperationException(
+      "useOriginalSizeInParallelNetsDetection() not supported in static graph");
   }
 
   // ! If true, only parallel nets of the same original size are removed
   // ! (needed for AON-Hypermodularity)
   bool isOriginalSizeUsageInParallelNetsDetectionEnabled() const {
-      return false;
+    return false;
   }
 
  private:
@@ -1076,6 +1097,9 @@ class StaticGraph {
   // ! Data that is reused throughout the multilevel hierarchy
   // ! to contract the hypergraph and to prevent expensive allocations
   TmpContractionBuffer* _tmp_contraction_buffer;
+
+  // ! Dummy vectors for AON-Hypermodularity
+  static const vec<double> _dummy_double_vector;
 };
 
 } // namespace ds
