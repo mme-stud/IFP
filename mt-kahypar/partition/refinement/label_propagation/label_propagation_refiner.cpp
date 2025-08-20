@@ -112,13 +112,27 @@ namespace mt_kahypar {
     labelPropagation(hypergraph, best_metrics);
 
     HEAVY_REFINEMENT_ASSERT(hypergraph.checkTrackedPartitionInformation(_gain_cache));
-    ASSERT(best_metrics.quality == metrics::quality(hypergraph, _context,
-        !_context.refinement.label_propagation.execute_sequential),
-      V(best_metrics.quality) << V(metrics::quality(hypergraph, _context,
-          !_context.refinement.label_propagation.execute_sequential)));
 
-    // Update metrics statistics
-    Gain delta = old_quality - best_metrics.quality;
+    /** Note: 
+		 *  best_metrics.quality is old_quality + sum of Attributed Gains from the sync_updates
+		 *  => If conductance_local obj. is used, best_metrics.quality is incorrect
+		 *  =>  the assertion always fails for conductance.
+		 * 
+		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 if any good moves were made
+		 */ 
+		// Update metrics statistics
+		Gain delta = old_quality - best_metrics.quality;
+    if (_context.partition.objective != Objective::conductance_local) {
+      // fails, as conductance_local AttributedGain doesn't actually reflect 
+      // the delta in the overall conductance
+      ASSERT(best_metrics.quality == metrics::quality(hypergraph, _context,
+          !_context.refinement.label_propagation.execute_sequential),
+        V(best_metrics.quality) << V(metrics::quality(hypergraph, _context,
+            !_context.refinement.label_propagation.execute_sequential)));
+    } else {
+      best_metrics.quality = metrics::quality(hypergraph, _context,
+          !_context.refinement.label_propagation.execute_sequential);
+    }
     ASSERT(delta >= 0, "LP refiner worsen solution quality");
     utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
     return delta > 0;

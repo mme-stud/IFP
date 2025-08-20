@@ -1206,6 +1206,56 @@ Uses the same attributed gains
 ~~\+ `conductance_local_attributed_gain.h`:~~
 ~~+ \+ `ConductanceLocalAttributedGains`~~
 
+###### Problem: local search asserts sum of AttributedGains vs the actual metric
+
+**Problem**: \
+Multilevel uncoarsener initializes current quality in `_current_metrics` and passes it to the label propagation refiner, which updates it via `_gain.computeDeltaForHyperedge(sync_update);`.  \
+The overall sum od these deltas is added to the current gain and at the end of `refineImpl(..)` two things are done:
+1. **assertion**: `new objective value == metrics::quality`
+2. **delta** is calculated and `delta > 0` is returned.
+
+Current conductance implementation supports collective `sync_update`s, but their sum (at least for Conductance Local) wouldn't be equal to the actual gain &rArr;  the assertion always fails for conductance.
+
+**Current solution:**
+- Assert only for non-conductance metrics;
+- compute delta at the end of `refineImpl(..)` with the wrong current gain (i.e. delta = sum of Attributed Gains), so that delta is positive if any good moves were made
+- recalculate the current gain at the end of `refineImpl(..)` with the actual metric value:
+ ```cpp
+
+ 	// mt-kahypar/partition/refinement/label_propagation/label_propagation_refiner.cpp
+
+	template <typename GraphAndGainTypes>
+	bool LabelPropagationRefiner<GraphAndGainTypes>::refineImpl(... , Metrics& best_metrics, ...)  {
+		// ...
+		resizeDataStructuresForCurrentK();
+		_gain.reset();
+		Gain old_quality = best_metrics.quality;
+		// ...
+		// Perform Label Propagation
+		labelPropagation(hypergraph, best_metrics);
+		// ...
+
+		/** Note: 
+		 *  best_metrics.quality is old_quality + sum of Attributed Gains from the sync_updates
+		 *  => If conductance_local obj. is used, best_metrics.quality is incorrect
+		 *  =>  the assertion always fails for conductance.
+		 * 
+		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 if any good moves were made
+		 */ 
+		// Update metrics statistics
+		Gain delta = old_quality - best_metrics.quality;
+		if (_context.partition.objective != Objective::conductance_local) {
+			// fails, as conductance gain cache tracks cut
+			ASSERT(best_metrics.quality == metrics::quality(...), ...);
+		} else {
+			best_metrics.quality = metrics::quality(...);
+		}
+
+		ASSERT(delta >= 0, "LP refiner worsen solution quality");
+		return delta > 0;
+	}
+```
+
 
 #### Gain Computation
 ##### Intro From Guide
