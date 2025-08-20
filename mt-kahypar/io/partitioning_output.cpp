@@ -239,8 +239,9 @@ namespace mt_kahypar::io {
         (hypergraph.partWeight(i) > context.partition.max_part_weights[i] ||
           ( context.partition.preset_type != PresetType::large_k && hypergraph.partWeight(i) == 0 ));
     }
-    avg_part_weight /= context.partition.k;
-
+    // avg_part_weight /= context.partition.k;
+    avg_part_weight /= num_clusters;
+    
     const uint8_t part_digits = kahypar::math::digits(max_part_weight);
     const uint8_t k_digits = kahypar::math::digits(context.partition.k);
     if(context.partition.preset_type == PresetType::cluster) {

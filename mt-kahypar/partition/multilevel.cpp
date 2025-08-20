@@ -129,7 +129,8 @@ namespace {
           new_k = num_nodes;
         } 
       }
-    } else if (context.initial_partitioning.enabled_ip_algos
+    } 
+    if (context.initial_partitioning.enabled_ip_algos
                     [static_cast<size_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
         // Change k to the number of active nodes, as aon_hypermodularity 
         // finds as many clusters as it wants
@@ -195,19 +196,20 @@ namespace {
       }
       #endif
     }
-    if (phg.needsConductancePriorityQueue()) { // initializs _conductance_pq if needed    
-      new_k = phg.k();
-      ASSERT(new_k > 1, "After IP phg.k() should be > 1, but is " << new_k);
-      ASSERT(new_k <= context.partition.k);
-      //if (new_k != context.partition.k) {
-      //  //////////////////////////////// Change k (2/2)
-      //  context.partition.k = new_k;
-      //  context.setupPartWeights(hypergraph.totalWeight());
-      //  context.setupContractionLimit(hypergraph.totalWeight());
-      //  context.setupThreadsPerFlowSearch();
-      //  /////////////////////////// End of changing k (2/2)
-      //}
+    phg.needsConductancePriorityQueue(); // initializs _conductance_pq if needed    
+    
+    //////////////////////////////// Change k (2/2)
+    new_k = phg.k();
+    ASSERT(new_k > 1, "After IP phg.k() should be > 1, but is " << new_k);
+    ASSERT(new_k <= context.partition.k);
+    if (new_k != context.partition.k) {
+      context.partition.k = new_k;
+      context.setupPartWeights(hypergraph.totalWeight());
+      context.setupContractionLimit(hypergraph.totalWeight());
+      context.setupThreadsPerFlowSearch();
     }
+    /////////////////////////// End of changing k (2/2)
+    
 
     ASSERT([&] {
       bool success = true;
