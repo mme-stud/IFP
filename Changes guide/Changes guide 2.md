@@ -90,7 +90,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        louvainStep(H_new, H_new_partitioned, map_z);
+        louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, maxNumIter, eps, randomize);
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -192,21 +192,43 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
         z = z_new
         ```
 2. Louvain step:
-    ![Algorithm 4](<Algorithm 4: AONLouvainStep.png>)
    - before each move update `map_z`:
 	`map_z[community_id[hn]] = <new_partition_id>` \
 	~~`map_z[community_id[hn]] = map_z[community_id[hn_of_new_label]]`~~
 	~~(`hn_of_new_label` should be equal to the new `CommunityID A`)~~
-    \+ **!!!** `eps = 0.0001` - `if best_gain > eps` the move is made. Otherwise never stops: 
-    >    ... \
-    >    Louvain: round 618 \
-    >    Louvain: node 0 \
-    >    Louvain: node 1000 \
-    >    Louvain: node 2000 \
-    >    Louvain: node 2874 -> 2874 (gain: **2.47727e-46**) \
-    >    Louvain: node 3000 \
-    >    Louvain: node 3853 -> 4414 (gain: **2.47727e-46**) \
-    >    ...
+    ![Algorithm 4](<Algorithm 4: AONLouvainStep.png>)
+    \+ `eps = 1e-8`, `maxNumIter = 1000`, `randomize = true` - default parameters:
+    - `if best_gain > eps` the move is made. Otherwise never stops: 
+        >    ... \
+        >    Louvain: round 618 \
+        >    Louvain: node 0 \
+        >    Louvain: node 1000 \
+        >    Louvain: node 2000 \
+        >    Louvain: node 2874 -> 2874 (gain: **2.47727e-46**) \
+        >    Louvain: node 3000 \
+        >    Louvain: node 3853 -> 4414 (gain: **2.47727e-46**) \
+        >    ...
+    - `if randomize`: the nodes are contracted in a random order:
+        ```cpp
+        while (improving && (iter++ < maxNumIter)) {
+            improving = false;
+            
+            if (randomize) {
+            vec<HypernodeID> nodes(numNodes, 0);
+            for (HypernodeID i = 0; i < numNodes; ++i) {
+                nodes[i] = i;
+            }
+            std::shuffle(nodes.begin(), nodes.end(), _rng);
+            for (const HypernodeID &i : nodes) {
+                improving = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+            }
+            } else {
+            for (const HypernodeID &i : H_new_partitioned.nodes()) {
+                improving = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+            }
+            }
+        }
+        ```
 
 3. Q_AON Gain:
     ![Algorithm 5](<Algorithm 5: QAON gain.png>)

@@ -24,7 +24,7 @@
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
-#include "mt-kahypar/parallel/stl/scalable_vector.h"
+ 
  
 namespace mt_kahypar {
 
@@ -83,7 +83,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
         collapse(H_new, H_new_partitioned, map_z);
 
         /** ------------------ Louvain Step: ------------------
-         *  - Nodes are moved to neighbouring partitions as
+         *  - Nodes are moved to neighboring partitions as
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
@@ -105,11 +105,15 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       //             3. Finalize Partitioning
       // =====================================================
 
+//      HypernodeID new_k = H_new_partitioned.k();
+//      hg.setK(new_k, H.initialNumEdges());
       for (const HypernodeID &hn : hg.nodes()) {
-        HypernodeID partition = z[hn];
+        PartitionID partition = z[hn];
         ASSERT(partition != kInvalidPartition,
             "AONHypermodularityInitialPartitioner::partitionImpl: "
             "node " << hn << " is not assigned to a new partition");
+        ASSERT(partition < hg.k(), "AONHypermodularityInitialPartitioner::partitionImpl: "
+            "node " << hn << " is assigned to an invalid partition: k = " << hg.k());
         hg.setOnlyNodePart(hn, partition);
       }
       hg.initializePartition();
@@ -145,39 +149,89 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(UnderlyingHyperg
 }
 
 template<typename TypeTraits>
-void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma) {
-  bool improving = false;
-  double eps = 0.0001;
-  do {
-    improving = false;
-    for (const HypernodeID &i : H_new_partitioned.nodes()) {
-      HypernodeID part_i = H_new_partitioned.partID(i);
-
-      // Check all neighbouring partitions to find the best gain
-      vec<bool> visited(H_new_partitioned.k(), false);
-      visited[part_i] = true; // mark current partition as visited
-      double best_gain = 0.0;
-      PartitionID best_partition = part_i;
-      for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
-        for (const PartitionID &A : H_new_partitioned.connectivitySet(he)) {
-          if (visited[A]) continue;
-          visited[A] = true;
-          double gain = QAONGain(H_new_partitioned, i, A, beta, gamma);
-          if (gain > best_gain) {
-            best_gain = gain;
-            best_partition = A;
-          }
-        }
-      }
-
-      if (best_gain > eps) {
-        improving = true;
-        // Update map_z with the new partition
-        map_z[H_new.communityID(i)] = best_partition;
-        H_new_partitioned.changeNodePart(i, part_i, best_partition);
+void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter, const double eps, const bool randomize) {
+  // precompute neighboring nodes
+  HypernodeID numNodes = H_new.initialNumNodes();
+  ASSERT(H_new_partitioned.k() == static_cast<PartitionID>(numNodes), 
+        "AONHypermodularityInitialPartitioner::louvainStep: "
+        "no singleton partition at the start: "
+        "k = " << H_new_partitioned.k() << ", numNodes = " << numNodes);
+  vec<vec<HypernodeID>> neighbors(numNodes, vec<HypernodeID>(0));
+  ds::Array<bool> visited(numNodes, false);
+  for (const HypernodeID &i : H_new_partitioned.nodes()) {
+    visited.assign(numNodes, false);
+    for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
+      for (const HypernodeID &hn : H_new_partitioned.pins(he)) {
+        ASSERT(H_new_partitioned.partID(hn) == static_cast<PartitionID>(hn), 
+              "AONHypermodularityInitialPartitioner::louvainStep: "
+              "node " << hn << " is not assigned to its singleton partition: "
+              "partID(hn) = " << H_new_partitioned.partID(hn));
+        visited[hn] = true;
       }
     }
-  } while (improving);
+    visited[i] = false;
+    for (const HypernodeID& hn : H_new_partitioned.nodes()) {
+      if (visited[hn])
+        neighbors[i].push_back(hn);
+    }
+
+    ASSERT(static_cast<PartitionID>(neighbors[i].size()) < H_new_partitioned.k(), 
+           "AONHypermodularityInitialPartitioner::louvainStep: "
+           "node " << i << " has more neighboring nodes than partitions");
+  }
+
+  bool improving = true;
+  long long iter = 0;
+  while (improving && (iter++ < maxNumIter)) {
+    improving = false;
+    
+    if (randomize) {
+      vec<HypernodeID> nodes(numNodes, 0);
+      for (HypernodeID i = 0; i < numNodes; ++i) {
+        nodes[i] = i;
+      }
+      std::shuffle(nodes.begin(), nodes.end(), _rng);
+      for (const HypernodeID &i : nodes) {
+        improving = louvainStepForANode(i, neighbors[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+      }
+    } else {
+      for (const HypernodeID &i : H_new_partitioned.nodes()) {
+        improving = louvainStepForANode(i, neighbors[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+      }
+    }
+  }
+}
+
+template<typename TypeTraits>
+bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, const ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter, const double eps, const bool randomize) {
+  HypernodeID part_i = H_new_partitioned.partID(i);
+
+  /// Check all neighboring partitions to find the best gain
+  visitedParts.assign(numNodes, false);
+  visitedParts[part_i] = true; // mark current partition as visited
+  double best_gain = 0.0;
+  PartitionID best_partition = part_i;
+  // for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
+  //   for (const PartitionID &A : H_new_partitioned.connectivitySet(he)) {
+  bool improving = false;
+  for (const HypernodeID &neighbor : neighbors_i) {
+    PartitionID A = H_new_partitioned.partID(neighbor);
+    if (visitedParts[A]) continue;
+    visitedParts[A] = true;
+    double gain = QAONGain(H_new_partitioned, i, A, beta, gamma);
+    if (gain > best_gain) {
+      best_gain = gain;
+      best_partition = A;
+    }
+  } 
+
+  if (best_gain > eps) {
+    improving = true;
+    // Update map_z with the new partition
+    map_z[H_new.communityID(i)] = best_partition;
+    H_new_partitioned.changeNodePart(i, part_i, best_partition);
+  }
+  return improving;
 }
 
 template<typename TypeTraits>
@@ -185,10 +239,10 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(PartitionedHyp
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity-Louvain-Like gain function
   PartitionID part_i = H_new_partitioned.partID(i);
-    ASSERT(0 <= A && A < H_new_partitioned.k() && A != kInvalidPartition,
+    ASSERT(A < H_new_partitioned.k() && A != kInvalidPartition,
          "AONHypermodularityInitialPartitioner::QAONgain: "
          "partition ID " << A << " is invalid");
-    ASSERT(0 <= part_i && part_i < H_new_partitioned.k() && part_i != kInvalidPartition,
+    ASSERT(part_i < H_new_partitioned.k() && part_i != kInvalidPartition,
          "AONHypermodularityInitialPartitioner::QAONgain: "
          "partition ID " << part_i  << " is invalid");
   if (part_i == A) {
@@ -270,7 +324,7 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
   bool z_changed = false;
   vec<bool> notEmptyPart(H_new.initialNumNodes(), false);
   for (const HypernodeID &hn : H_new.nodes()) {
-    HypernodeID partition = H_new_partitioned.partID(hn);
+    PartitionID partition = H_new_partitioned.partID(hn);
     ASSERT(partition != kInvalidPartition,
             "AONHypermodularityInitialPartitioner::expand : "
             "partition of hypernode " << hn << " is invalid");
@@ -294,7 +348,7 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
   vec<HypernodeID> z_new = z;
   for (const HypernodeID &hn : H.nodes()) {
     HypernodeID community = z[hn];
-    ASSERT(map_z[community] != kInvalidPartition,
+    ASSERT(static_cast<PartitionID>(map_z[community]) != kInvalidPartition,
             "AONHypermodularityInitialPartitioner::expand : "
             "community " << community << " is not mapped to a new partition");
     z_new[hn] = map_z[community];

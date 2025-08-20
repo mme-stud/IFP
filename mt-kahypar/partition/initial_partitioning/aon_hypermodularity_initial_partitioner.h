@@ -28,6 +28,8 @@
 
 #include "mt-kahypar/partition/initial_partitioning/i_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
+#include "mt-kahypar/parallel/stl/scalable_vector.h"
+#include "mt-kahypar/datastructures/array.h"
 
 namespace mt_kahypar {
 
@@ -61,20 +63,23 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   }
 
   // Used if some vertices have fixed labels
-  void randomPartition(PartitionedHypergraph& hypergraph);
+  inline void randomPartition(PartitionedHypergraph& hypergraph);
 
   // Contract communities of the coarsest hypergraph and rewrites its partition
-  void collapse(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z);
+  inline void collapse(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z);
 
   // Perform the Louvain step on the collapsed hypergraph
-  void louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma);
+  void louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter=100, const double eps=1e-8, const bool randomize=true);
+
+  // Perform the Louvain step for a single node on the collapsed hypergraph
+  inline bool louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, const ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter=100, const double eps=1e-8, const bool randomize=true);
 
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity gain function
-  double QAONGain(PartitionedHypergraph& H_new_partitioned, const HypernodeID i, const PartitionID A, const vec<double>& beta, const vec<double>& gamma);
+  inline double QAONGain(PartitionedHypergraph& H_new_partitioned, const HypernodeID i, const PartitionID A, const vec<double>& beta, const vec<double>& gamma);
 
   // Adjust current communities and check if they changed
-  bool expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
+  inline bool expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
 
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;
