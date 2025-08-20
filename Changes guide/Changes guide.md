@@ -1236,7 +1236,7 @@ All lookups for gain of a node in `gain_computation_base.h` pass through `gain(t
 	+ `static constexpr size_t BITS_PER_BLOCK = ds::StaticBitset::BITS_PER_BLOCK` - also took from `steiner_tree_gain_computation.h`
 	+ \+ [my] `setPreSyncUpdataData<artitionedHypergraph>(phg, ...)` - sets `to`, `volume_to_after`, `cut_weight_to_after`, `cut_weight_from_after` - almost all the data needed for the emulation of sync_update. Note: cut weights have to be adjusted later in the `precomputeGains(..)` method
 	- `void precomputeGains(const &phg, const hn, &tmp_scores, &isolatedBlockGain, consider_non_adjacent_blocks)`: 
-		- analog. to steiner tree gets a "list" of all considered blocks;
+		- analog. to steiner tree gets a "list" of all considered blocks **!!!** unset bit for `from`;
 		- gets current conductance objective value via `compute_conductance_objective(..)` of `ConductanceGlobalAttributedGains`
 		- for each considered block:
 			- collects data needed for simulation of `sync_update` for a conductance objective (via `void setPreSyncUpdataData(&..)` + cut weights adjusted in a loop);
@@ -1255,7 +1255,7 @@ Computes the "gain" of move as change in maximal conductance between to and from
 	&larr; almost all the data needed for the emulation of a move. \
 	Note: cut weights have to be adjusted later in the `precomputeGains(..)` method
 	- `void precomputeGains(const &phg, const hn, &tmp_scores, &isolatedBlockGain, consider_non_adjacent_blocks)`: 
-		- analog. to steiner tree gets a "list" of all considered blocks;
+		- analog. to steiner tree gets a "list" of all considered blocks **!!!** unset bit for `from`;
 		- gets current from fraction
 		- for each considered block:
 			- gets current to fraction 

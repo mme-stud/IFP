@@ -93,6 +93,7 @@ ConductanceLocalGainComputation(const Context& context,
           adjacent_blocks.set(to);
         }
       }
+      adjacent_blocks.unset(phg.partID(hn));
     }
     
     // Set the trivial values needed for emulating move
