@@ -72,7 +72,7 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   void louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter=100, const double eps=1e-8, const bool randomize=true);
 
   // Perform the Louvain step for a single node on the collapsed hypergraph
-  inline bool louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, const ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter=100, const double eps=1e-8, const bool randomize=true);
+  inline bool louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter=100, const double eps=1e-8, const bool randomize=true);
 
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity gain function

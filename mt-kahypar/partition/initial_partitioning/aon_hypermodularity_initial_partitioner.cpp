@@ -25,11 +25,13 @@
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/utils/randomize.h"
  
+/// [debug] #include "mt-kahypar/IFP/mt-kahypar/io/hypergraph_io.h"
  
 namespace mt_kahypar {
 
 template<typename TypeTraits>
 void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
+  /// [debug] std::cout << "partitionImpl()" << std::endl;
   // if num. nodes = k, assign each node to its own block
   // otherwise produce same result as random IP (maybe change later)
   if ( _ip_data.should_initial_partitioner_run(InitialPartitioningAlgorithm::aon_hypermodularity) ) {
@@ -70,7 +72,10 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       PartitionedHypergraph H_new_partitioned;
       vec<HypernodeID> map_z(H.initialNumNodes(), kInvalidPartition);
       bool z_changed = false;
+      /// [debug] long long counter = 0;
       do {
+        /// [debug] if ((counter++) % 100 == 0)
+        /// [debug] std::cout << "Outer Iteration: " << counter << std::endl;
         /** -------------------- Collapse: --------------------
          *  - The community structure on H_new is collapsed by 
          *    merging nodes within the same community;
@@ -81,6 +86,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
          *    PartitionIDs in H_new_partitioned.
          */
         collapse(H_new, H_new_partitioned, map_z);
+        /// [debug] if (counter % 100 == 1)
+        /// [debug] std::cout << "Outer Iteration: collapsed" << counter << std::endl;
 
         /** ------------------ Louvain Step: ------------------
          *  - Nodes are moved to neighboring partitions as
@@ -88,6 +95,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
          *  - map_z is updated accordingly.
          */
         louvainStep(H_new, H_new_partitioned, map_z, beta, gamma);
+        /// [debug] if (counter % 100 == 1)
+        /// [debug] std::cout << "Outer Iteration: made a step" << counter << std::endl;
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -99,6 +108,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
          *  - true is returned.
          */
         z_changed = expand(H, H_new, H_new_partitioned, map_z, z);
+        /// [debug] if (counter % 100 == 1)
+        /// [debug] std::cout << "Outer Iteration: expanded" << counter << std::endl;
       } while (z_changed);
 
       // =====================================================
@@ -118,6 +129,12 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       }
       hg.initializePartition();
     }
+
+  /// [debug]    try {
+  /// [debug]      io::writePartitionFile(hg, "/home/mmeshchaninova/mt-kahypar/IFP/_try/partition_AON_k=" + std::to_string(hg.k()) + ",num_nodes=" + std::to_string(hg.initialNumNodes()) + ".txt");
+  /// [debug]    } catch (const std::exception& e) {
+  /// [debug]      std::cerr << "Error: " << e.what() << std::endl;
+  /// [debug]    }
 
     // =============== General final steps of IP =============
 
@@ -184,6 +201,9 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHyp
   long long iter = 0;
   while (improving && (iter++ < maxNumIter)) {
     improving = false;
+      /// [debug] if (iter % 100 == 1) {
+      /// [debug]   std::cout << "Louvain: round " << iter << std::endl;
+      /// [debug] }
     
     if (randomize) {
       vec<HypernodeID> nodes(numNodes, 0);
@@ -192,22 +212,24 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHyp
       }
       std::shuffle(nodes.begin(), nodes.end(), _rng);
       for (const HypernodeID &i : nodes) {
-        improving = louvainStepForANode(i, neighbors[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+        improving = louvainStepForANode(i, neighbors[i], visited, H_new, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
       }
     } else {
       for (const HypernodeID &i : H_new_partitioned.nodes()) {
-        improving = louvainStepForANode(i, neighbors[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+        improving = louvainStepForANode(i, neighbors[i], visited, H_new, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
       }
     }
   }
 }
 
 template<typename TypeTraits>
-bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, const ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter, const double eps, const bool randomize) {
+bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter, const double eps, const bool randomize) {
+  /// [debug] if (i % 1000 == 0)
+  /// [debug] std::cout << "Louvain: node " << i << std::endl;
   HypernodeID part_i = H_new_partitioned.partID(i);
 
   /// Check all neighboring partitions to find the best gain
-  visitedParts.assign(numNodes, false);
+  visitedParts.assign(H_new_partitioned.k(), false);
   visitedParts[part_i] = true; // mark current partition as visited
   double best_gain = 0.0;
   PartitionID best_partition = part_i;
@@ -227,6 +249,7 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const
 
   if (best_gain > eps) {
     improving = true;
+    /// [debug] std::cout << "Louvain: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")" << std::endl;
     // Update map_z with the new partition
     map_z[H_new.communityID(i)] = best_partition;
     H_new_partitioned.changeNodePart(i, part_i, best_partition);
