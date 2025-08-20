@@ -8,12 +8,22 @@
 - **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
 
 
+## Questions
+- singleton &rarr; conductance = 1. Why?
+
 ## TODO:
 - TODO: ensure, that `use_community_detection` is enabled by `aon_hypermodularity` IP [`partitioner.cpp preprocess(..)`] &rarr; done in `context.cpp sanity_check(..)`
 - change `context.partition.k` in `multilevel.cpp` if `aon_hypernodularity` IP is used &rArr; done
 - introduce ClusteringMode to mark that `k` can be changed (?)
-- COMPILE
-- TRY
+- run multiple AON IP in paralle (#AON = #threads) &rarr; **Problem:** parallel local search works bad: set it to sequential?
+- try to snapshot and preserve original edge sizes from the start (if they are not too big: <500?)
+- compare AON IP with Hypermodularity (+metrix)
+- compare clustering with Hypermodularity (metric = AON &rarr; Adil has implemented the objective)
+
+- iterate between local and global conductance in local search
+- merge with Adil to allow `double` gains
+- try to improve local search (gain cache? another approach?)
+
 
 ## Initial Partitioning: Hypermodularity
 
