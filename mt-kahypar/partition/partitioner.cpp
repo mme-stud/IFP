@@ -61,6 +61,8 @@ namespace mt_kahypar {
       context.partition.k = 32; // adil set default k = 2 for clustering manually here
       // this determines how the part weights and contraction limits are defined
       // [mariia] adil changed k to 32
+      // ! if community detection is enabled, k will be set to the number
+      // ! of communities in preprocess(..)
     }
 
     // Should be called as early as possible, but after setting Objective
@@ -270,9 +272,14 @@ namespace mt_kahypar {
 
   template<typename Hypergraph>
   void precomputeHyperModularityParameters(Hypergraph& hypergraph, Context& context) {
-    if(!context.initial_partitioning.enabled_ip_algos[InitialPartitioningAlgorithm::aon_hypermodularity]) return;
+    if (! context.initial_partitioning.enabled_ip_algos[
+          static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) 
+        return;
     LOG << "Precomputing the parameters for AON-Hypermodularity IP";
     hypergraph.computeAONParameters();
+    // hypergraph.snapshotOriginalEdgeSizes();
+    // hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
+    // hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
   }
 
   template<typename Hypergraph>
@@ -310,6 +317,27 @@ namespace mt_kahypar {
 
       if (context.partition.verbose_output) {
         io::printCommunityInformation(hypergraph);
+      }
+
+      // Set k = number of communities, if cluster preset is used
+      if (context.partition.preset_type == PresetType::cluster) {
+        // code from printCommunityInformation
+        PartitionID num_communities = tbb::parallel_reduce(
+                tbb::blocked_range<HypernodeID>(ID(0), hypergraph.initialNumNodes()),
+                0, [&](const tbb::blocked_range<HypernodeID>& range, PartitionID init) {
+          PartitionID my_range_num_communities = init;
+          for (HypernodeID hn = range.begin(); hn < range.end(); ++hn) {
+            if ( hypergraph.nodeIsEnabled(hn) ) {
+              my_range_num_communities = std::max(my_range_num_communities, hypergraph.communityID(hn) + 1);
+            }
+          }
+          return my_range_num_communities;
+        },
+        [](const PartitionID lhs, const PartitionID rhs) {
+          return std::max(lhs, rhs);
+        });
+        num_communities = std::max(num_communities, 1);
+        context.partition.k = num_communities;
       }
     }
 
