@@ -49,9 +49,9 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       UnderlyingHypergraph H = hg.hypergraph().copy();
       
       // save current edge sizes, weighted degrees and total volume
-      H.snapshotOriginalEdgeSizes();
-      H.snapshotOriginalWeightedDegreesAndTotalVolume();
-      H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+      // H.snapshotOriginalEdgeSizes();
+      // H.snapshotOriginalWeightedDegreesAndTotalVolume();
+      // H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
       H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       // current communities of hg: z: node -> community

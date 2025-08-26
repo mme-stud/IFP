@@ -277,9 +277,9 @@ namespace mt_kahypar {
         return;
     LOG << "Precomputing the parameters for AON-Hypermodularity IP";
     hypergraph.computeAONParameters();
-    // hypergraph.snapshotOriginalEdgeSizes();
-    // hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
-    // hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+    hypergraph.snapshotOriginalEdgeSizes();
+    hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
+    hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
   }
 
   template<typename Hypergraph>
