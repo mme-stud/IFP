@@ -3,10 +3,14 @@
 ## Other changes, Ideas:
 - in `computeAONParameters`, use `nodeWeightedDegree` for `ClosVol` instead of `nodeDegree` \
 (as cutting edges are considered vith weights) and `totalVolume` instead of `initialTotalVertexDegree` for `vol_H` &rarr; done (for now)
-- in `partitioner.cpp` change `k` to the number of found communities, if `cluster && community_detection=true` (for now, I just recalculate the number of communities as done in `partitioner_output.cpp`)
+- ~~in `partitioner.cpp` change `k` to the number of found communities, if `cluster && community_detection=true` (for now, I just recalculate the number of communities as done in `partitioner_output.cpp`)~~ [this way the kernel is bigger &rArr; AON IP couldn't find a good clustering and returned too many clusters...]
 - in `multilevel.cpp` before uncoarsening stage check if k has changed (+correctly change it, if so) &rarr; done, not used for now
 - **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
 - enable single pin net removal (they are never cutting and volumes are tracked correctly)
+- [done] set `_beta[d] = 0` if `NaN`
+- [done] disable balancing for clustering in lp
+- set lp to sequential (as it is bad in parallel :( )
+- run both original sized and reduced sized versions of AON IP + a couple of random IP's
 
 
 ## Questions
@@ -22,7 +26,7 @@
 - compare clustering with Hypermodularity (metric = AON &rarr; Adil has implemented the objective)
 
 - iterate between local and global conductance in local search
-- merge with Adil to allow `double` gains
+- merge with Adil to allow `double` gains &rarr; maybe than return to `delta` = sum of all local "gains" by `conductance_local` in `refineImpl()` (`label_propagation_refiner.cpp`) 
 - try to improve local search (gain cache? another approach?)
 
 
@@ -363,3 +367,34 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 [analog. to `cluster` + `singleton` &rArr; `new_k = #_nodes`] 
 
 ### Problems
+
+## Label Propagation
+
+### Problems:
+- more than 3 threads &rArr; bad results :(
+    - **ToDo (?)**: set a sequential flag for LP to be able to run multiple IP in parallel
+- [solved for now] lp refiner summs up all Attributed gains of the moves in a `delta`. With `HyperedgeWeight` gains I get an overflow &rArr; `refineImpl(..)` returns `detla > 0  = false` and the refinement round finishes:
+    - Current solution: recalculate `delta` with the actual conductance gain
+    - To be changed (?) after introducting `double` gains
+- [solved for now] didn't move the last node from it's cluster what resulted in a bad conductance:
+    - Current solution: practically disable `isBalanced(..)` (`metrics.cpp`) check called in `LabelPropagationRefiner<GraphAndGainTypes>::labelPropagationRound(..)` (it wasn't balanced &rArr; called rebalancer &rArr; sometimes / mostly (?) finished LP) 
+    ```cpp
+    template<typename PartitionedHypergraph>
+    bool isBalanced(const PartitionedHypergraph& phg, const Context& context) {
+      size_t num_empty_parts = 0;
+      bool acceptable_part_weights = true;
+      for (PartitionID i = 0; i < context.partition.k; ++i) {
+        if (phg.partWeight(i) > context.partition.max_part_weights[i]) {
+          acceptable_part_weights = false;
+          break;
+        }
+        if (phg.partWeight(i) == 0)
+          num_empty_parts++;
+      }
+      return (acceptable_part_weights && context.partition.preset_type == PresetType::large_k) ||
+             (acceptable_part_weights && num_empty_parts <= phg.numRemovedHypernodes()) ||
+             (context.partition.preset_type == PresetType::cluster 
+              && (phg.k() - num_empty_parts > 1));
+    ```
+- no gain cache for conductance &rarr; we use `CutGainCache`, which allocates an array of the size `original_num_nodes * k` &rArr; `segfault` on big hypergraphs (`circuit5M`):
+    - **ToDo**: implement a (dummy?) gain cache

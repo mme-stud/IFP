@@ -319,7 +319,7 @@ namespace mt_kahypar {
         io::printCommunityInformation(hypergraph);
       }
 
-      // Set k = number of communities, if cluster preset is used
+      /* Set k = number of communities, if cluster preset is used
       if (context.partition.preset_type == PresetType::cluster) {
         // code from printCommunityInformation
         PartitionID num_communities = tbb::parallel_reduce(
@@ -338,7 +338,7 @@ namespace mt_kahypar {
         });
         num_communities = std::max(num_communities, 1);
         context.partition.k = num_communities;
-      }
+      } */
     }
 
     precomputeHyperModularityParameters(hypergraph, context);

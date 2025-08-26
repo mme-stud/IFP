@@ -118,10 +118,14 @@ namespace mt_kahypar {
 		 *  => If conductance_local obj. is used, best_metrics.quality is incorrect
 		 *  =>  the assertion always fails for conductance.
 		 * 
-		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 if any good moves were made
+		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 
+     *  if any good moves were made. But for now it's not working properly, as overflows 
+     *  occur and make the delta negative :(
+     *  
+     *  ToDo: uncomment delta after moving to double gains
 		 */ 
 		// Update metrics statistics
-		Gain delta = old_quality - best_metrics.quality;
+		// Gain delta = old_quality - best_metrics.quality;
     if (_context.partition.objective != Objective::conductance_local) {
       // fails, as conductance_local AttributedGain doesn't actually reflect 
       // the delta in the overall conductance
@@ -133,6 +137,7 @@ namespace mt_kahypar {
       best_metrics.quality = metrics::quality(hypergraph, _context,
           !_context.refinement.label_propagation.execute_sequential);
     }
+		Gain delta = old_quality - best_metrics.quality;
     ASSERT(delta >= 0, "LP refiner worsen solution quality");
     utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
     return delta > 0;

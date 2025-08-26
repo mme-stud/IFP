@@ -1223,8 +1223,9 @@ Current conductance implementation supports collective `sync_update`s, but their
 
 **Current solution:**
 - Assert only for non-conductance metrics;
-- compute delta at the end of `refineImpl(..)` with the wrong current gain (i.e. delta = sum of Attributed Gains), so that delta is positive if any good moves were made
+- ~~compute delta at the end of `refineImpl(..)` with the wrong current gain (i.e. delta = sum of Attributed Gains), so that delta is positive if any good moves were made~~ [overflow &rArr; `delta < 0`...]
 - recalculate the current gain at the end of `refineImpl(..)` with the actual metric value:
+- update the delta calculation accordingly
  ```cpp
 
  	// mt-kahypar/partition/refinement/label_propagation/label_propagation_refiner.cpp
@@ -1248,13 +1249,14 @@ Current conductance implementation supports collective `sync_update`s, but their
 		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 if any good moves were made
 		 */ 
 		// Update metrics statistics
-		Gain delta = old_quality - best_metrics.quality;
+		// [untill double gains] Gain delta = old_quality - best_metrics.quality;
 		if (_context.partition.objective != Objective::conductance_local) {
 			// fails, as conductance gain cache tracks cut
 			ASSERT(best_metrics.quality == metrics::quality(...), ...);
 		} else {
 			best_metrics.quality = metrics::quality(...);
 		}
+		Gain delta = old_quality - best_metrics.quality;
 
 		ASSERT(delta >= 0, "LP refiner worsen solution quality");
 		return delta > 0;

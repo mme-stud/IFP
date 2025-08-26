@@ -302,16 +302,20 @@ HyperedgeWeight contribution(const PartitionedHypergraph& hg,
 template<typename PartitionedHypergraph>
 bool isBalanced(const PartitionedHypergraph& phg, const Context& context) {
   size_t num_empty_parts = 0;
+  bool acceptable_part_weights = true;
   for (PartitionID i = 0; i < context.partition.k; ++i) {
     if (phg.partWeight(i) > context.partition.max_part_weights[i]) {
-      return false;
+      acceptable_part_weights = false;
+      break;
     }
     if (phg.partWeight(i) == 0) {
       num_empty_parts++;
     }
   }
-  return context.partition.preset_type == PresetType::large_k ||
-    num_empty_parts <= phg.numRemovedHypernodes();
+  return (acceptable_part_weights && context.partition.preset_type == PresetType::large_k) ||
+    (acceptable_part_weights && num_empty_parts <= phg.numRemovedHypernodes()) ||
+    (context.partition.preset_type == PresetType::cluster
+     && (phg.k() - num_empty_parts > 1));
 }
 
 template<typename PartitionedHypergraph>
