@@ -122,7 +122,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 
 #### Needed Additional Functionality (Static Hypergraph, Partitioned Hypergraph)
 
-1. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs, **in both `copy(..)` in `static_hypergraph.cpp` copy `_original_max_edge_size`**:
+1. [done] maintain original edge size in Static Hypergraph + **mirroring public interface in partitioned** / static / dynamic (hyper)graphs, **in both `copy(..)` in `static_hypergraph.cpp` copy `_original_max_edge_size`and in the constructor**:
 ```cpp
    class Hyperedge { // copy constructor in contract() should preserve all information -> no changes needed
     /// ...
@@ -174,7 +174,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     &rArr; ~~are interesting only for value~~ \
     &rarr; ~~can be removed after saving original volumes and weighted degrees~~ \
     [actually irrelevant, as parallel single pin nets are removed]
-4. `useOriginalSizeInParallelNetsDetection(bool yes)` in `StaticHypergraph` (+ mirroring in dynamic + graphs) - to stop removal of parallel nets of different original sizes (otherwise the gain is incorrect) (**in both `copy(..)` in `static_hypergraph.cpp` copy `_use_original_size_in_parallel_nets_detection`**):
+4. `useOriginalSizeInParallelNetsDetection(bool yes)` in `StaticHypergraph` (+ mirroring in dynamic + graphs) - to stop removal of parallel nets of different original sizes (otherwise the gain is incorrect) (**in both `copy(..)` in `static_hypergraph.cpp` copy `_use_original_size_in_parallel_nets_detection`and in the constructor**):
     ```cpp
     void useOriginalSizeInParallelNetsDetection(bool yes = true) {
         _use_original_size_in_parallel_nets_detection = yes;

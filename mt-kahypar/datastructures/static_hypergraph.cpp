@@ -536,10 +536,12 @@ namespace mt_kahypar::ds {
 
     hypergraph._total_weight = _total_weight;   // didn't lose any vertices
     hypergraph._original_total_volume = _original_total_volume;
+    hypergraph._original_max_edge_size = _original_max_edge_size;
     hypergraph._tmp_contraction_buffer = _tmp_contraction_buffer;
     // set flags
     hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
+    hypergraph._use_original_size_in_parallel_nets_detection = _use_original_size_in_parallel_nets_detection;
     _tmp_contraction_buffer = nullptr;
     return hypergraph;
   }

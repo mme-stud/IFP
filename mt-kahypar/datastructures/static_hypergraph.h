@@ -427,6 +427,7 @@ class StaticHypergraph {
     _num_hyperedges(0),
     _num_removed_hyperedges(0),
     _max_edge_size(0),
+    _original_max_edge_size(0),
     _num_pins(0),
     _total_degree(0),
     _total_weight(0),
@@ -454,6 +455,7 @@ class StaticHypergraph {
     _num_hyperedges(other._num_hyperedges),
     _num_removed_hyperedges(other._num_removed_hyperedges),
     _max_edge_size(other._max_edge_size),
+    _original_max_edge_size(other._original_max_edge_size),
     _num_pins(other._num_pins),
     _total_degree(other._total_degree),
     _total_weight(other._total_weight),
@@ -470,6 +472,7 @@ class StaticHypergraph {
     _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)),
     _enable_collective_sync_update(other._enable_collective_sync_update),
     _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal),
+    _use_original_size_in_parallel_nets_detection(other._use_original_size_in_parallel_nets_detection),
     _beta(std::move(other._beta)), _gamma(std::move(other._gamma)),
         _omega(std::move(other._omega)) 
   {
@@ -484,6 +487,7 @@ class StaticHypergraph {
     _num_hyperedges = other._num_hyperedges;
     _num_removed_hyperedges = other._num_removed_hyperedges;
     _max_edge_size = other._max_edge_size;
+    _original_max_edge_size = other._original_max_edge_size;
     _num_pins = other._num_pins;
     _total_degree = other._total_degree;
     _total_weight = other._total_weight;
@@ -501,6 +505,7 @@ class StaticHypergraph {
     _tmp_contraction_buffer = std::move(other._tmp_contraction_buffer);
     _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
     _enable_collective_sync_update = other._enable_collective_sync_update;
+    _use_original_size_in_parallel_nets_detection = other._use_original_size_in_parallel_nets_detection;
     other._tmp_contraction_buffer = nullptr;
     _beta = std::move(other._beta);
     _gamma = std::move(other._gamma);
