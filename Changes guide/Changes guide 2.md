@@ -125,12 +125,40 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 #### Code Structure 
 ("Template": `mt-kahypar/partition/initial_partitioning/random_initial_partitioner.h, .cpp`)
 
-- `aon_hypermodularity_initial_partitioner.h, .cpp`:
+`aon_hypermodularity_initial_partitioner.h, .cpp`:
+- Interface for customized calling:
+```cpp 
+  void partitionImpl(const HypernodeID edgeSizeThreshold, 
+                     const long long maxNumIter, 
+                     const double eps, 
+                     const bool randomize,
+                     bool useOriginalEdgeSizes);
+  
+  void partitionImpl() final {
+    partitionImpl(
+      1e3 /* edgeSizeThreshold */,
+      1e2 /* maxNumIter */,
+      1e-8 /* eps */,
+      true /* randomize */,
+      true /* useOriginalEdgeSizes */
+    );
+  }
+```
+- Main code:
 ```cpp
-      // save current edge sizes, weighted degrees and total volume
-      H.snapshotOriginalEdgeSizes();
-      H.snapshotOriginalWeightedDegreesAndTotalVolume();
-      H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+      if (! useOriginalEdgeSizes || ! H.hasOriginalEdgeSizes()) {
+        useOriginalEdgeSizes = false;
+        if ( ! H.hasOriginalEdgeSizes() )
+          LOG << "AON IP: No snapshot of original edge size found";
+        // save current edge sizes, weighted degrees and total volume
+        H.snapshotOriginalEdgeSizes();
+        H.snapshotOriginalWeightedDegreesAndTotalVolume();
+        H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+      }
+      if (useOriginalEdgeSizes)
+        LOG << "AON IP: Using original edge sizes.";
+      else
+        LOG << "AON IP: Using current edge sizes.";
       H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       //          1. Singleton initial partitioning
@@ -154,7 +182,8 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        total_gain += louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, maxNumIter, eps, randomize);
+        total_gain += louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, 
+                                  edgeSizeThreshold, maxNumIter, eps, randomize);
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -191,6 +220,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     class StaticHypergraph {
         // ...
         public:
+            bool hasOriginalEdgeSizes() const;
             void snapshotOriginalEdgeSizes(); // saves sizes, manually computes _original_max_edge_size (as _max_edge_size could not be initialized yet)
             HypernodeID originalEdgeSize(HyperedgeID e) const;
             HypernodeID originalMaxEdgeSize(HyperedgeID e) const; 

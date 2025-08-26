@@ -30,7 +30,12 @@
 namespace mt_kahypar {
 
 template<typename TypeTraits>
-void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
+void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
+                                                      const HypernodeID edgeSizeThreshold, 
+                                                      const long long maxNumIter, 
+                                                      const double eps, 
+                                                      const bool randomize,
+                                                      bool useOriginalEdgeSizes) {
   /// [debug] std::cout << "partitionImpl()" << std::endl;
   // if num. nodes = k, assign each node to its own block
   // otherwise produce same result as random IP (maybe change later)
@@ -48,10 +53,19 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       // coarsest underlying hypergraph
       UnderlyingHypergraph H = hg.hypergraph().copy();
       
-      // save current edge sizes, weighted degrees and total volume
-      // H.snapshotOriginalEdgeSizes();
-      // H.snapshotOriginalWeightedDegreesAndTotalVolume();
-      // H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+      if (! useOriginalEdgeSizes || ! H.hasOriginalEdgeSizes()) {
+        useOriginalEdgeSizes = false;
+        if ( ! H.hasOriginalEdgeSizes() )
+          LOG << "No snapshot of original edge size found: using edge sizes of the current hypergraph.";
+        // save current edge sizes, weighted degrees and total volume
+        H.snapshotOriginalEdgeSizes();
+        H.snapshotOriginalWeightedDegreesAndTotalVolume();
+        H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+      }
+      if (useOriginalEdgeSizes)
+        LOG << "AON IP: Using original edge sizes.";
+      else
+        LOG << "AON IP: Using current edge sizes.";
       H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       // current communities of hg: z: node -> community
@@ -95,7 +109,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        total_gain += louvainStep(H_new, H_new_partitioned, map_z, beta, gamma);
+        total_gain += louvainStep(H_new, H_new_partitioned, map_z, beta, gamma, 
+                                  edgeSizeThreshold, maxNumIter, eps, randomize);
         /// [debug] if (counter % 100 == 1)
         /// [debug] std::cout << "Outer Iteration: made a step" << counter << std::endl;
 

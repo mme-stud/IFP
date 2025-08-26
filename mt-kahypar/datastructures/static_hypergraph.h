@@ -473,6 +473,7 @@ class StaticHypergraph {
     _enable_collective_sync_update(other._enable_collective_sync_update),
     _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal),
     _use_original_size_in_parallel_nets_detection(other._use_original_size_in_parallel_nets_detection),
+    _has_original_edge_sizes(other._has_original_edge_sizes),
     _beta(std::move(other._beta)), _gamma(std::move(other._gamma)),
         _omega(std::move(other._omega)) 
   {
@@ -506,6 +507,7 @@ class StaticHypergraph {
     _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
     _enable_collective_sync_update = other._enable_collective_sync_update;
     _use_original_size_in_parallel_nets_detection = other._use_original_size_in_parallel_nets_detection;
+    _has_original_edge_sizes = other._has_original_edge_sizes;
     other._tmp_contraction_buffer = nullptr;
     _beta = std::move(other._beta);
     _gamma = std::move(other._gamma);
@@ -768,6 +770,11 @@ class StaticHypergraph {
 
   // ########################### Snapshots ############################
   // ----------- Snapshot edge sizes ----------------
+  
+  // ! Returns, whether a snapshot of edge sizes was ever made
+  bool hasOriginalEdgeSizes() const {
+    return _has_original_edge_sizes;
+  }
 
   // ! Save current edge sizes as original edge sizes
   void snapshotOriginalEdgeSizes() {
@@ -777,16 +784,19 @@ class StaticHypergraph {
       hyperedge(e).setOriginalSize(size_now);
       _original_max_edge_size = std::max(_original_max_edge_size, size_now);
     }
+    _has_original_edge_sizes = true;
   }
 
   // ! Get the edge size at the moment of the last snapshot
   HypernodeID originalEdgeSize(HyperedgeID e) const {
     ASSERT(!hyperedge(e).isDisabled(), "Hyperedge" << e << "is disabled");
+    ASSERT(_has_original_edge_sizes, "No snapshot of original edge sizes was made");
     return hyperedge(e).originalSize();
   }
 
   // ! Get the maximum edge size at the moment of the last snapshot
   HypernodeID originalMaxEdgeSize() const {
+    ASSERT(_has_original_edge_sizes, "No snapshot of original edge sizes was made");
     return _original_max_edge_size;
   }
 
@@ -1380,6 +1390,9 @@ public:
 
   // ! Option for using original size in parallel nets detection
   bool _use_original_size_in_parallel_nets_detection = false;
+  
+  // ! Indicates, whether a snapshot of edge sizes was ever made
+  bool _has_original_edge_sizes = false;
   
   // AON HyperModularity Clustering Coefficients
   vec<double> _beta;                 ///< β_k

@@ -542,6 +542,7 @@ namespace mt_kahypar::ds {
     hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
     hypergraph._use_original_size_in_parallel_nets_detection = _use_original_size_in_parallel_nets_detection;
+    hypergraph._has_original_edge_sizes = _has_original_edge_sizes;
     _tmp_contraction_buffer = nullptr;
     return hypergraph;
   }
@@ -564,6 +565,7 @@ namespace mt_kahypar::ds {
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
     hypergraph._use_original_size_in_parallel_nets_detection = _use_original_size_in_parallel_nets_detection;
+    hypergraph._has_original_edge_sizes = _has_original_edge_sizes;
     hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
     tbb::parallel_invoke([&] {
@@ -618,6 +620,7 @@ namespace mt_kahypar::ds {
     hypergraph._original_total_volume = _original_total_volume;
     hypergraph._disable_single_pin_nets_removal = _disable_single_pin_nets_removal;
     hypergraph._use_original_size_in_parallel_nets_detection = _use_original_size_in_parallel_nets_detection;
+    hypergraph._has_original_edge_sizes = _has_original_edge_sizes;
     hypergraph._enable_collective_sync_update = _enable_collective_sync_update;
 
     hypergraph._hypernodes.resize(_hypernodes.size());

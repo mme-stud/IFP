@@ -656,6 +656,11 @@ class PartitionedHypergraph {
   // ######################### Snapshots ##########################
   // ----------- Snapshot edge sizes ----------------
 
+  // ! Returns, whether a snapshot of edge sizes was ever made
+  bool hasOriginalEdgeSizes() const {
+    return _hg->hasOriginalEdgeSizes();
+  }
+
   // ! Save current edge sizes as original edge sizes
   void snapshotOriginalEdgeSizes() {
     _hg->snapshotOriginalEdgeSizes();

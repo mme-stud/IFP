@@ -719,6 +719,11 @@ class StaticGraph {
   // ############################ Snapshots ###########################
   // ----------- Snapshot edge sizes ----------------
 
+  // ! Returns, whether a snapshot of edge sizes was ever made
+  bool hasOriginalEdgeSizes() const {
+    return false;
+  }
+
   // ! Save current edge sizes as original edge sizes
   void snapshotOriginalEdgeSizes() {
     // In static graphs, edge sizes are always 2, so we do not need to do anything

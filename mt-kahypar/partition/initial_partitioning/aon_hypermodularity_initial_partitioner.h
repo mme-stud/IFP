@@ -52,7 +52,21 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
     _tag(tag) { }
 
  private:
-  void partitionImpl() final;
+  void partitionImpl(const HypernodeID edgeSizeThreshold, 
+                     const long long maxNumIter, 
+                     const double eps, 
+                     const bool randomize,
+                     bool useOriginalEdgeSizes);
+  
+  void partitionImpl() final {
+    partitionImpl(
+      1e3 /* edgeSizeThreshold */,
+      1e2 /* maxNumIter */,
+      1e-8 /* eps */,
+      true /* randomize */,
+      true /* useOriginalEdgeSizes */
+    );
+  }
 
   bool fitsIntoBlock(PartitionedHypergraph& hypergraph,
                      const HypernodeID hn,
@@ -70,20 +84,20 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
 
   // Perform the Louvain step on the collapsed hypergraph
   double louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, 
-                  const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold=1000,
-                  const long long maxNumIter=100, const double eps=1e-8, const bool randomize=true);
+                  const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold,
+                  const long long maxNumIter, const double eps, const bool randomize);
 
   // Perform the Louvain step for a single node on the collapsed hypergraph
   inline double louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, 
                                   UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z,
-                                   const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold=1000,
-                                   const double eps=1e-8, const bool randomize=true);
+                                   const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold,
+                                   const double eps, const bool randomize);
 
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity gain function
   inline double QAONGain(PartitionedHypergraph& H_new_partitioned, 
                          const HypernodeID i, const PartitionID A, 
-                         const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold=1000);
+                         const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold);
 
   // Adjust current communities and check if they changed
   inline bool expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);

@@ -791,6 +791,11 @@ class DynamicHypergraph {
   // ############################ Snapshots ###########################
   // ----------- Snapshot edge sizes (not supported) ----------------
 
+  // ! Returns, whether a snapshot of edge sizes was ever made
+  bool hasOriginalEdgeSizes() const {
+    return false;
+  }
+
   // ! Save current edge sizes as original edge sizes
   // ! not supported for dynamic hypergraphs
   void snapshotOriginalEdgeSizes() {
