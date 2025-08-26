@@ -284,6 +284,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
                       PartitionedHypergraph& H_new_partitioned, 
                       const HypernodeID i, const PartitionID A, 
                       const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold) {
+  unused(beta);
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity-Louvain-Like gain function
   PartitionID part_i = H_new_partitioned.partID(i);
@@ -303,6 +304,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
 
   double delta_vol = 0.0;
   HypernodeID k_max = std::min(H_new_partitioned.originalMaxEdgeSize(), 
+                               gamma.size(); // zeros at the end of gamma and beta are removed
                                edgeSizeThreshold);
   for (HypernodeID k = 2; k <= k_max; k ++) {
     // _gamma[k] = \beta_k \cdot \gamma_k
@@ -317,7 +319,8 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
     HypernodeID pin_count_part_i = H_new_partitioned.pinCountInPart(he, part_i);
     HypernodeID size = H_new_partitioned.edgeSize(he);
     // values needed for the gain computation
-    double _beta_S_he = beta[H_new_partitioned.originalEdgeSize(he)];
+    HypernodeID s_he = H_new_partitioned.originalEdgeSize(he);
+    double _beta_S_he = H_new_partitioned.beta(s_he);
     double weight_he = static_cast<double>(H_new_partitioned.edgeWeight(he));
 
     // z_he

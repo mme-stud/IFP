@@ -819,24 +819,26 @@ public:
   
   // ! AON HyperModularity Clustering
   // ! true once the three vectors were filled at the finest level
-  bool hasAON() const { return !_beta.empty(); }
+  bool hasAON() const { return !_omega.empty(); }
 
   // ! Get \beta for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _beta.size())
   inline double beta(std::size_t d) const noexcept {
-    ASSERT(d < _beta.size(),
-           "d = " << d << " is out of bounds for beta vector of size " << _beta.size());
-    return _beta[d];
-    // return d < _beta .size() ? _beta [d]      : 0.0;
+    ASSERT(d < _beta.size() || d < _max_edge_size || d < _original_max_edge_size,
+           "d = " << d << " is out of bounds for beta vector of size " << _beta.size()
+           << " and max edge size " << _max_edge_size 
+           << " and saved original max edge size " << _original_max_edge_size);
+    return d < _beta.size() ? _beta[d] : 0.0;
   }
 
   // ! Get \gamma for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _gamma.size())
   inline double gamma(std::size_t d) const noexcept {
-    ASSERT(d < _gamma.size(),
-           "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size());
-    return _gamma[d];
-    // return d < _gamma.size() ? _gamma[d]      : 0.0;
+    ASSERT(d < _gamma.size() || d < _max_edge_size || d < _original_max_edge_size,
+           "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size()
+           << " and max edge size " << _max_edge_size
+           << " and saved original max edge size " << _original_max_edge_size);
+    return d < _gamma.size() ? _gamma[d] : 0.0;
   }
 
   // ! Get \omega_{d0} for AON HyperModularity Clustering
@@ -857,9 +859,11 @@ public:
     // return d < _omega.size() ? _omega[d][1]   : 0.0;
   }
 
-  // ! _beta vector for AON-Hypermodularity
+  // ! _beta vector for AON-Hypermodularity. 
+  // ! Zeros at the end are omitted!
   inline const vec<double>& betaVector()  const { return _beta;  }
-  // ! _gamma vector for AON-Hypermodularity
+  // ! _gamma vector for AON-Hypermodularity. 
+  // ! Zeros at the end are omitted!
   inline const vec<double>& gammaVector() const { return _gamma; }
 
   // ──────────────────────────────────────────────────────────
@@ -933,32 +937,50 @@ public:
     _gamma.assign(dmax + 1, 0.0);
     _omega.assign(dmax + 1, {0.0, 0.0});
 
+    std::size_t last_non_zero = 0; // to avoid _beta and _gamma being mostly filled with 0.0
     for (std::size_t d = 2; d <= dmax; ++d) {
       // sum of d-th powers of community volumes (no weights!!!)
       double vol_in = 0.0; 
       for (double vc : ClusVol)
         vol_in += std::pow(vc, static_cast<int>(d));
-      
-      const double vol_out = std::pow(vol_H, static_cast<int>(d)) - vol_in;
+      double vol_out;
+      if (std::isfinite(vol_in)) {
+        vol_out = std::pow(vol_H, static_cast<int>(d)) - vol_in;
+      } else {
+        ASSERT(vol_in > 0, "vol_in is not finite, but non-positive: " << vol_in);
+        /** Rationale: avoiding inf - inf = NaN.
+         *    if vol_in = +inf, vol_out should be at least near to +inf
+         *    as vol_in = sum_i pow(vol(i), d), vol_H = sum_i vol(i)
+        */
+        vol_out = std::numeric_limits<double>::infinity();
+      } 
 
-      // double omega_in  = (m_k[d] - cut_k[d]) / std::max(vol_in , eps);
-      // double omega_out =  cut_k[d]            / std::max(vol_out, eps);
-
-      // omega_in  = std::max(omega_in , eps);
-      // omega_out = std::max(omega_out, eps);
-
-      double omega_in = (m_k[d] - cut_k[d]) / vol_in;
+      double omega_in = (m_k[d] - cut_k[d]) / vol_in; 
       double omega_out = cut_k[d] / vol_out;
+      // (Normally) not NaN / +-Inf as m_k, cut_k < total_volume. (vol_in and vol_out != NaN, 0)
 
       _omega[d] = {omega_in, omega_out};
-      _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: this is \beta_k from (15)]
+      _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: \beta_k from (15)]
+      _gamma[d] = omega_in - omega_out; // [mariia: \beta_k * \gamma_k from (15)]
+      
+      // Adjustments for Inf, Nan
       if (!std::isfinite(_beta[d])) {
-        _beta[d] = (_beta[d] > 0 ? 1e3 : -1e3);
+        ASSERT(_beta[d] > 0 || _beta[d] != _beta[d], 
+          "_beta[" << d << "] is not finite, not +inf and not NaN: " << _beta[d]);
+        _beta[d] = (_beta[d] > 0 ? 1e3 : 0);
+        // [mariia's idea -> ask!!!] 
+        // Idea: _beta[d] = NaN => both log omega-s are the same Inf => _beta[d] = 0
       }
-      _gamma[d] = omega_in - omega_out; // [mariia: this is \beta_k * \gamma_k from (15)]
+      
+      if (_beta[d] != 0 || _gamma[d] != 0) {
+        last_non_zero = d;
+      }
       LOG << "For edge size d = " << d << ": beta_d = " << _beta[d]
           << ", gamma_d = " << _gamma[d];
     }
+    // To avoid _beta and _gamma being mostly filled with 0.0
+    _beta.resize(last_non_zero + 1);
+    _gamma.resize(last_non_zero + 1);
   }
   // ═══ AON MOD END ═══════════════════════════════════════════════════════
 

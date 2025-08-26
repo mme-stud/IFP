@@ -65,6 +65,54 @@ Reference: [commit](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bb
 - getters in `partitioned_hypergraph.h`, `static_hypergraph.h` and a mirroring interface in `partitioned_graph.h` and other (hyper-)graphs
     - &rArr; dummy empty double vectors in base classes to return, if AON is not supported :(
 
+#### NaN Problem
+Originally infinite values of beta and gamma were handled this way:
+```cpp
+_beta[d] = std::log(omega_in) - std::log(omega_out);
+if (!std::isfinite(_beta[d])) {
+    _beta[d] = (_beta[d] > 0.0 ? 1e3 : -1e3);
+}
+```
+Idea was, to round infinities to +- 1000.
+
+Problems:
+1. `_beta[d]` is never negative (? &rarr; ask) &rArr; never `-Inf`
+2. sometimes it's `NaN` (when one of omegas is Nan, or both are 0 or `+Inf`)
+
+&rarr; Current solution:
+1. Avoid `NaN` in omegas, by avoiding `vol_out = Inf - Inf = Nan`. If `vol_in = +Inf`, then `vol_out` should be set to `+Inf` as well \ 
+    (as $(vol\_H)^d = (\sum_i vol(i))^d, vol\_in = \sum_i vol(i)^d \implies vol\_out = vol\_H^d - vol\_in$, so if `vol_in` is infinite, then `vol_out` should be at least near to `+Inf`)
+2. Set `_beta[d] = 0` if it's `Nan` (when both omegas are 0, `_beta[d] = log (+Inf / +Inf) = Inf - Inf = NaN`)
+```cpp
+    if (std::isfinite(vol_in))
+      vol_out = std::pow(vol_H, static_cast<int>(d)) - vol_in;
+    else {
+      ASSERT(vol_in > 0, "vol_in is not finite, but non-positive: " << vol_in);
+      // 1 (Avoiding inf - inf = NaN)
+      vol_out = std::numeric_limits<double>::infinity();
+    } 
+
+    double omega_in = (m_k[d] - cut_k[d]) / vol_in; 
+    double omega_out = cut_k[d] / vol_out;
+    // (Normally) not NaN / +-Inf as m_k, cut_k < total_volume. (vol_in and vol_out != NaN, 0)
+
+    _omega[d] = {omega_in, omega_out};
+    _beta[d] = std::log(omega_in) -  std::log(omega_out);
+    _gamma[d] = omega_in - omega_out;
+    
+    // Adjustments for Inf, Nan
+    if (!std::isfinite(_beta[d])) {
+    ASSERT(_beta[d] > 0 || _beta[d] != _beta[d], 
+        "_beta[" << d << "] is not finite, not +inf and not NaN: " << _beta[d]);
+    _beta[d] = (_beta[d] > 0 ? 1e3 : 0);
+    // Idea: _beta[d] = NaN => both log omega-s are the same Inf => _beta[d] = 0
+    }
+```
+
+#### Problem of huge (original) edges
+If the original edge sizes are too big, the `_beta` and `_gamma` vectors are also huge. But *normally* most of their entries are 0.0 (`-1000` and `NaN` before &rarr; see *NaN Problem*).
+
+&rarr; I track the last non-zero pair `(_beta[d], _gamma[d])` and cut all other zeroes. The getters of beta and gamma will return 0.0, if `d` is greater than the last non-zero index.
 
 ### Implement AON-Hypermodularity IP
 Original Algorithm: [Generative hypergraph clustering: from blockmodels to modularity](https://arxiv.org/pdf/2101.09611)
