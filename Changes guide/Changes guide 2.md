@@ -83,6 +83,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
       //          1. Singleton initial partitioning
       //                         <...>
       //          2. AllOrNothingHMLL: Louvain Cycle   
+      double total_gain = 0.0;
       while (z_changed) {
         /** -------------------- Collapse: --------------------
          *  - The community structure on H_new is collapsed by 
@@ -100,7 +101,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, maxNumIter, eps, randomize);
+        total_gain += louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, maxNumIter, eps, randomize);
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -114,7 +115,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
         
         z_changed = expand(H, H_new, H_new_partitioned, map_z, z);
       }
-      
+
+      LOG << "AON IP finished Louvain with total gain " << total_gain;
+
       //             3. Finalize Partitioning
       //                        <...>
 
@@ -220,23 +223,26 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
         >    ...
     - `if randomize`: the nodes are contracted in a random order:
         ```cpp
+        double total_gain = 0.0;
         while (improving && (iter++ < maxNumIter)) {
             improving = false;
-            
+            double gain = 0.0;
             if (randomize) {
-            vec<HypernodeID> nodes(numNodes, 0);
-            for (HypernodeID i = 0; i < numNodes; ++i) {
-                nodes[i] = i;
-            }
-            std::shuffle(nodes.begin(), nodes.end(), _rng);
-            for (const HypernodeID &i : nodes) {
-                improving = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
-            }
+                vec<HypernodeID> nodes(numNodes, 0);
+                for (HypernodeID i = 0; i < numNodes; ++i) {
+                    nodes[i] = i;
+                }
+                std::shuffle(nodes.begin(), nodes.end(), _rng);
+                for (const HypernodeID &i : nodes) {
+                    gain = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
+                }
             } else {
-            for (const HypernodeID &i : H_new_partitioned.nodes()) {
-                improving = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+                for (const HypernodeID &i : H_new_partitioned.nodes()) {
+                    gain = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
+                }
             }
-            }
+            total_gain += gain;
+            improving = (gain > eps);
         }
         ```
 
@@ -251,6 +257,8 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     - $s^{\_}$ is the original edge size in $H$ *(removal of parallel edges is not a problem)*
     
     **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
+
+    [For now] I introduced `const HypernodeID edgeSizeThreshold=1e3` parameter to avoid too big loops in gain computation and (more importantly) calculating with infinities (as inf - Inf = NaN &rarr; the gain is `NaN` &rArr; move isn't done)
 
 ### Introduce of the new IP to the framework
 

@@ -72,6 +72,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       PartitionedHypergraph H_new_partitioned;
       vec<HypernodeID> map_z(H.initialNumNodes(), kInvalidPartition);
       bool z_changed = false;
+      double total_gain = 0.0;
       /// [debug] long long counter = 0;
       do {
         /// [debug] if ((counter++) % 100 == 0)
@@ -94,7 +95,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        louvainStep(H_new, H_new_partitioned, map_z, beta, gamma);
+        total_gain += louvainStep(H_new, H_new_partitioned, map_z, beta, gamma);
         /// [debug] if (counter % 100 == 1)
         /// [debug] std::cout << "Outer Iteration: made a step" << counter << std::endl;
 
@@ -111,6 +112,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
         /// [debug] if (counter % 100 == 1)
         /// [debug] std::cout << "Outer Iteration: expanded" << counter << std::endl;
       } while (z_changed);
+
+      LOG << "AON IP finished Louvain with total gain " << total_gain;
 
       // =====================================================
       //             3. Finalize Partitioning
@@ -147,7 +150,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
 }
 
 template<typename TypeTraits>
-void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z) {
+void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(
+        UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z) {
   vec<HypernodeID> community(H_new.initialNumNodes(), kInvalidPartition);
   for (const HypernodeID& hn : H_new.nodes()) {
     community[hn] = H_new.communityID(hn);
@@ -166,7 +170,10 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(UnderlyingHyperg
 }
 
 template<typename TypeTraits>
-void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter, const double eps, const bool randomize) {
+double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(
+            UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, 
+            const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold, 
+            const long long maxNumIter, const double eps, const bool randomize) {
   // precompute neighboring nodes
   HypernodeID numNodes = H_new.initialNumNodes();
   ASSERT(H_new_partitioned.k() == static_cast<PartitionID>(numNodes), 
@@ -197,9 +204,11 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHyp
            "node " << i << " has more neighboring nodes than partitions");
   }
 
+  double total_gain = 0.0;
   bool improving = true;
   long long iter = 0;
   while (improving && (iter++ < maxNumIter)) {
+    double gain = 0.0;
     improving = false;
       /// [debug] if (iter % 100 == 1) {
       /// [debug]   std::cout << "Louvain: round " << iter << std::endl;
@@ -212,18 +221,31 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(UnderlyingHyp
       }
       std::shuffle(nodes.begin(), nodes.end(), _rng);
       for (const HypernodeID &i : nodes) {
-        improving = louvainStepForANode(i, neighbors[i], visited, H_new, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+        gain = louvainStepForANode(i, neighbors[i], visited, 
+                                        H_new, H_new_partitioned, map_z, 
+                                        beta, gamma, edgeSizeThreshold, 
+                                        eps, randomize);
       }
     } else {
       for (const HypernodeID &i : H_new_partitioned.nodes()) {
-        improving = louvainStepForANode(i, neighbors[i], visited, H_new, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize);
+        gain = louvainStepForANode(i, neighbors[i], visited, 
+                                        H_new, H_new_partitioned, map_z, 
+                                        beta, gamma, edgeSizeThreshold, 
+                                        eps, randomize);
       }
     }
+    total_gain += gain;
+    improving = (gain > eps);
   }
+  return total_gain;
 }
 
 template<typename TypeTraits>
-bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, const vec<double>& beta, const vec<double>& gamma, const long long maxNumIter, const double eps, const bool randomize) {
+double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(
+        const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, 
+        UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, 
+        const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold, 
+        const double eps, const bool randomize) {
   /// [debug] if (i % 1000 == 0)
   /// [debug] std::cout << "Louvain: node " << i << std::endl;
   HypernodeID part_i = H_new_partitioned.partID(i);
@@ -235,12 +257,12 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const
   PartitionID best_partition = part_i;
   // for (const HyperedgeID &he : H_new_partitioned.incidentEdges(i)) {
   //   for (const PartitionID &A : H_new_partitioned.connectivitySet(he)) {
-  bool improving = false;
+  // bool improving = false;
   for (const HypernodeID &neighbor : neighbors_i) {
     PartitionID A = H_new_partitioned.partID(neighbor);
     if (visitedParts[A]) continue;
     visitedParts[A] = true;
-    double gain = QAONGain(H_new_partitioned, i, A, beta, gamma);
+    double gain = QAONGain(H_new_partitioned, i, A, beta, gamma, edgeSizeThreshold);
     if (gain > best_gain) {
       best_gain = gain;
       best_partition = A;
@@ -248,17 +270,20 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(const
   } 
 
   if (best_gain > eps) {
-    improving = true;
+    // improving = true;
     /// [debug] std::cout << "Louvain: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")" << std::endl;
     // Update map_z with the new partition
     map_z[H_new.communityID(i)] = best_partition;
     H_new_partitioned.changeNodePart(i, part_i, best_partition);
   }
-  return improving;
+  return best_gain;
 }
 
 template<typename TypeTraits>
-double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(PartitionedHypergraph& H_new_partitioned, const HypernodeID i, const PartitionID A, const vec<double>& beta, const vec<double>& gamma) {
+double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
+                      PartitionedHypergraph& H_new_partitioned, 
+                      const HypernodeID i, const PartitionID A, 
+                      const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold) {
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity-Louvain-Like gain function
   PartitionID part_i = H_new_partitioned.partID(i);
@@ -277,7 +302,9 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(PartitionedHyp
   double d_i = static_cast<double>(H_new_partitioned.nodeOriginalWeightedDegree(i));
 
   double delta_vol = 0.0;
-  for (HypernodeID k = 1; k <= H_new_partitioned.originalMaxEdgeSize(); k ++) {
+  HypernodeID k_max = std::min(H_new_partitioned.originalMaxEdgeSize(), 
+                               edgeSizeThreshold);
+  for (HypernodeID k = 2; k <= k_max; k ++) {
     // _gamma[k] = \beta_k \cdot \gamma_k
     delta_vol += gamma[k] * (std::pow(v_i, k) - std::pow(v_i - d_i, k) + 
                              std::pow(v_A, k) - std::pow(v_A + d_i, k));
