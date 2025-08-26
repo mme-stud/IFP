@@ -771,10 +771,12 @@ class StaticHypergraph {
 
   // ! Save current edge sizes as original edge sizes
   void snapshotOriginalEdgeSizes() {
+    _original_max_edge_size = 0;
     for (HyperedgeID e : edges()) {
-      hyperedge(e).setOriginalSize(hyperedge(e).size());
+      HypernodeID size_now = hyperedge(e).size();
+      hyperedge(e).setOriginalSize(size_now);
+      _original_max_edge_size = std::max(_original_max_edge_size, size_now);
     }
-    _original_max_edge_size = _max_edge_size;
   }
 
   // ! Get the edge size at the moment of the last snapshot

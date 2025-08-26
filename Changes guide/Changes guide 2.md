@@ -135,7 +135,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     class StaticHypergraph {
         // ...
         public:
-            void snapshotOriginalEdgeSizes(); // saves sizes
+            void snapshotOriginalEdgeSizes(); // saves sizes, manually computes _original_max_edge_size (as _max_edge_size could not be initialized yet)
             HypernodeID originalEdgeSize(HyperedgeID e) const;
             HypernodeID originalMaxEdgeSize(HyperedgeID e) const; 
         private:
