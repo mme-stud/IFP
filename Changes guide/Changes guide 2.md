@@ -6,6 +6,7 @@
 - in `partitioner.cpp` change `k` to the number of found communities, if `cluster && community_detection=true` (for now, I just recalculate the number of communities as done in `partitioner_output.cpp`)
 - in `multilevel.cpp` before uncoarsening stage check if k has changed (+correctly change it, if so) &rarr; done, not used for now
 - **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
+- enable single pin net removal (they are never cutting and volumes are tracked correctly)
 
 
 ## Questions
@@ -126,7 +127,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
       H.snapshotOriginalEdgeSizes();
       H.snapshotOriginalWeightedDegreesAndTotalVolume();
       H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
-      H.disableSinglePinNetsRemoval(); // to not lose contracted edges
+      H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       //          1. Singleton initial partitioning
       //                         <...>

@@ -278,9 +278,9 @@ namespace mt_kahypar {
   // !        based on the partitioning objective.
   void Context::setupSinglePinNetsRemoval() {
     switch (partition.objective) {
-      case Objective::conductance_local:
-      case Objective::conductance_global:
-        coarsening.disable_single_pin_nets_removal = true; break;
+      //case Objective::conductance_local:
+      //case Objective::conductance_global:
+      //  coarsening.disable_single_pin_nets_removal = true; break;
       default:
         coarsening.disable_single_pin_nets_removal = false; break;
     }

@@ -741,6 +741,11 @@ My changes:
 - use ~~`setOnlyNodePart(..)` + `initializePartition()`~~ [no, because fixed vertices are already set with `setNodePart()` &rarr; breakes assetion in `initializePartition()`] call `.needsConductancePriorityQueue()` at the end in both `singleton_initial_partitioner` and `random_initial_partitioner`. Hopefully, this way program doesn't hang... [**TODO** sometime later: find out, what's wrong with `setNodePart()`!!!]
 
 ### Part 2.2.1 Side trip: Disabling single-pin net removal
+**Update**: there is generally no need to disable single pin net removal (after input):
+- spn is never cutting
+- original volumes are tracked and they remember removed spn's.
+&rArr; `Context::setupSyncUpdatePreference()` always sets `_disable_single_pin_nets_removal = false`
+
 Note: enabling collective sync_update is discussed in the section about Attributed Gain (Problem with `SyncronizedEdgeUpdate`). The new atributes, set-up functions and getters / setters are analogous to single-pin net removal
 
 #### Rationale
@@ -816,7 +821,7 @@ Mirroring interfaces in `partitioned_graph.h`:`
 #### Context
 **!!!** At the hypergraph input `hypergraph = io::readInputFile(..)`, single-pin nets are removed if the corresponding argument `bool remove_single_pin_nets = true` is not reset to `false`
 
-&rArr; call `context.setupSinglePinNetsRemoval()` as early as possible after setting `Objective`
+&rArr; call `context.setupSinglePinNetsRemoval()` as early as possible after setting `Objective` [now it does nothing: see *update* at the beginning od spn-removal section 2.2.1]
 - `mt-kahypar/partition`:
 	- `context.h`:
 		- `CoarseningParameters`: 

@@ -52,7 +52,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl() {
       H.snapshotOriginalEdgeSizes();
       H.snapshotOriginalWeightedDegreesAndTotalVolume();
       H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
-      H.disableSinglePinNetsRemoval(); // to not lose contracted edges
+      H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       // current communities of hg: z: node -> community
       vec<HypernodeID> z(H.initialNumEdges(), kInvalidPartition);
@@ -246,6 +246,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(
         UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, 
         const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold, 
         const double eps, const bool randomize) {
+  unused(randomize);
   /// [debug] if (i % 1000 == 0)
   /// [debug] std::cout << "Louvain: node " << i << std::endl;
   HypernodeID part_i = H_new_partitioned.partID(i);
