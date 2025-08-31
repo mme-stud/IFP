@@ -1963,7 +1963,7 @@ public:
   HypergraphVolume decrementCutWeightOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::decrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_sub(w, std::memory_order_relaxed);
+    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_sub(w, std::memory_order_relaxed) - w;
     return cut_weight_after;
   }
 
@@ -1971,7 +1971,7 @@ public:
   HypergraphVolume incrementCutWeightOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::incrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_add(w, std::memory_order_relaxed);
+    const HypergraphVolume cut_weight_after = _part_cut_weights[p].fetch_add(w, std::memory_order_relaxed) + w;
     return cut_weight_after;
   }
 
@@ -1979,7 +1979,7 @@ public:
   HypergraphVolume decrementVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::decrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume volume_after = _part_volumes[p].fetch_sub(w, std::memory_order_relaxed);
+    const HypergraphVolume volume_after = _part_volumes[p].fetch_sub(w, std::memory_order_relaxed) - w;
     return volume_after;
   }
 
@@ -1987,7 +1987,7 @@ public:
   HypergraphVolume incrementVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::incrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume volume_after = _part_volumes[p].fetch_add(w, std::memory_order_relaxed);
+    const HypergraphVolume volume_after = _part_volumes[p].fetch_add(w, std::memory_order_relaxed) + w;
     return volume_after;
   }
 
@@ -1995,7 +1995,7 @@ public:
   HypergraphVolume decrementOriginalVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::decrementVolumeOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_sub(w, std::memory_order_relaxed);
+    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_sub(w, std::memory_order_relaxed) - w;
     return part_original_volume_after;
   }
 
@@ -2003,7 +2003,7 @@ public:
   HypergraphVolume incrementOriginalVolumeOfBlock(const PartitionID p, const HypergraphVolume w) {
     /// [debug] std::cerr << "PartitionedHypergraph::incrementCutWeightOfBlock(p, w)" << std::endl;
     ASSERT(p != kInvalidPartition && p < _k);
-    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_add(w, std::memory_order_relaxed);
+    const HypergraphVolume part_original_volume_after = _part_original_volumes[p].fetch_add(w, std::memory_order_relaxed) + w;
     return part_original_volume_after;
   }
 
