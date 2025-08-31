@@ -1277,13 +1277,15 @@ Current conductance implementation supports collective `sync_update`s, but their
     	}
 		ASSERT(delta >= 0 || _context.objective == Objective::conductance_local, 
 			   "LP refiner worsen solution quality");
-      	
-		LOG << " Actual LP objective delta: " << V(old_quality - best_metrics.quality);
-		utils::Utilities::instance().getStats(_context.utility_id)
-						.update_stat("lp_improvement", old_quality - best_metrics.quality);
-		
+			
+			
+		LOG << " LP Refiner: current objective value: " << V(best_metrics.quality);
+		LOG << " LP Refiner: actual objective delta: " << V(old_quality - best_metrics.quality);
+			utils::Utilities::instance().getStats(_context.utility_id)
+							.update_stat("lp_improvement", old_quality - best_metrics.quality);
+			
 		if (delta < 0) {
-		  LOG << " Label Propagation Refiner: Detected negative delta." 
+		  LOG << " LP Refiner: Detected negative delta." 
 			  << V(delta) << V(old_quality) << V(best_metrics.quality);
 		  // Reason should be an overflow in best_metrics.quality (-inf, as many good local moves)
 		  return true; /* improvement found */

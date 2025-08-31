@@ -180,6 +180,9 @@ mt_kahypar_status_t mt_kahypar_set_context_parameter(mt_kahypar_context_t* conte
       } else if ( objective == "conductance_global" ) {
         c.partition.objective = Objective::conductance_global;
         return mt_kahypar_status_t::SUCCESS;
+      } else if ( objective == "aon_hypermodularity" ) {
+        c.partition.objective = Objective::aon_hypermodularity;
+        return mt_kahypar_status_t::SUCCESS;
       }
       report_conversion_error("one of km1, cut, soed");
       return mt_kahypar_status_t::INVALID_PARAMETER;
@@ -216,6 +219,8 @@ void mt_kahypar_set_partitioning_parameters(mt_kahypar_context_t* context,
       c.partition.objective = Objective::conductance_local; break;
     case CONDUCTANCE_GLOBAL:
       c.partition.objective = Objective::conductance_global; break;
+    case AON_HYPERMODULARITY:
+      c.partition.objective = Objective::aon_hypermodularity; break;
   }
 }
 
@@ -243,6 +248,8 @@ mt_kahypar_objective_t mt_kahypar_get_objective(const mt_kahypar_context_t* cont
       return CONDUCTANCE_LOCAL;
     case Objective::conductance_global:
       return CONDUCTANCE_GLOBAL;
+    case Objective::aon_hypermodularity:
+      return AON_HYPERMODULARITY;
     case Objective::steiner_tree:
     case Objective::UNDEFINED:
       return static_cast<mt_kahypar_objective_t>(0);
@@ -685,6 +692,11 @@ mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_local(const mt_kahypar_part
 // [my]
 mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_global(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
   return lib::conductance_global<true>(partitioned_hg);
+}
+
+// [Adil]
+mt_kahypar_hyperedge_weight_t mt_kahypar_aon_hypermodularity(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
+  return lib::aon_hypermodularity<true>(partitioned_hg);
 }
 
 mt_kahypar_hyperedge_weight_t mt_kahypar_steiner_tree(const mt_kahypar_partitioned_hypergraph_t partitioned_hg,

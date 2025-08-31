@@ -393,4 +393,12 @@ HyperedgeWeight conductance_global(mt_kahypar_partitioned_hypergraph_t p) {
   });
 }
 
+// [my]
+template<bool Throwing>
+HyperedgeWeight aon_hypermodularity(mt_kahypar_partitioned_hypergraph_t p) {
+  return switch_phg<HyperedgeWeight, Throwing>(p, [&](const auto& phg) {
+    return metrics::quality(phg, Objective::aon_hypermodularity);
+  });
+}
+
 } // namespace lib

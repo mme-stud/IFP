@@ -72,7 +72,7 @@ using HypernodeWeight = int32_t;
 using HyperedgeWeight = int32_t;
 using HypergraphVolume = uint64_t;
 using PartitionID = int32_t;
-using Gain = HyperedgeWeight;
+using Gain = HyperedgeWeight; // ToDo: change to double_t
 
 using ArcWeight = double;
 
@@ -196,6 +196,18 @@ struct SynchronizedEdgeUpdate {
   HypergraphVolume weighted_degree; // only the used version!!!
   HypergraphVolume total_volume; // only the used version!!!
   vec<ds::ConductanceInfo> top_three_conductance_info_before;
+  // (new) For AON-Hypermodularity:
+  //! Pointers / views to the *global* βₖ and γₖ arrays of the **current
+  //! hierarchy level**.  They never change during the whole node move, so a
+  //! (const) pointer is enough and avoids copying the vectors for every edge.
+  const vec<double>* beta_vec        = nullptr;    // same object for all edges
+  const vec<double>* gamma_vec       = nullptr;
+  HyperedgeID original_edge_size;
+  HyperedgeID hn_degree;
+  HypergraphVolume original_volume_from_after;
+  HypergraphVolume original_volume_to_after;
+  HypergraphVolume original_weighted_degree;
+  HyperedgeID max_edge_size = kInvalidHyperedge;
 };
 
 struct NoOpDeltaFunc {

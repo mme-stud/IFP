@@ -49,6 +49,8 @@ struct BipartitioningPolicy {
         throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_local");
       case GainPolicy::conductance_global: 
         throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_global");
+      case GainPolicy::aon_hypermodularity:
+        return true;
       case GainPolicy::none: throw InvalidParameterException("Gain policy is unknown");
     }
     throw InvalidParameterException("Gain policy is unknown");
@@ -70,6 +72,8 @@ struct BipartitioningPolicy {
         throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_local");
       case GainPolicy::conductance_global:
         throw UnsupportedOperationException("Recursive bipartitioning is not supported for the GainPolicy::conductance_global");
+      case GainPolicy::aon_hypermodularity:
+        return 1;
       case GainPolicy::none: throw InvalidParameterException("Gain policy is unknown");
     }
     throw InvalidParameterException("Gain policy is unknown");

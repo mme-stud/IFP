@@ -1054,6 +1054,15 @@ public:
       sync_update.to = to;
       sync_update.target_graph = _target_graph;
       sync_update.edge_locks = &_pin_count_update_ownership;
+      // (new) for aon_hypermodularity objective
+      sync_update.beta_vec = &betaVector();        // constant for the whole move
+      sync_update.gamma_vec = &gammaVector();
+      // sync_update.original_edge_size = originalEdgeSize(he); // in updatePinCountOfHyperedge(...)
+      sync_update.hn_degree = nodeDegree(u);
+      sync_update.original_volume_from_after = orig_vol_from_after;
+      sync_update.original_volume_to_after = orig_vol_to_after;
+      sync_update.original_weighted_degree = node_original_weighted_deg_u;
+      sync_update.max_edge_size = topLevelMaxEdgeSize();      // same for every edge
       // (new) for conductance objective
       if (needsConductancePriorityQueue()) {
         sync_update.k = _k;
@@ -1933,6 +1942,7 @@ public:
     sync_update.he = he;
     sync_update.edge_weight = edgeWeight(he);
     sync_update.edge_size = edgeSize(he);
+    sync_update.original_edge_size = originalEdgeSize(he);
     _pin_count_update_ownership[he].lock();
     if ( !collectiveSyncUpdatesEnabled() ) { 
       // conductance objective supports only collective sync updates

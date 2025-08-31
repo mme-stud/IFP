@@ -72,6 +72,8 @@ class GainCachePtr {
       case GainPolicy::conductance_global:
         // To be changed to ConductanceGlobalGainCache later
         return function(cast<CutGainCache>(gain_cache));
+      case GainPolicy::aon_hypermodularity:
+        return function(cast<Km1GainCache>(gain_cache));
       case GainPolicy::soed:
       #ifdef KAHYPAR_ENABLE_SOED_METRIC
         return function(cast<SoedGainCache>(gain_cache));
@@ -121,6 +123,8 @@ class GainCachePtr {
         case GainPolicy::conductance_global:
           // To be changed to ConductanceGlobalGainCache later
           return function(cast<CutGainCache>(gain_cache));
+        case GainPolicy::aon_hypermodularity:
+          return function(cast<Km1GainCache>(gain_cache));
         #ifdef KAHYPAR_ENABLE_SOED_METRIC
         case GainPolicy::soed:
           return function(cast<SoedGainCache>(gain_cache));
@@ -143,6 +147,7 @@ class GainCachePtr {
       case GainPolicy::conductance_local: return constructGainCache<CutGainCache>(context);
       // to be changed to ConductanceGlobalGainCache
       case GainPolicy::conductance_global: return constructGainCache<CutGainCache>(context);
+      case GainPolicy::aon_hypermodularity: return constructGainCache<Km1GainCache>(context);
       #ifdef KAHYPAR_ENABLE_SOED_METRIC
       case GainPolicy::soed: return constructGainCache<SoedGainCache>(context);
       #endif

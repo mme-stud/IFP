@@ -110,7 +110,8 @@ typedef enum {
   KM1,
   SOED,
   CONDUCTANCE_LOCAL,
-  CONDUCTANCE_GLOBAL
+  CONDUCTANCE_GLOBAL,
+  AON_HYPERMODULARITY,
 } mt_kahypar_objective_t;
 
 /**

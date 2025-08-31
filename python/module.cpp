@@ -151,7 +151,9 @@ PYBIND11_MODULE(mtkahypar, m) {
     .value("KM1", Objective::km1)
     .value("SOED", Objective::soed)
     .value("CONDUCTANCE_LOCAL", Objective::conductance_local)
-    .value("CONDUCTANCE_GLOBAL", Objective::conductance_global);
+    .value("CONDUCTANCE_GLOBAL", Objective::conductance_global)
+    .value("AON_HYPERMODULARITY", Objective::aon_hypermodularity)
+    ;
 
   // ####################### Exceptions #######################
 
@@ -652,6 +654,8 @@ Construct a partitioned hypergraph from this hypergraph.
       "Computes the local conductance metric of the partition")
     .def("conductance_global", &lib::conductance_global<true>,
       "Computes the global conductance metric of the partition")
+    .def("aon_hypermodularity", &lib::aon_hypermodularity<true>,
+      "Computes the AON-Hypermodularity metric of the partition")
     .def("steiner_tree",
       [&](mt_kahypar_partitioned_hypergraph_t p, mt_kahypar_py_target_graph_t graph) {
         return lib::switch_phg<PartitionID, true>(p, [&](auto& phg) {

@@ -478,6 +478,109 @@ void Pool<TypeTraits>::bipartition(...) {
 
 ### Problems
 
+## AON Hypermodularity Objective (for comparimg)
+Reference: Adil's commit [ab9be07](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bbe77c158bf8e6f53166ea3c67ce526#diff-3a1538bb7d62a2dd66446fc81ad9973acdfafbc028c374139a2e1977a98b89b3)
+
+
+### Registration
+- `include/`:
+    - `mtkahypar.h` [instead of `libmtkahypar.h`]:
+        + \+ `mt_kahypar_aon_hypermodularity(phg)`
+    - `mtkahypartypes.h` [instead of `libmtkahypartypes.h`]:
+        + \+ `mt_kahypar_objective_t AON_HYPERMODULARITY`
+    - `lib_generic_impls.h` [my]:
+        + \+ `aon_hypermodularity(phg)`
+- `lib/mtkahypar.cpp` [instead of `lib/libmtkahypar.cpp`]:
+    + \+ in `mt_kahypar_set_context_parameter(..)`, `mt_kahypar_set_partitioning_parameters(..)`, `mt_kahypar_get_objective(..)`,  add a case for `aon_hypermodularity`
+    + \+ `mt_kahypar_aon_hypermodularity(phg)` - returns value
+-  `mt-kahypar/`:
+    - `io/`:
+        - `sql_plottools_serializer.cpp`:
+            - print `"aon_hypermodularity="` and `metric::quality`
+        - `partitioning_output.cpp`:
+            - print in `printObjectives(..)`
+    - `partition/`:
+        - `context.cpp`:
+            - in `setupGainPolicy()` add case for `aon_hypermodularity` objective
+        - `context_enum_classes`:
+            - `.cpp`: add (2) cases for `aon_hypermodularity` objective 
+            - `.h`: add `aon_hypermodularity` to 2 enums 
+        - `metrics.cpp`:
+            + \+ `struct ObjectiveFunction` for `aon_hypermodularity`
+            - \+ `Gain aonVolumeTerm(phg)` - a help function (**ToDo: change to Gain = double**)
+            - \+ add `aon_hypermodularity` case to `Gain compute_objective_parallel(phg)`, `Gain compute_objective_sequentially(phg)`, `quality(..)`, `contribution(..)`
+        - `refinement/`: 
+            - `gains`:
+                - \+ `aon_hypermodularity/`:
+                    + \+ `aon_hypermodularity_attributed_gains.h`
+                    + \+ `aon_hypermodularity_gain_computation.h`
+                - `bipartitioning_policy.h`:
+                    - `useCutNetSplitting = true`, `nonCutEdgeMultiplier = 1` for `aon_hypermodularity`
+                - `gain_cache_ptr.h`:
+                    - add `aon_hypermodularity` case in `applyWithConcreteGainCache(..)`, `applyWithConcreteGainCacheForHG(..)`, `constructGainCache(..)` (`Km1GainCache` **!!**)
+                - `gain_definitions.h`:
+                    - include `aon_hypermodularity` (2)
+                    case in `Gain::compute(..)`
+                    - \+ `AONHypermodularityGainTypes`:
+                        ```cpp
+                        struct AONHypermodularityGainTypes : public kahypar::meta::PolicyBase {
+                            using GainComputation = AONHypermodularityGainComputation;
+                            using AttributedGains = AONHypermodularityAttributedGains;
+                            using GainCache = Km1GainCache;
+                            using DeltaGainCache = DeltaKm1GainCache;
+                            using Rollback = Km1Rollback;
+                            using FlowNetworkConstruction = Km1FlowNetworkConstruction;
+                        };
+                        ```
+                    - add `aon_hypermodularity` to `GainTypes`, `_LIST_HYPERGRAPH_COMBINATIONS`, `_INSTANTIATE_CLASS_MACRO_FOR_HYPERGRAPH_COMBINATIONS`, `SWITCH_HYPERGRAPH_GAIN_TYPES`
+        - `registries/register_policy.cpp`:
+            - register `aon_hypermodularity` under `Gain Type Policies`
+
+- [my] `python/module.cpp`: 
+    - \+ add new objective in `### Enum Types ###`
+    - \+ register `aon_hypermodularity` with calculating function
+
+### Implementation
+
+
+- Save betas and gammas:
+    -  `mt-kahypar/datastructures/hypergraph_common.h`: add `const *beta_vec, *gamma_vec` and `max_edge_size` to `SynchronizedEdgeUpdate`:
+    ```cpp
+    struct SynchronizedEdgeUpdate {
+      //                  <...>
+      // (new) For AON-Hypermodularity:
+      //! Pointers / views to the *global* βₖ and γₖ arrays of the **current
+      //! hierarchy level**.  They never change during the whole node move, so a
+      //! (const) pointer is enough and avoids copying the vectors for every edge.
+      const vec<double>* beta_vec        = nullptr;    // same object for all edges
+      const vec<double>* gamma_vec       = nullptr;
+      HyperedgeID original_edge_size;
+      HyperedgeID hn_degree;
+      HypergraphVolume original_volume_from_after;
+      HypergraphVolume original_volume_to_after;
+      HypergraphVolume original_weighted_degree;
+      HyperedgeID max_edge_size = kInvalidHyperedge;
+    };
+    
+    ```
+    - set in `partitioned_hypergraph.h`, `changeNodePart(..)`
+
+- snapshot original edge sizes for AON Hypermodularity: in `partitioner.cpp`, `precomputeHyperModularityParameters()`
+- disable error of missing `-k / --blocks`, `-e / --epsilon` parameter for `aon_hypermodularity` (and `conductance_local`, `conductance_global`):
+    - `mt-kahypar/io/command_line_options.cpp`: `processCommandLineInput(...)`
+- help functions in `gain_computation_base.h`:
+    + \+ `aonVolume(sync_update)` calling `AttributedGains::volumeDelta()`
+    + \+ `setLocalDelta(moveGain)` (**ToDo: check, where / if used**)
+    ```cpp
+    void setLocalDelta(Gain moveGain) {
+      _deltas.local() += moveGain;
+    }
+    ```
+- to print the resulting double AON Hypermodularity: 
+    - `compute_double_aon_hypermodularity(phg)` in `metrics.h, cpp`
+    - \+ `define AON_HYPERMODULARITY_DOUBLE` in `metrics.cpp`
+    - print in `printObjectives` in `partitioning_output.cpp`
+
 ## Label Propagation
 
 ### Problems:

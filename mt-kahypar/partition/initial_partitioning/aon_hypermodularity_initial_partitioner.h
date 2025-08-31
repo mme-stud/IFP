@@ -51,13 +51,13 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
     _rng(seed),
     _tag(tag) { }
 
- private:
   void partitionImpl(const HypernodeID edgeSizeThreshold, 
                      const long long maxNumIter, 
                      const double eps, 
                      const bool randomize,
                      bool useOriginalEdgeSizes);
   
+ private:
   void partitionImpl() final {
     partitionImpl(
       1e3 /* edgeSizeThreshold */,

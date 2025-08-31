@@ -46,6 +46,8 @@
 #include "mt-kahypar/partition/refinement/gains/conductance_local/conductance_local_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/conductance_global/conductance_global_gain_computation.h"
 #include "mt-kahypar/partition/refinement/gains/conductance_global/conductance_global_attributed_gains.h"
+#include "mt-kahypar/partition/refinement/gains/aon_hypermodularity/aon_hypermodularity_gain_computation.h"
+#include "mt-kahypar/partition/refinement/gains/aon_hypermodularity/aon_hypermodularity_attributed_gains.h"
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
 #include "mt-kahypar/partition/refinement/gains/soed/soed_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/soed/soed_gain_computation.h"
@@ -126,6 +128,15 @@ struct ConductanceGlobalGainTypes : public kahypar::meta::PolicyBase {
   */
 };
 
+struct AONHypermodularityGainTypes : public kahypar::meta::PolicyBase {
+    using GainComputation = AONHypermodularityGainComputation;
+    using AttributedGains = AONHypermodularityAttributedGains;
+    using GainCache = Km1GainCache;
+    using DeltaGainCache = DeltaKm1GainCache;
+    using Rollback = Km1Rollback;
+    using FlowNetworkConstruction = Km1FlowNetworkConstruction;
+};
+
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
 struct SoedGainTypes : public kahypar::meta::PolicyBase {
   using GainComputation = SoedGainComputation;
@@ -190,7 +201,8 @@ struct GraphAndGainTypes : public kahypar::meta::PolicyBase {
 using GainTypes = kahypar::meta::Typelist<Km1GainTypes,
                                           CutGainTypes,
                                           ConductanceLocalGainTypes,
-                                          ConductanceGlobalGainTypes
+                                          ConductanceGlobalGainTypes,
+                                          AONHypermodularityGainTypes
                                           ENABLE_SOED(COMMA SoedGainTypes)
                                           ENABLE_STEINER_TREE(COMMA SteinerTreeGainTypes)
                                           ENABLE_GRAPHS(COMMA CutGainForGraphsTypes)
@@ -200,7 +212,8 @@ using GainTypes = kahypar::meta::Typelist<Km1GainTypes,
   GraphAndGainTypes<TYPE_TRAITS, Km1GainTypes>,                                           \
   GraphAndGainTypes<TYPE_TRAITS, CutGainTypes>,                                           \
   GraphAndGainTypes<TYPE_TRAITS, ConductanceLocalGainTypes>,                              \
-  GraphAndGainTypes<TYPE_TRAITS, ConductanceGlobalGainTypes>                              \
+  GraphAndGainTypes<TYPE_TRAITS, ConductanceGlobalGainTypes>,                             \
+  GraphAndGainTypes<TYPE_TRAITS, AONHypermodularityGainTypes>                             \
   ENABLE_SOED(COMMA GraphAndGainTypes<TYPE_TRAITS COMMA SoedGainTypes>)                   \
   ENABLE_STEINER_TREE(COMMA GraphAndGainTypes<TYPE_TRAITS COMMA SteinerTreeGainTypes>)
 
@@ -220,6 +233,7 @@ using GraphAndGainTypesList = kahypar::meta::Typelist<_LIST_HYPERGRAPH_COMBINATI
   template class C(GraphAndGainTypes<TYPE_TRAITS COMMA CutGainTypes>);                                \
   template class C(GraphAndGainTypes<TYPE_TRAITS COMMA ConductanceLocalGainTypes>);                   \
   template class C(GraphAndGainTypes<TYPE_TRAITS COMMA ConductanceGlobalGainTypes>);                  \
+  template class C(GraphAndGainTypes<TYPE_TRAITS COMMA AONHypermodularityGainTypes>);                  \
   ENABLE_SOED(template class C(GraphAndGainTypes<TYPE_TRAITS COMMA SoedGainTypes>);)                  \
   ENABLE_STEINER_TREE(template class C(GraphAndGainTypes<TYPE_TRAITS COMMA SteinerTreeGainTypes>);)
 
@@ -248,6 +262,7 @@ using GraphAndGainTypesList = kahypar::meta::Typelist<_LIST_HYPERGRAPH_COMBINATI
     case GainPolicy::cut: _RETURN_COMBINED_POLICY(TYPE_TRAITS, CutGainTypes)                  \
     case GainPolicy::conductance_local: _RETURN_COMBINED_POLICY(TYPE_TRAITS, ConductanceLocalGainTypes)   \
     case GainPolicy::conductance_global: _RETURN_COMBINED_POLICY(TYPE_TRAITS, ConductanceGlobalGainTypes) \
+    case GainPolicy::aon_hypermodularity: _RETURN_COMBINED_POLICY(TYPE_TRAITS, AONHypermodularityGainTypes)   \
     case GainPolicy::soed: ENABLE_SOED(_RETURN_COMBINED_POLICY(TYPE_TRAITS, SoedGainTypes))   \
     case GainPolicy::steiner_tree:                                                            \
       ENABLE_STEINER_TREE(_RETURN_COMBINED_POLICY(TYPE_TRAITS, SteinerTreeGainTypes))         \

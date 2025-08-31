@@ -203,6 +203,10 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
           && !hypergraph.is_graph) {
         oss << " conductance_global=" << metrics::quality(hypergraph, Objective::conductance_global);
       }
+      if (context.partition.objective != Objective::aon_hypermodularity
+          && !hypergraph.is_graph) {
+        oss << " aon_hypermodularity=" << metrics::quality(hypergraph, Objective::aon_hypermodularity);
+      }
       oss << " imbalance=" << metrics::imbalance(hypergraph, context);
     }
     oss << " totalPartitionTime=" << elapsed_seconds.count();

@@ -127,11 +127,22 @@ class GainComputationBase {
     _deltas.local() += AttributedGains::gain(sync_update);
   }
 
+  Gain aonVolume(const SynchronizedEdgeUpdate& sync_update) {
+    if(_context.partition.objective == Objective::aon_hypermodularity) {
+      return AttributedGains::volumeDelta(sync_update);
+    }
+    return 0;
+  }
+
   // ! Returns the delta in the objective function for all moves
   // ! performed by the calling thread relative to the last call
   // ! reset()
   Gain localDelta() {
     return _deltas.local();
+  }
+
+  void setLocalDelta(Gain moveGain) {
+      _deltas.local() += moveGain;
   }
 
   // ! Returns the overall delta of all moves performed by

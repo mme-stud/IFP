@@ -291,10 +291,10 @@ namespace mt_kahypar {
   }
 
   bool Context::usesHypermodularityIP() const {
-    if (context.initial_partitioning.enabled_ip_algos[
+    if (initial_partitioning.enabled_ip_algos[
       static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
       return true;
-    } else if (context.initial_partitioning.enabled_ip_algos[
+    } else if (initial_partitioning.enabled_ip_algos[
       static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity_kernel)]) {
       return true;
     }
@@ -480,7 +480,7 @@ namespace mt_kahypar {
       // Hypermodularity IPs are detected in loop
       for ( uint8_t alg = 0; alg < num_algs; ++alg ) {
         if (initial_partitioning.enabled_ip_algos[alg]) {
-          if ( allowed_ip_algs[alg] || isHypermodularityIP(alg) ) {
+          if ( allowed_ip_algs[alg] || isHypermodularityIP(static_cast<InitialPartitioningAlgorithm>(alg)) ) {
             allowed_ip_used = true;
           } else {
             initial_partitioning.enabled_ip_algos[alg] = false;
@@ -585,6 +585,7 @@ namespace mt_kahypar {
         case Objective::steiner_tree: partition.gain_policy = GainPolicy::steiner_tree; break;
         case Objective::conductance_local: partition.gain_policy = GainPolicy::conductance_local; break;
         case Objective::conductance_global: partition.gain_policy = GainPolicy::conductance_global; break;
+        case Objective::aon_hypermodularity: partition.gain_policy = GainPolicy::aon_hypermodularity; break;
         case Objective::UNDEFINED: partition.gain_policy = GainPolicy::none; break;
       }
     } else if ( partition.instance_type == InstanceType::graph ) {

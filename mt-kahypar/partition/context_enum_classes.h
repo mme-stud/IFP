@@ -83,6 +83,7 @@ enum class Objective : uint8_t {
   steiner_tree,
   conductance_local,
   conductance_global,
+  aon_hypermodularity,
   UNDEFINED
 };
 
@@ -95,6 +96,7 @@ enum class GainPolicy : uint8_t {
   steiner_tree_for_graphs,
   conductance_local,
   conductance_global,
+  aon_hypermodularity,
   none
 };
 

@@ -167,6 +167,47 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
   }
 };
 
+template <typename PartitionedHypergraph>
+struct ObjectiveFunction<PartitionedHypergraph, Objective::aon_hypermodularity> {
+  Gain operator()(const PartitionedHypergraph &phg,
+                  const HyperedgeID &he) const {
+    ASSERT(phg.hasAON());
+    ASSERT(phg.hasOriginalEdgeSizes());
+    std::size_t k = static_cast<std::size_t>(phg.originalEdgeSize(he));
+    // LOG << "Hyperedge " << he << " with size " << k;
+    if (k < 2) {
+      LOG << RED << "Size 1 edge " << he;
+      return 0;                               // ignore size=1 edges
+    }
+    if (phg.connectivity(he) == 1) return 0;           // not cut
+
+    double beta_k = phg.beta(k);                        // β_k from finest level
+    double w_e    = static_cast<double>(phg.edgeWeight(he));
+    // LOG << " returns weights = " << w_e << " times " << beta_k;
+    return static_cast<Gain>(w_e * beta_k );
+  }
+};
+
+template <typename PartitionedHypergraph>
+double aonVolumeTerm(const PartitionedHypergraph& phg)
+{
+  const std::size_t dmax = static_cast<std::size_t>(phg.topLevelMaxEdgeSize());
+  if (dmax < 2) return 0.0;
+
+  double term = 0.0;
+  for (std::size_t d = 2; d <= dmax; ++d) {
+    // LOG << "For edge size d = " << d << ": beta_d = " << phg.beta(d) << ", gamma_d = " << phg.gamma(d);
+    double inner = 0.0;
+    for (auto c = 0; c < phg.k(); ++c) {
+      inner += std::pow(phg.partOriginalVolume(c), static_cast<int>(d));
+    }
+    // term += phg.beta(d) * phg.gamma(d) * inner;
+    term += phg.gamma(d) * inner;
+  }
+  return term;
+}
+
+
 template<typename PartitionedHypergraph>
 HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) {
   ASSERT( !PartitionedHypergraph::is_graph, "Conductance objective is not supported for graphs" );
@@ -222,7 +263,14 @@ HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
   phg.doParallelForAllEdges([&](const HyperedgeID he) {
     obj.local() += func(phg, he);
   });
-  return obj.combine(std::plus<>()) / (PartitionedHypergraph::is_graph ? 2 : 1);
+  
+  if (objective != Objective::aon_hypermodularity) {
+    return obj.combine(std::plus<>()) / (PartitionedHypergraph::is_graph ? 2 : 1);
+  } else {
+    Gain edge_sum = obj.combine(std::plus<>());
+    Gain Q = edge_sum + aonVolumeTerm(phg);
+    return Q;
+  }
 }
 
 template<Objective objective, typename PartitionedHypergraph>
@@ -240,7 +288,15 @@ HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph& phg)
   for (const HyperedgeID& he : phg.edges()) {
     obj += func(phg, he);
   }
-  return obj / (PartitionedHypergraph::is_graph ? 2 : 1);
+
+  
+  if (objective != Objective::aon_hypermodularity) {
+    return obj / (PartitionedHypergraph::is_graph ? 2 : 1);
+  } else {
+    Gain edge_sum = obj;
+    Gain Q = edge_sum + aonVolumeTerm(phg);
+    return Q;
+  }
 }
 
 template<Objective objective, typename PartitionedHypergraph>
@@ -281,6 +337,9 @@ HyperedgeWeight quality(const PartitionedHypergraph& hg,
     case Objective::conductance_global:
       return parallel ? compute_objective_parallel<Objective::conductance_global>(hg) :
         compute_objective_sequentially<Objective::conductance_global>(hg);
+    case Objective::aon_hypermodularity:
+      return parallel ? compute_objective_parallel<Objective::aon_hypermodularity>(hg) :
+        compute_objective_sequentially<Objective::aon_hypermodularity>(hg);
     default: throw InvalidParameterException("Unknown Objective");
   }
   return 0;
@@ -297,6 +356,7 @@ HyperedgeWeight contribution(const PartitionedHypergraph& hg,
     case Objective::steiner_tree: return contribution<Objective::steiner_tree>(hg, he);
     case Objective::conductance_local: return contribution<Objective::conductance_local>(hg, he);
     case Objective::conductance_global: return contribution<Objective::conductance_global>(hg, he);
+    case Objective::aon_hypermodularity: return contribution<Objective::aon_hypermodularity>(hg, he);
     default: throw InvalidParameterException("Unknown Objective");
   }
   return 0;
@@ -396,6 +456,38 @@ double compute_double_conductance(const PartitionedHypergraph& phg) {
   */
 }
 
+template<typename PartitionedHypergraph>
+double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg) {
+  ASSERT( !PartitionedHypergraph::is_graph, "AON Hypermodularity objective is not supported for graphs" );
+  ASSERT(phg.hasAON());
+  ASSERT(phg.hasOriginalEdgeSizes());
+  
+  // Compute objective by iterating through all hyperedges
+  auto double_edge_gain = [&](const PartitionedHypergraph& phg, const HyperedgeID he) 
+    -> double
+    {
+    std::size_t k = static_cast<std::size_t>(phg.originalEdgeSize(he));
+    // LOG << "Hyperedge " << he << " with size " << k;
+    if (k < 2) {
+      return 0;                               // ignore size=1 edges
+    }
+    if (phg.connectivity(he) == 1) return 0;           // not cut
+
+    double beta_k = phg.beta(k);                        // β_k from finest level
+    double w_e    = static_cast<double>(phg.edgeWeight(he));
+    // LOG << " returns weights = " << w_e << " times " << beta_k;
+    return w_e * beta_k;
+  };
+
+  double edge_sum = 0.0;
+  for (const HyperedgeID& he : phg.hyperedges()) {
+    edge_sum += double_edge_gain(phg, he);
+  }
+  double Q = edge_sum + aonVolumeTerm(phg);
+  return Q;
+
+}
+
 namespace {
 #define OBJECTIVE_1(X) HyperedgeWeight quality(const X& hg, const Context& context, const bool parallel)
 #define OBJECTIVE_2(X) HyperedgeWeight quality(const X& hg, const Objective objective, const bool parallel)
@@ -404,6 +496,7 @@ namespace {
 #define IMBALANCE(X) double imbalance(const X& hypergraph, const Context& context)
 #define APPROX_FACTOR(X) double approximationFactorForProcessMapping(const X& hypergraph, const Context& context)
 #define CONDUCTANCE_DOUBLE(X) double compute_double_conductance(const X& phg)
+#define AON_HYPERMODULARITY_DOUBLE(X) double compute_double_aon_hypermodularity(const X& phg)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(OBJECTIVE_1)
@@ -413,5 +506,6 @@ INSTANTIATE_FUNC_WITH_PARTITIONED_HG(IS_BALANCED)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(IMBALANCE)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(APPROX_FACTOR)
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(CONDUCTANCE_DOUBLE)
+INSTANTIATE_FUNC_WITH_PARTITIONED_HG(AON_HYPERMODULARITY_DOUBLE)
 
 } // namespace mt_kahypar::metrics

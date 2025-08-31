@@ -796,7 +796,10 @@ namespace mt_kahypar {
              " - cut : cut-net metric (FM only supports km1 metric) \n"
              " - km1 : (lambda-1) metric\n"
              " - soed: sum-of-external-degree metric\n"
-             " - steiner_tree: maps a (hyper)graph onto a graph and optimizes the Steiner tree metric");
+             " - steiner_tree: maps a (hyper)graph onto a graph and optimizes the Steiner tree metric"
+             " - conductance_local: locally optimizes maximal conductance between clusters"
+             " - conductance_global: globally optimizes maximal conductance between clusters"
+             " - aon_hypermodularity: All-Or-Nothing hypermodularity metric");
 
     po::options_description preset_options("Preset Options", num_columns);
     preset_options.add_options()
@@ -845,6 +848,21 @@ namespace mt_kahypar {
     }
 
     po::notify(cmd_vm);
+
+    // Validate that blocks is specified
+    if ( (context.partition.objective != Objective::conductance_local && 
+          context.partition.objective != Objective::conductance_global && 
+          context.partition.objective != Objective::aon_hypermodularity) 
+        && !cmd_vm.count("blocks")) {
+      throw po::error("The --blocks option is required when the objective is not 'conductance_local/conductance_global/aon_hypermodularity'");
+    }
+    // Validate that Epsilon is specified
+    if ( (context.partition.objective != Objective::conductance_local && 
+          context.partition.objective != Objective::conductance_global && 
+          context.partition.objective != Objective::aon_hypermodularity) 
+        && !cmd_vm.count("epsilon")) {
+      throw po::error("The --epsilon option is required when the objective is not 'conductance_local/conductance_global/aon_hypermodularity'");
+    }
 
     po::options_description ini_line_options;
     ini_line_options.add(general_options)

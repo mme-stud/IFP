@@ -55,7 +55,7 @@ class AONHypermodularityKernelInitialPartitioner : public IInitialPartitioner {
   
   void partitionImpl() final;
 
-  AONHypermodularityInitialPartitioner<TypeTraits>& _aon_ip;
+  AONHypermodularityInitialPartitioner<TypeTraits> _aon_ip;
 };
 
 } // namespace mt_kahypar

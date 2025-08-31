@@ -119,6 +119,7 @@ namespace mt_kahypar {
       case Objective::steiner_tree: return os << "steiner_tree";
       case Objective::conductance_local: return os << "conductance_local";
       case Objective::conductance_global: return os << "conductance_global";
+      case Objective::aon_hypermodularity: return os << "aon_hypermodularity";
       case Objective::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -135,6 +136,7 @@ namespace mt_kahypar {
       case GainPolicy::steiner_tree_for_graphs: return os << "steiner_tree_for_graphs";
       case GainPolicy::conductance_local: return os << "conductance_local";
       case GainPolicy::conductance_global: return os << "conductance_global";
+      case GainPolicy::aon_hypermodularity: return os << "aon_hypermodularity";
       case GainPolicy::none: return os << "none";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -337,6 +339,8 @@ namespace mt_kahypar {
       return Objective::conductance_local;
     } else if (obj == "conductance_global") {
       return Objective::conductance_global;
+    } else if (obj == "aon_hypermodularity") {
+      return Objective::aon_hypermodularity;
     } else if (obj == "steiner_tree") {
       return Objective::steiner_tree;
     }

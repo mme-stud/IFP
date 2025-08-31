@@ -140,12 +140,13 @@ namespace mt_kahypar {
     ASSERT(delta >= 0 || _context.objective == Objective::conductance_local, 
            "LP refiner worsen solution quality");
 
-    LOG << " Actual LP objective delta: " << V(old_quality - best_metrics.quality);
+    LOG << " LP Refiner: current objective value: " << V(best_metrics.quality);
+    LOG << " LP Refiner: actual objective delta: " << V(old_quality - best_metrics.quality);
 		utils::Utilities::instance().getStats(_context.utility_id)
 						.update_stat("lp_improvement", old_quality - best_metrics.quality);
 		
     if (delta < 0) {
-      LOG << " Label Propagation Refiner: Detected negative delta." 
+      LOG << " LP Refiner: Detected negative delta." 
           << V(delta) << V(old_quality) << V(best_metrics.quality);
       // Reason should be an overflow in best_metrics.quality (-inf, as many good local moves)
       return true; /* improvement found */
@@ -244,6 +245,9 @@ namespace mt_kahypar {
     best_metrics = current_metrics;
 
     HEAVY_REFINEMENT_ASSERT(hypergraph.checkTrackedPartitionInformation(_gain_cache));
+    LOG << "Old Quality: " << old_quality << " and Current Quality: " << current_metrics.quality << " and diff: " << std::abs(old_quality - current_metrics.quality);
+    LOG << "Threshold " << _context.refinement.label_propagation.relative_improvement_threshold << " and cap: " << _context.refinement.label_propagation.relative_improvement_threshold * old_quality;
+ 
     return should_stop || old_quality - current_metrics.quality <
                           _context.refinement.label_propagation.relative_improvement_threshold * old_quality;
   }

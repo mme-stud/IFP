@@ -321,7 +321,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
 
   double delta_vol = 0.0;
   HypernodeID k_max = std::min({H_new_partitioned.originalMaxEdgeSize(), 
-                               static_cast<HypernodeID>(gamma.size()), // zeros at the end of gamma and beta are removed
+                               static_cast<HypernodeID>(gamma.size() - 1), // zeros at the end of gamma and beta are removed
                                edgeSizeThreshold});
   for (HypernodeID k = 2; k <= k_max; k ++) {
     // _gamma[k] = \beta_k \cdot \gamma_k

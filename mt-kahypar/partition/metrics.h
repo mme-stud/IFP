@@ -66,5 +66,8 @@ double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergr
 template<typename PartitionedHypergraph>
 double compute_double_conductance(const PartitionedHypergraph& phg);
 
+template<typename PartitionedHypergraph>
+double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg);
+
 }  // namespace metrics
 }  // namespace mt_kahypar

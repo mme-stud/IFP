@@ -456,6 +456,12 @@ namespace mt_kahypar::io {
       printKeyValue("Conductance (double)",
           metrics::compute_double_conductance(hypergraph));
     }
+    if ( context.partition.objective != Objective::aon_hypermodularity && !PartitionedHypergraph::is_graph ) {
+      printKeyValue(Objective::aon_hypermodularity,
+        metrics::quality(hypergraph, Objective::aon_hypermodularity));
+      printKeyValue("AON Hypermodularity (double)",
+        metrics::compute_double_aon_hypermodularity(hypergraph));
+    }
     printKeyValue("Imbalance", metrics::imbalance(hypergraph, context));
     printKeyValue("Partitioning Time", std::to_string(elapsed_seconds.count()) + " s");
   }

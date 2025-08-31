@@ -272,13 +272,14 @@ namespace mt_kahypar {
 
   template<typename Hypergraph>
   void precomputeHyperModularityParameters(Hypergraph& hypergraph, Context& context) {
-    if (! context.usesHypermodularityIP() )
-        return;
-    LOG << "Precomputing the parameters for AON-Hypermodularity IP";
-    hypergraph.computeAONParameters();
-    hypergraph.snapshotOriginalEdgeSizes();
-    hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
-    hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+    if (context.usesHypermodularityIP() 
+        || context.partition.objective == Objective::aon_hypermodularity ) {
+      LOG << "Precomputing the parameters for AON-Hypermodularity IP";
+      hypergraph.computeAONParameters();
+      hypergraph.snapshotOriginalEdgeSizes();
+      hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
+      hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+    }
   }
 
   template<typename Hypergraph>
