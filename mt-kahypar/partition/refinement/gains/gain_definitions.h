@@ -43,6 +43,7 @@
 #include "mt-kahypar/partition/refinement/gains/cut/cut_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/cut/cut_flow_network_construction.h"
 #include "mt-kahypar/partition/refinement/gains/conductance_local/conductance_local_gain_computation.h"
+#include "mt-kahypar/partition/refinement/gains/conductance_local/conductance_local_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/conductance_global/conductance_global_gain_computation.h"
 #include "mt-kahypar/partition/refinement/gains/conductance_global/conductance_global_attributed_gains.h"
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
@@ -93,7 +94,7 @@ struct CutGainTypes : public kahypar::meta::PolicyBase {
 
 struct ConductanceLocalGainTypes : public kahypar::meta::PolicyBase {
   using GainComputation = ConductanceLocalGainComputation;
-  using AttributedGains = ConductanceGlobalAttributedGains;
+  using AttributedGains = ConductanceLocalAttributedGains;
   using GainCache = CutGainCache;
   using DeltaGainCache = DeltaCutGainCache;
   using Rollback = CutRollback;

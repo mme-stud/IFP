@@ -32,6 +32,7 @@
 
 
 #include "mt-kahypar/partition/refinement/gains/gain_computation_base.h"
+#include "mt-kahypar/partition/refinement/gains/conductance_local/conductance_local_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/conductance_global/conductance_global_attributed_gains.h"
 
 #include "mt-kahypar/datastructures/hypergraph_common.h"
@@ -42,8 +43,8 @@
 
 namespace mt_kahypar {
  
-class ConductanceLocalGainComputation : public GainComputationBase<ConductanceLocalGainComputation, ConductanceGlobalAttributedGains> {
-  using Base = GainComputationBase<ConductanceLocalGainComputation, ConductanceGlobalAttributedGains>;
+class ConductanceLocalGainComputation : public GainComputationBase<ConductanceLocalGainComputation, ConductanceLocalAttributedGains> {
+  using Base = GainComputationBase<ConductanceLocalGainComputation, ConductanceLocalAttributedGains>;
   using RatingMap = typename Base::RatingMap;
 
   static constexpr bool enable_heavy_assert = false;

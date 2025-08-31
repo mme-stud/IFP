@@ -99,7 +99,10 @@ static constexpr size_t kEdgeHashSeed = 42;
 static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max();
 static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
-static constexpr size_t scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;
+// static constexpr size_t scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;
+static constexpr size_t scaling_factor = 1e4;
+static constexpr HyperedgeWeight conductance_value_threshold = scaling_factor * 10;
+
 
 namespace ds {
   using Clustering = vec<PartitionID>;
@@ -186,7 +189,9 @@ struct SynchronizedEdgeUpdate {
   PartitionID k;
   HypergraphVolume volume_from_after;
   HypergraphVolume volume_to_after;
+  HypergraphVolume cut_weight_from_before; // for conductance_local
   HypergraphVolume cut_weight_from_after;
+  HypergraphVolume cut_weight_to_before; // for conductance_local
   HypergraphVolume cut_weight_to_after;
   HypergraphVolume weighted_degree; // only the used version!!!
   HypergraphVolume total_volume; // only the used version!!!

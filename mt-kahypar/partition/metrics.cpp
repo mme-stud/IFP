@@ -108,7 +108,8 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
 
       ASSERT(0 <= scaled_contribution);
 
-      HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
       if (value_threshold < scaled_contribution) {
         LOG << "Scaled contribution of hyperedge " << he << " is too big: " << V(scaled_contribution) 
             << ". It is rounded to " << value_threshold;
@@ -153,7 +154,8 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
 
       ASSERT(0 <= scaled_contribution);
 
-      HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+      const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
       if (value_threshold < scaled_contribution) {
         LOG << "Scaled contribution of hyperedge " << he << " is too big: " << V(scaled_contribution) 
             << ". It is rounded to " << value_threshold;
@@ -175,7 +177,7 @@ HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) 
 
   if (top_part_min_volume == 0) {
     // only one block => bad partition
-    return std::numeric_limits<HyperedgeWeight>::max();
+    return mt_kahypar::scaling_factor * 10;
   }
   // const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?
   //                                                      phg.originalTotalVolume() : 
@@ -195,7 +197,8 @@ HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) 
 
   ASSERT(0 <= scaled_conductance);
 
-  HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+  // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
+  const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
   if (value_threshold < scaled_conductance) {
     LOG << "Scaled conductance is too big: " << V(scaled_conductance) 
         << ". It is rounded to " << value_threshold;

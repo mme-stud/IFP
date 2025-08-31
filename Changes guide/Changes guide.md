@@ -1,4 +1,10 @@
 # Guide to my code changes
+
+### IFP changes
+- make `isBalanced()` less strict for clustering preset (otherwise, it reverted moves of last nodes from their parts)
+- \+ `AttributedGainsConductanceLocal` &rArr; changed LP delta to account for overflows
+- `mt_kahyper::scaling_factor = 1e4` for better readability
+
 ### Notes:
 - `HyperedgeWeight` has to be positive (or at least non-negative). Hence, `NonnegativeFraction`. Denominator could be 0: in that case, the `value` is `std::numeric_limits<double_t>::max()`
 - `partitioned_hypergraph.h`: `extract(..[4])`, `extractAllBlocks(..[4])`: an extracted hypergraph has no original weighted degrees, original total value **!!!** (could be solved by adding public methods `setNodeOriginalWeightedDegree(u, d)`, `setOriginalTotalVolume(w)` in hypergraphs -- not needed for now, as blocks are used by `recursive_bipartitioning.cpp`)
@@ -475,9 +481,9 @@ in `mt-kahypar/partition/multilevel.cpp`:
 		- **TODO**: What if several parts have the biggest conductance?
 		- **Problem**: value of `ObjectiveFunction` has to be `HyperedgeWeight`:
 			- Old solution: `current_multiplier = phg.totalVolume() / phg.k()`. Problems? -> too big values &rarr;; no gains from moves &rarr; bad partitions...**ASK!!!**
-			- **Current solution**: conductance is between 0 and 1 &rArr; scale it by `mt_kahypar::scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;` (less than `...::max()`, as sometimes cut weight could be bigger than part volume due to concurrency) \
-			&rArr; `hypergraph_common.h`: \+ constant `mt_kahypar::scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;` (**TODO**: think of a good way to make it a power of ten for clearer visual, but still dynamicly dependend on `HyperedgeWeight` )
-		- if the contribution is too big, a message is printed (`LOG`), the returned value is `std::numeric_limits<HyperedgeWeight>::max()`
+			- **Current solution**: conductance is between 0 and 1 &rArr; scale it by ~~`mt_kahypar::scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;`~~ `mt_kahypar::scaling_factor = 1e4` (less than `...::max()`, as sometimes cut weight could be bigger than part volume due to concurrency, power of 10 for readability) \
+			&rArr; `hypergraph_common.h`: \+ constant `mt_kahypar::scaling_factor = 1e4` (**TODO**: think of a good way to make it a power of ten for clearer visual, but still dynamicly dependend on `HyperedgeWeight` )
+		- if the contribution is too big, a message is printed (`LOG`), the returned value is ~~`std::numeric_limits<HyperedgeWeight>::max()`~~ `mt_kahypar::conductance_value_threshold` (for now `= scaling_factor * 10`)
 	- `contribution(...)`, `quality(...)`: add new objective functions to the switch statements
 	+ \+ `HyperedgeWeight compute_conductance_objective(&phg)` - computes conduction without looping through nets. Returns `std::numerical_limits<HyperedgeWeight>::max()` if `top_part_min_volume = 0` (for the edgecase, that only one block exists: conductance was previously -infinity, which discouraged moves from that "block"...)
 	+ \+ [my]: `double compute_double_conductance(phg)` in `metrics.cpp / .h` to print out double conductance at the end:
@@ -1057,8 +1063,8 @@ The algorithm requires two gain techniques:
 `partition/`:
 - `refinement/`:
 	- `gains/gain_definitions.h`:
-		+ include `conductance_local_gain_computation.h`, `conductance_global_gain_computation.h`, ~~`conductance_local_attributed_gain.h` and~~ `conductance_global_attributed_gain.h`
-		+ replace `GainComputation` and `AttributedGains` members of `ConductanceLocalGainTypes` and `ConductanceGlobalGainTypes`. **!!!** both use `ConductanceGlobalAttributedGains`
+		+ include `conductance_local_gain_computation.h`, `conductance_global_gain_computation.h`, `conductance_local_attributed_gain.h` [IFP] and `conductance_global_attributed_gain.h`
+		+ replace `GainComputation` and `AttributedGains` members of `ConductanceLocalGainTypes` and `ConductanceGlobalGainTypes`. ~~**!!!** both use `ConductanceGlobalAttributedGains`~~
 
 #### Synchronized Update (my changes)
 ##### Intro from guide
@@ -1087,8 +1093,9 @@ When we move a node from its *source* (```from```) to a *target* block (```to```
 - `SynchronizedEdgeUpdate`: \+ New attributes  be able to **estimate** AttributedGain (never exact due to rounding. scaling...):
 	0) `PartitionID k`
 	1) `HypergraphVolume cut_weight_from_after, cut_weight_to_after` 
-	2) `vec<ds::ConductanceInfo> top_three_conductance_info_before` - ConductanceInfo of the top 3 conductance-wise parts before the move: [0, 1/2, 2/1]
-	3) `HypergraphVolume volume_from_after, volume_to_after`
+	2) `HypergraphVolume cut_weight_from_before, cut_weight_to_before` - for `conductance_local` [IFP]
+	3) `vec<ds::ConductanceInfo> top_three_conductance_info_before` - ConductanceInfo of the top 3 conductance-wise parts before the move: [0, 1/2, 2/1]
+	4) `HypergraphVolume volume_from_after, volume_to_after`
 	5) `HypergraphVolume weighted_degree` (the used version!!!)
 	6) `HypergraphVolume total_volume` (the used version!!!)
 	7) `PartitionID from, to` 
@@ -1102,6 +1109,7 @@ Initialize new members of `SynchronizedEdgeUpdate` (looked for mentions: skipped
 			-  `volume_from_after`, `volume_to_after`, `weighted_degree`, `total_volume` [used version only]
 		- after iterating through incident nets 
 			- set `cut_weight_to_after`, `cut_weight_from_after`
+			- set `cut_weight_to_before`, `cut_weight_from_before` via the collected deltas `d_cut_weight_to`, `d_cut_weight_from`[IFP]
 		- if collective sync_update is enabled:
 			- call `notify_func(sync_update)` before loop over incident edges
 			- call `delta_func(sync_update)` after loop + setting the rest of `sync_update`
@@ -1121,7 +1129,7 @@ The gain of a node move can change between its initial calculation and execution
 	static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update);
 	```
 ##### Problem: I can only calculate collective AttributedGain of a move (not a sum for all edges)
-&rarr; analog. to `_disable_single_pin_nets_removal`
+&rarr; `_enable_collective_sync_update` analog. to `_disable_single_pin_nets_removal`
 
 ###### Hypergraphs
 ####### Static Hypergraph
@@ -1197,24 +1205,28 @@ call `context.setupCollectiveSyncUpdates()` as early as possible after setting `
 	[debug: needed in `mt-kahypar/tests/io/sql_plottools_serializer_test.cc` `ASqlPlotSerializerTest.ChecksIfSomeParametersFromContextAreMissing`, removed whitespaces in empty line in `context.h` - they break serialization!]
 
 ##### Conductance Global
-**As far as I know** [*to be disproven by failing quality assertions...*], `contribution(phg, he)` is called only by `partitioner.cpp` in the `POSTPROCESSING` phase: `restoreLargeHyperedges()`. So `AttributedGain` is compared to the `quality(phg)`, which can be (and now is) calculated almost exact (rounded max conductance). Therefore to calculate `AttributedGains` for conductance (both use global version), I compute the difference on new and old rounded conductances (and do this by enabled **collective** sync_updates)
+**As far as I know** [*to be disproven by failing quality assertions...*], `contribution(phg, he)` is called only by `partitioner.cpp` in the `POSTPROCESSING` phase: `restoreLargeHyperedges()`. So `AttributedGain` is compared to the `quality(phg)`, which can be (and now is) calculated almost exact (rounded max conductance). Therefore to calculate `AttributedGains` for `conductance_global` ~~(both use global version)~~, I compute the difference on new and old rounded conductances (and do this by enabled **collective** sync_updates)
 
 \+ `conductance_global_attributed_gain.h`:
 + \+ `ConductanceGlobalAttributedGains`:
-	+ \+ `public HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` (but if `top_part_cut_weight > top_part_min_volume`, simpty returns `sd::numerical_limit<HyperedgeWeigh>::max()`, as conductance seems to be high)
+	+ \+ `public HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` (but if `top_part_cut_weight > top_part_min_volume`, simpty returns ~~`sd::numerical_limit<HyperedgeWeigh>::max()`~~ `mt_kahypar::conductance_value_threshold` [IFP], as conductance seems to be high)
 	- `static HyperedgeWeight gain(&sync_update)` - computes new fractions for `to` and `from`, finds the biggest other fraction (in `sync_update.top_three_conductance_info_before` - vector with $\le 3$ biggest conductance fractions), computes old and new top conductances via `HyperedgeWeight compute_conductance_objective(..)`, returns `new_conductance - old_conductance`
 
 ##### Conductance Local
-Uses the same attributed gains
-&rArr; in `gain_definitions.h` set `ConductanceLocalGainTypes::AttributedGains = ConductanceGlobalAttributedGains`
+~~Uses the same attributed gains~~
+~~&rArr; in `gain_definitions.h` set `ConductanceLocalGainTypes::AttributedGains = ConductanceGlobalAtt~ributedGains`~~
 
-~~\+ `conductance_local_attributed_gain.h`:~~
-~~+ \+ `ConductanceLocalAttributedGains`~~
+[IFP] For now, returns the change in the local maximal conductance (max(to,from) before VS after the move) &rArr; uses **collective** sync_updates.
+
+\+ `conductance_local_attributed_gain.h`:
++ \+ `ConductanceLocalAttributedGains`
+	+ \+ `public HyperedgeWeight compute_conductance_objective(..)` - computes scaled + rounded conduction exactly the same way as `quality(const &phg)` in `metrix.cpp` (but if `top_part_cut_weight > top_part_min_volume`, simpty returns `mt_kahypar::conductance_value_threshold`, as conductance seems to be high)
+	- `static HyperedgeWeight gain(&sync_update)` - computes difference in the local maximal conductance `HyperedgeWeight compute_conductance_objective(..)`, returns `new_local_conductance - old_local_conductance`
 
 ###### Problem: local search asserts sum of AttributedGains vs the actual metric
 
 **Problem**: \
-Multilevel uncoarsener initializes current quality in `_current_metrics` and passes it to the label propagation refiner, which updates it via `_gain.computeDeltaForHyperedge(sync_update);`.  \
+Multilevel uncoarsener initializes current quality in `_current_metrics` and passes it to the label propagation refiner, which updates it via `_gain.computeDeltaForHyperedge(sync_update);` which uses `AttributedGains`.  \
 The overall sum od these deltas is added to the current gain and at the end of `refineImpl(..)` two things are done:
 1. **assertion**: `new objective value == metrics::quality`
 2. **delta** is calculated and `delta > 0` is returned.
@@ -1241,25 +1253,40 @@ Current conductance implementation supports collective `sync_update`s, but their
 		labelPropagation(hypergraph, best_metrics);
 		// ...
 
-		/** Note: 
+		 /** Note: 
 		 *  best_metrics.quality is old_quality + sum of Attributed Gains from the sync_updates
 		 *  => If conductance_local obj. is used, best_metrics.quality is incorrect
 		 *  =>  the assertion always fails for conductance.
 		 * 
-		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 if any good moves were made
+		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 
+		 *  if any good moves were made. But for now it's not working properly, as overflows 
+		 *  occur and make the delta negative :(
+		 *  
+		 *  ToDo: uncomment delta after moving to double gains
 		 */ 
 		// Update metrics statistics
-		// [untill double gains] Gain delta = old_quality - best_metrics.quality;
-		if (_context.partition.objective != Objective::conductance_local) {
-			// fails, as conductance gain cache tracks cut
-			ASSERT(best_metrics.quality == metrics::quality(...), ...);
-		} else {
-			best_metrics.quality = metrics::quality(...);
-		}
 		Gain delta = old_quality - best_metrics.quality;
-
-		ASSERT(delta >= 0, "LP refiner worsen solution quality");
-		return delta > 0;
+    	if (_context.partition.objective != Objective::conductance_local) {
+      	  // fails, as conductance_local AttributedGain doesn't actually reflect 
+          // the delta in the overall conductance
+      	  ASSERT(best_metrics.quality == metrics::quality(...));
+    	} else {
+      	  best_metrics.quality = metrics::quality(...);
+    	}
+		ASSERT(delta >= 0 || _context.objective == Objective::conductance_local, 
+			   "LP refiner worsen solution quality");
+      	
+		LOG << " Actual LP objective delta: " << V(old_quality - best_metrics.quality);
+		utils::Utilities::instance().getStats(_context.utility_id)
+						.update_stat("lp_improvement", old_quality - best_metrics.quality);
+		
+		if (delta < 0) {
+		  LOG << " Label Propagation Refiner: Detected negative delta." 
+			  << V(delta) << V(old_quality) << V(best_metrics.quality);
+		  // Reason should be an overflow in best_metrics.quality (-inf, as many good local moves)
+		  return true; /* improvement found */
+		}
+		return delta > 0; /* improvement found? */
 	}
 ```
 

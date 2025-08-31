@@ -1051,6 +1051,12 @@ public:
         // Set cut weights in sync_update
         sync_update.cut_weight_from_after = partCutWeight(from);
         sync_update.cut_weight_to_after = partCutWeight(to);
+        sync_update.cut_weight_from_before = d_cut_weight_from.isNegative() ? 
+                                              sync_update.cut_weight_from_after + d_cut_weight_from.abs() : 
+                                              sync_update.cut_weight_from_after - d_cut_weight_from.abs();
+        sync_update.cut_weight_to_before = d_cut_weight_to.isNegative() ? 
+                                              sync_update.cut_weight_to_after + d_cut_weight_to.abs() : 
+                                              sync_update.cut_weight_to_after - d_cut_weight_to.abs();
       }
       if (collectiveSyncUpdatesEnabled()) {
         // conductance objective support only collective sync_updates
