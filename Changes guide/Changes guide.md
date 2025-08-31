@@ -708,7 +708,9 @@ My changes:
 
 - in `mt-kahypar/datastructures/`:
 	- `partitioned_hypergraph.h`:
-		- \+ `setK(k, init_num_hyperedges)`: resets `_part_weights`, `_part_volumes`, `_part_cut_weights`, `part_original_volumes` [debug], `_conductance_pq` [debug], `con_info` [needs `init_num_hyperedges` to reset `con_info`]&rArr; to be called before assigning part_id's
+		- \+ `setK(k)`: resets `_part_weights`, `_part_volumes`, `_part_cut_weights`, `part_original_volumes` [debug], `_conductance_pq` [debug], `con_info` ~~[needs `init_num_hyperedges` to reset `con_info`]~~ &rArr; to be called before assigning part_id's
+		- &rarr; \+ `HypernodeID _max_edge_size` attribute to use when initializing `con_info` (as it should be iniitalized with the initial stats of the bigest hypergraph [IFP]), and a getter `topLevelMaxEdgeSize()` in `PartitionedHypergraph`, `PartitionedGraph`
+
 	- `partitioned_graph.h`:
 		- \+ `setK(k)`: to be called before assigning part_id's
 - in `mt-kahypar/partition/`:

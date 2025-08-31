@@ -82,8 +82,6 @@ namespace {
     using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
     PartitionedHypergraph partitioned_hg;
 
-    HyperedgeID input_he_count = hypergraph.initialNumEdges(); // for setK if PresetType::cluster
-
     // ################## COARSENING ##################
     mt_kahypar::io::printCoarseningBanner(context);
 
@@ -136,15 +134,15 @@ namespace {
         // finds as many clusters as it wants
         new_k = phg.initialNumNodes();
     }    
-    //////////////////////////////// Change k (1/2)
+    //////////////////////////////// Change k (1/3)
     if (new_k != context.partition.k && new_k > 1) {
       context.partition.k = new_k;
-      phg.setK(context.partition.k, input_he_count);
+      phg.setK(context.partition.k);
       context.setupPartWeights(hypergraph.totalWeight());
       context.setupContractionLimit(hypergraph.totalWeight());
       context.setupThreadsPerFlowSearch();
     }
-    /////////////////////////// End of changing k (1/2)
+    /////////////////////////// End of changing k (1/3)
 
     if ( !is_vcycle ) {
       DegreeZeroHypernodeRemover<TypeTraits> degree_zero_hn_remover(context);
@@ -172,6 +170,19 @@ namespace {
         throw InvalidParameterException("Undefined initial partitioning algorithm");
       }
       enableTimerAndStats(context);
+      
+      //////////////////////////////// Change k (2/3)
+      new_k = phg.k();
+      ASSERT(new_k > 1, "After IP phg.k() should be > 1, but is " << new_k);
+      ASSERT(new_k <= context.partition.k);
+      if (new_k != context.partition.k) {
+        context.partition.k = new_k;
+        context.setupPartWeights(hypergraph.totalWeight());
+        context.setupContractionLimit(hypergraph.totalWeight());
+        context.setupThreadsPerFlowSearch();
+      }
+      /////////////////////////// End of changing k (2/3)
+            
       degree_zero_hn_remover.restoreDegreeZeroHypernodes(phg);
     } else {
       // When performing a V-cycle, we store the block IDs
@@ -198,7 +209,7 @@ namespace {
     }
     phg.needsConductancePriorityQueue(); // initializs _conductance_pq if needed    
     
-    //////////////////////////////// Change k (2/2)
+    //////////////////////////////// Change k (3/3)
     new_k = phg.k();
     ASSERT(new_k > 1, "After IP phg.k() should be > 1, but is " << new_k);
     ASSERT(new_k <= context.partition.k);
@@ -208,7 +219,7 @@ namespace {
       context.setupContractionLimit(hypergraph.totalWeight());
       context.setupThreadsPerFlowSearch();
     }
-    /////////////////////////// End of changing k (2/2)
+    /////////////////////////// End of changing k (3/3)
     
 
     ASSERT([&] {

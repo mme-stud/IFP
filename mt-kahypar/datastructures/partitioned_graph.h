@@ -33,6 +33,7 @@
 #include <mutex>
 
 #include <tbb/parallel_invoke.h>
+#include <tbb/parallel_reduce.h>
 
 #include "kahypar-resources/meta/mandatory.h"
 
@@ -292,6 +293,11 @@ private:
     return _input_unique_ids;
   }
 
+  // ! Maximal edge size of the input hypergraph
+  HypernodeID topLevelMaxEdgeSize() const {
+    return _input_num_edges > 0 ? 2 : 0;
+  }
+
   // ! Initial number of pins
   HypernodeID initialNumPins() const {
     return _hg->initialNumPins();
@@ -315,16 +321,43 @@ private:
   // ! Change k value after the initialization
   // ! To be called before the first call to setNodePart / setOnlyNodePart
   // ! (needed for singleton IP, mirroring of interfaces)
-  void setK(PartitionID k, HyperedgeID init_num_hyperedges) {
+  void setK(PartitionID k) {
     /// [debug] std::cerr << "PartitionedHypergraph::setK(k)" << std::endl;
-    unused(init_num_hyperedges);
     ASSERT(k > 0);
     if (_k == k) {
       return;
     }
-    _k = k;
+    _k = std::min(k, 2); // at least 2 parts
     _part_weights.resize(k, CAtomic<HypernodeWeight>(0));
     _part_ids.resize(_hg->initialNumNodes(), kInvalidPartition);
+  }
+
+  // ! Fits k before calling initializePartition()
+  void fitK() {
+    // accumulate in parallel the maximal used part ID
+    PartitionID maxUsedPartID = tbb::parallel_reduce(
+      tbb::blocked_range<HypernodeID>(ID(0), initialNumNodes()), PartitionID(0),
+      [&](const tbb::blocked_range<HypernodeID>& r, PartitionID init) {
+        PartitionID local_max = init;
+        for ( HypernodeID hn = r.begin(); hn != r.end(); ++hn )
+          if ( partID(hn) != kInvalidPartition && nodeIsEnabled(hn) )
+            local_max = std::max(local_max, partID(hn));
+        return local_max;
+      }, 
+      [](PartitionID a, PartitionID b) {
+        return std::max(a, b);
+      });
+    PartitionID actualK = 1 + maxUsedPartID;
+    ASSERT(actualK <= _k);
+    if (actualK < 2) {
+      actualK = 2;
+      LOG << "PartitionedGraph::fitK() - Warning: only one cluster found: "
+             "actualK = " << actualK << ", setting it to 2";
+    }
+    if (_k != actualK) {
+      setK(actualK);
+      LOG << "PartitionedGraph::fitK() - Fitted k to " << actualK;
+    }
   }
 
   // ####################### Mapping ######################

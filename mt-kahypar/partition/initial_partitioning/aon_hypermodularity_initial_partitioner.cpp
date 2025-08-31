@@ -128,21 +128,22 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
         /// [debug] std::cout << "Outer Iteration: expanded" << counter << std::endl;
       } while (z_changed);
 
-      LOG << "AON IP finished Louvain with total gain " << total_gain;
+      LOG << "AON IP finished Louvain with total gain " << total_gain 
+          << " and " << H_new_partitioned.k() << " clusters.";
 
       // =====================================================
       //             3. Finalize Partitioning
       // =====================================================
 
 //      HypernodeID new_k = H_new_partitioned.k();
-//      hg.setK(new_k, H.initialNumEdges());
+//      hg.setK(new_k); 
       for (const HypernodeID &hn : hg.nodes()) {
         PartitionID partition = z[hn];
         ASSERT(partition != kInvalidPartition,
             "AONHypermodularityInitialPartitioner::partitionImpl: "
             "node " << hn << " is not assigned to a new partition");
-        ASSERT(partition < hg.k(), "AONHypermodularityInitialPartitioner::partitionImpl: "
-            "node " << hn << " is assigned to an invalid partition: k = " << hg.k());
+        ASSERT(partition < H_new_partitioned.k(), "AONHypermodularityInitialPartitioner::partitionImpl: "
+            "node " << hn << " is assigned to an invalid partition: k = " << H_new_partitioned.k());
         hg.setOnlyNodePart(hn, partition);
       }
       hg.initializePartition();
@@ -319,9 +320,9 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
   double d_i = static_cast<double>(H_new_partitioned.nodeOriginalWeightedDegree(i));
 
   double delta_vol = 0.0;
-  HypernodeID k_max = std::min(H_new_partitioned.originalMaxEdgeSize(), 
-                               gamma.size(); // zeros at the end of gamma and beta are removed
-                               edgeSizeThreshold);
+  HypernodeID k_max = std::min({H_new_partitioned.originalMaxEdgeSize(), 
+                               static_cast<HypernodeID>(gamma.size()), // zeros at the end of gamma and beta are removed
+                               edgeSizeThreshold});
   for (HypernodeID k = 2; k <= k_max; k ++) {
     // _gamma[k] = \beta_k \cdot \gamma_k
     delta_vol += gamma[k] * (std::pow(v_i, k) - std::pow(v_i - d_i, k) + 
@@ -404,8 +405,8 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
     }
     notEmptyPart[partition] = true;
   }
-  if (! z_changed)
-    return z_changed /* = false */;
+  //if (! z_changed)
+  //  return z_changed /* = false */;
 
   // Update communities in H_new (to be able to contract it later)
   for (const HypernodeID &hn : H_new.nodes()) {

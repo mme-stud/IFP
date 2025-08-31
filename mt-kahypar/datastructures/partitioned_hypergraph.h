@@ -32,6 +32,7 @@
 #include <mutex>
 
 #include <tbb/parallel_invoke.h>
+#include <tbb/parallel_reduce.h>
 
 #include "kahypar-resources/meta/mandatory.h"
 
@@ -106,6 +107,7 @@ class PartitionedHypergraph {
                                  Hypergraph& hypergraph) :
     _input_num_nodes(hypergraph.initialNumNodes()),
     _input_num_edges(hypergraph.initialNumEdges()),
+    _input_max_edge_sizes(hypergraph.maxEdgeSize()),
     _k(k),
     _hg(&hypergraph),
     _target_graph(nullptr),
@@ -128,6 +130,7 @@ class PartitionedHypergraph {
                                  parallel_tag_t) :
     _input_num_nodes(hypergraph.initialNumNodes()),
     _input_num_edges(hypergraph.initialNumEdges()),
+    _input_max_edge_sizes(hypergraph.maxEdgeSize()),
     _k(k),
     _hg(&hypergraph),
     _target_graph(nullptr),
@@ -226,6 +229,11 @@ class PartitionedHypergraph {
     return _input_num_edges;
   }
 
+  // ! Maximal edge size of the input hypergraph
+  HypernodeID topLevelMaxEdgeSize() const {
+    return _input_max_edge_sizes;
+  }
+
   // ! Initial number of pins
   HypernodeID initialNumPins() const {
     return _hg->initialNumPins();
@@ -258,12 +266,16 @@ class PartitionedHypergraph {
 
   // ! Change k value after the initialization 
   // ! To be called before the first call to setNodePart / setOnlyNodePart
-  // ! (needed for singleton IP, mirroring of interfaces)
-  void setK(PartitionID k, HyperedgeID init_num_hyperedges) {
+  // ! (needed for singleton IP)
+  void setK(PartitionID k) {
     /// [debug] std::cerr << "PartitionedHypergraph::setK(k)" << std::endl;
     ASSERT(k > 0);
     if (_k == k) {
       return;
+    }
+    if (k < 2) { // at least 2 partitions
+      LOG << "PartitionedHypergraph::setK(k) - Warning: k = " << k << " < 2, setting k to 2";
+      k = 2;
     }
     _k = k;
     _part_weights.assign(k,CAtomic<HypernodeWeight>(0));
@@ -275,10 +287,37 @@ class PartitionedHypergraph {
     }, [&] {
         _con_info.reset();
         _con_info = ConnectivityInformation(
-                init_num_hyperedges, k, _hg->maxEdgeSize(), parallel_tag_t { });
+                _input_num_edges, k, _input_max_edge_sizes, parallel_tag_t { });
     });
   }
 
+  // ! Fits k before calling initializePartition()
+  void fitK() {
+    // accumulate in parallel the maximal used part ID
+    PartitionID maxUsedPartID = tbb::parallel_reduce(
+      tbb::blocked_range<HypernodeID>(ID(0), initialNumNodes()), PartitionID(0),
+      [&](const tbb::blocked_range<HypernodeID>& r, PartitionID init) {
+        PartitionID local_max = init;
+        for ( HypernodeID hn = r.begin(); hn != r.end(); ++hn )
+          if ( partID(hn) != kInvalidPartition && nodeIsEnabled(hn) )
+            local_max = std::max(local_max, partID(hn));
+        return local_max;
+      }, 
+      [](PartitionID a, PartitionID b) {
+        return std::max(a, b);
+      });
+    PartitionID actualK = 1 + maxUsedPartID;
+    ASSERT(actualK <= _k);
+    if (actualK < 2) {
+      actualK = 2;
+      LOG << "PartitionedHypergraph::fitK() - Warning: only one cluster found: "
+             "actualK = " << actualK << ", setting it to 2";
+    }
+    if (_k != actualK) {
+      setK(actualK);
+      LOG << "PartitionedHypergraph::fitK() - Fitted k to " << actualK;
+    }
+  }
 
 
   // ####################### Mapping ######################
@@ -2018,6 +2057,9 @@ public:
 
   // ! Number of hyperedges of the top level hypergraph
   HyperedgeID _input_num_edges = 0;
+
+  // ! Maximum edge size of the top level hypergraph
+  HypernodeID _input_max_edge_sizes = 0;
 
   // ! Number of blocks
   PartitionID _k = 0;

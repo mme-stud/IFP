@@ -18,7 +18,7 @@
 
 ## TODO:
 - TODO: ensure, that `use_community_detection` is enabled by `aon_hypermodularity` IP [`partitioner.cpp preprocess(..)`] &rarr; done in `context.cpp sanity_check(..)`
-- change `context.partition.k` in `multilevel.cpp` if `aon_hypernodularity` IP is used &rArr; done
+- change `context.partition.k` in `multilevel.cpp` if `aon_hypernodularity` IP is used &rArr; done (with `fitK()` in `apply()` in `initial_partitioning_data_container.h`)
 - introduce ClusteringMode to mark that `k` can be changed (?)
 - run multiple AON IP in paralle (#AON = #threads) &rarr; **Problem:** parallel local search works bad: set it to sequential?
 - try to snapshot and preserve original edge sizes from the start (if they are not too big: <500?)
@@ -270,6 +270,34 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     }
 
     ```
+5. ~~Saving k to update (decrease) later, as AON IP decreases k (sometimes significantly):~~ [doesen't work as Pool IP discards the hg info and saves only partition &rArr; saved k is lost] \
+    Fitting k to the minimal possible number without changing the partIDs:
+    - Rationale: before IP k is set to `num_hypernodes`, IP can reduce it greatly (And AON IP uses the smallest possible PartID's!!!)
+    - Implementation: find the maximal used part ID and set k to it
+    - if `cluster` mode is used , called in `apply()` before `_partitioned_hg.initializePartition()` for the best IP result (`initial_partitioning_data_container.h`)
+
+    - `partitioned_hypergraph.h, partitioned_graph.h`:
+        + \+ `fitK()`
+```cpp
+
+  // ! Fits k before calling initializePartition()
+  void fitK() {
+    // accumulate in parallel the maximal used part ID
+    PartitionID maxUsedPartID = tbb::parallel_reduce(/* max */);
+    PartitionID actualK = 1 + maxUsedPartID;
+    ASSERT(actualK <= _k);
+    if (actualK < 2) {
+      actualK = 2;
+      LOG << "PartitionedHypergraph::fitK() - Warning: only one cluster found: "
+             "actualK = " << actualK << ", setting it to 2";
+    }
+    if (_k != actualK) {
+      setK(actualK);
+      LOG << "PartitionedHypergraph::fitK() - Fitted k to " << actualK;
+    }
+  }
+
+```
 
 
 

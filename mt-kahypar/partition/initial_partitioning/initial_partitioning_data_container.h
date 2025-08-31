@@ -661,7 +661,12 @@ class InitialPartitioningDataContainer {
       best_flat_algo = best->_result._algorithm;
       best_feasible_objective = best->_result._objective;
     }
-
+    
+    // decrease k as much as quickly possible
+    if (_context.partition.preset_type == PresetType::cluster) {
+      // _context.partition.k is changed later, as const _context
+      _partitioned_hg.fitK();
+    }
     _partitioned_hg.initializePartition();
     ASSERT(best_feasible_objective == metrics::quality(_partitioned_hg, _context, false),
            V(best_feasible_objective) << V(metrics::quality(_partitioned_hg, _context, false)));
