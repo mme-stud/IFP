@@ -218,6 +218,7 @@ namespace mt_kahypar {
       case InitialPartitioningAlgorithm::label_propagation: return os << "label_propagation";
       case InitialPartitioningAlgorithm::singleton: return os << "singleton";
       case InitialPartitioningAlgorithm::aon_hypermodularity: return os << "aon_hypermodularity";
+      case InitialPartitioningAlgorithm::aon_hypermodularity_kernel: return os << "aon_hypermodularity_kernel";
       case InitialPartitioningAlgorithm::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -445,6 +446,8 @@ namespace mt_kahypar {
       return InitialPartitioningAlgorithm::singleton;
     } else if (algo == "aon_hypermodularity") {
       return InitialPartitioningAlgorithm::aon_hypermodularity;
+    } else if (algo == "aon_hypermodularity_kernel") {
+      return InitialPartitioningAlgorithm::aon_hypermodularity_kernel;
     }
     throw InvalidParameterException("Illegal option: " + algo);
     return InitialPartitioningAlgorithm::UNDEFINED;
@@ -514,5 +517,13 @@ namespace mt_kahypar {
     }
     throw InvalidParameterException("Illegal option: " + policy);
     return SteinerTreeFlowValuePolicy::UNDEFINED;
+  }
+
+  bool isHypermodularityIP(const InitialPartitioningAlgorithm& algo) {
+    switch (algo) {
+      case InitialPartitioningAlgorithm::aon_hypermodularity: return true;
+      case InitialPartitioningAlgorithm::aon_hypermodularity_kernel: return true;
+      default: return false;
+    }
   }
 }

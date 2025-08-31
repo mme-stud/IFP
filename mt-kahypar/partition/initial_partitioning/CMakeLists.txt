@@ -5,6 +5,7 @@ set(InitialPartitioningSources
         label_propagation_initial_partitioner.cpp
         singleton_initial_partitioner.cpp
         aon_hypermodularity_initial_partitioner.cpp
+        aon_hypermodularity_kernel_initial_partitioner.cpp
         )
 
 target_sources(MtKaHyPar-Sources INTERFACE ${InitialPartitioningSources})

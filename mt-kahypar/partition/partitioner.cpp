@@ -272,8 +272,7 @@ namespace mt_kahypar {
 
   template<typename Hypergraph>
   void precomputeHyperModularityParameters(Hypergraph& hypergraph, Context& context) {
-    if (! context.initial_partitioning.enabled_ip_algos[
-          static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) 
+    if (! context.usesHypermodularityIP() )
         return;
     LOG << "Precomputing the parameters for AON-Hypermodularity IP";
     hypergraph.computeAONParameters();

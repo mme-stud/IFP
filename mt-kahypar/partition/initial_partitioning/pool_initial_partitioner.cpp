@@ -60,7 +60,13 @@ void Pool<TypeTraits>::bipartition(PartitionedHypergraph& hypergraph,
   for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
     if ( context.initial_partitioning.enabled_ip_algos[i] ) {
       auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
-      for ( size_t j = 0; j < context.initial_partitioning.runs; ++j ) {
+      size_t runs = context.initial_partitioning.runs;
+      if (isHypermodularityIP(algorithm)) {
+        runs *= context.shared_memory.original_num_threads;
+        LOG << "Running " << static_cast<InitialPartitioningAlgorithm>(algorithm) 
+            << " IP " << runs << " time(s) as a Hypermodularity IP";
+      }
+      for ( size_t j = 0; j < runs; ++j ) {
         // Each initial partitioning algorithm is assigned a seed and a tag
         // for deterministic behavior when partitioning in deterministic mode.
         _ip_task_lists.emplace_back(algorithm, rng(), tag++);

@@ -127,10 +127,9 @@ namespace {
           new_k = num_nodes;
         } 
       }
-    } 
-    if (context.initial_partitioning.enabled_ip_algos
-                    [static_cast<size_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
-        // Change k to the number of active nodes, as aon_hypermodularity 
+    }
+    if (context.usesHypermodularityIP()) {
+        // Change k to the number of active nodes, as aon_hypermodularity
         // finds as many clusters as it wants
         new_k = phg.initialNumNodes();
     }    

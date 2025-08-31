@@ -289,6 +289,18 @@ namespace mt_kahypar {
   bool Context::enableCollectiveSyncUpdates() const {
     return partition.enable_collective_sync_updates;
   }
+
+  bool Context::usesHypermodularityIP() const {
+    if (context.initial_partitioning.enabled_ip_algos[
+      static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
+      return true;
+    } else if (context.initial_partitioning.enabled_ip_algos[
+      static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity_kernel)]) {
+      return true;
+    }
+    return false;
+  }
+
   // ! \brief This function sets a flag enable_collective_sync_updates
   // ! based on the partitioning objective.
   // ! If set, partitioned HYPERGRAPH will send one sync_update per changeNodePart
@@ -456,20 +468,19 @@ namespace mt_kahypar {
     // Configure initial partitioning algorithms, sequential sync_updates
     if ( partition.objective == Objective::conductance_local ||
          partition.objective == Objective::conductance_global ) {
-      // Set up compatible initial partitioning algorithms (only aon_hypermodularity, random and singleton)
+      // Set up compatible initial partitioning algorithms (only Hypermodularity IPs, random and singleton)
       
       bool allowed_ip_used = false;
       uint8_t num_algs = static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED);
       std::vector<uint8_t> allowed_ip_algs(num_algs, false);
       uint8_t random_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::random);
       uint8_t singleton_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::singleton);
-      uint8_t aon_hypermodularity_alg = static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity);
       allowed_ip_algs[random_alg] = true;
       allowed_ip_algs[singleton_alg] = true;
-      allowed_ip_algs[aon_hypermodularity_alg] = true;
+      // Hypermodularity IPs are detected in loop
       for ( uint8_t alg = 0; alg < num_algs; ++alg ) {
         if (initial_partitioning.enabled_ip_algos[alg]) {
-          if ( allowed_ip_algs[alg] ) {
+          if ( allowed_ip_algs[alg] || isHypermodularityIP(alg) ) {
             allowed_ip_used = true;
           } else {
             initial_partitioning.enabled_ip_algos[alg] = false;
@@ -491,8 +502,7 @@ namespace mt_kahypar {
       }
     }
 
-    if (initial_partitioning.enabled_ip_algos[
-      static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity)]) {
+    if (usesHypermodularityIP()) {
       if (! preprocessing.use_community_detection) {
         preprocessing.use_community_detection = true;
         LOG << "AON hypermodularity initial partitioning algorithm requires community detection. "

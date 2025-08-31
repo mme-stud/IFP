@@ -32,6 +32,8 @@
 
 ## Initial Partitioning: Hypermodularity
 
+*(new!)* `aon_hypermodularity` uses original edge sizes (if possible), `aon_hypermodularity_kernel` uses the edge sizes in the kernel.
+
 ToDo:
 - calculate parameters ($\omega_{k0}, \omega_{k1} \beta, \gamma$) needed for the AON-Hypermodularity IP &rarr; community detection in preprocessing
 - implement Hypermodularity as an IP (no parallelization in IP as multiple IP algorithms could be ran simultaneously + kermel should normally be small)
@@ -44,7 +46,7 @@ ToDo:
 ### Calculate the parameters
 Reference: [commit](https://github.com/adilchhabra/mt-kahypar/commit/ab9be0777bbe77c158bf8e6f53166ea3c67ce526) My change: weighted degrees, total volume.
 - `partition\partitioner.cpp`:
-    - `precomputeHyperModularityParameters(&hypergraph, &context)` [my: runs only if `aon_hypermodularity` ip algo is enabled] - called by `preprocess(&hg, &context, *target_graph)` if `use_community_detection == true`
+    - `precomputeHyperModularityParameters(&hypergraph, &context)` [my: runs only if a hypermodularity ip algo is enabled] - called by `preprocess(&hg, &context, *target_graph)` if `use_community_detection == true`
 - AON-Hypermodularity block in `static_hypergraph.h, .cc`:
     - private members (copied in constructors, `contract(..)`, `copy(..)`): 
     here `_beta`, `_gamma` are the coefficients needed in the objective function
@@ -118,6 +120,8 @@ Problems:
 If the original edge sizes are too big, the `_beta` and `_gamma` vectors are also huge. But *normally* most of their entries are 0.0 (`-1000` and `NaN` before &rarr; see *NaN Problem*).
 
 &rarr; I track the last non-zero pair `(_beta[d], _gamma[d])` and cut all other zeroes. The getters of beta and gamma will return 0.0, if `d` is greater than the last non-zero index.
+
+(new!) `aon_hypermodularity` IP uses the original edge sizes if available, `aon_hypermodularity_kernel` uses the edge sizes in the kernel.
 
 ### Implement AON-Hypermodularity IP
 Original Algorithm: [Generative hypergraph clustering: from blockmodels to modularity](https://arxiv.org/pdf/2101.09611)
@@ -204,6 +208,10 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
       //                        <...>
 
 ```
+
+`aon_hypermodularity_kernel_initial_partitioner.h, .cpp`:
+- a single attribute `AONHypermodularityInitialPartitioner _aon_ip`
+- calls `aon_hypermodularity` with `useOriginalEdgeSizes=false`
 
 #### Needed Additional Functionality (Static Hypergraph, Partitioned Hypergraph)
 
@@ -379,12 +387,12 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
         for `cluster` preset, set `coarsening.contraction_limit` to `coarsening.contraction_limit_multiplier * 32` instead of `coarsening.contraction_limit_multiplier * partition.k`.
         - `mt-kahypar\partition\partitioner.cpp` in `setupContext(& hypergraph, & context, *target_graph)`: \ 
         set `k=32` for `cluster` preset
-    - [old changes guide] analog. to `singleton` introduce `aon_hypermodularity`:
+    - [old changes guide] analog. to `singleton` introduce `aon_hypermodularity`, `aon_hypermodularity_kernel`:
         - in `config/`:
             - `cluster_preset.ini`: 
-                - set `i-enabled-ip-algos=1` only for `aon_hypermodularity`
+                - set `i-enabled-ip-algos=1` only for `aon_hypermodularity` and `aon_hypermodularity_kernel`
             - `large_k_preset.ini`: 
-                \+ `i-enabled-ip-algos=0` for aon-hypermodularity \
+                \+ `i-enabled-ip-algos=0` for `aon_hypermodularity`, `aon_hypermodularity_kernel`
             - (all other `.ini` use `initial_partitioning: i-mode=rb` [recursive bipartitioning] &rArr; no changes)
         - `mt-kahypar/`:
             - in `partition/`:
@@ -394,35 +402,79 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
                     enum class InitialPartitioningAlgorithm : uint8_t {
                     ...
                     aon_hypermodularity = 10,
-                    UNDEFINED = 11
+                    aon_hypermodularity_kernel = 11,
+                    UNDEFINED = 12
                     };
                     ```
                 - `context_enum_classes.cpp`:
-                    - in `operator<<(or, algo)` and `initialPartitioningAlgorithmFromString(algo)` add transmations string <-> `InitialPartitioningAlgorithm` for `aon_hypermodularity`
+                    - in `operator<<(or, algo)` and `initialPartitioningAlgorithmFromString(algo)` add transmations string <-> `InitialPartitioningAlgorithm` for `aon_hypermodularity`, `aon_hypermodularity_kernel`
                 - in `initial_partitioning/`: 
-                    - \+ `aon_hypermodularity_initial_partitioner.h, .cpp` :)
-                    - **!!!** `CMakeLists.txt`: \+ `aon_hypermodularity_initial_partitioner.cpp`
+                    - \+ `aon_hypermodularity_initial_partitioner.h, .cpp`
+                    - \+ `aon_hypermodularity_kernel_initial_partitioner.h, .cpp` 
+                    - **!!!** `CMakeLists.txt`: \+ `aon_hypermodularity_initial_partitioner.cpp`, `aon_hypermodularity_kernel_initial_partitioner.cpp`
                 - in `registries/`:
                     - `register_initial_partitioning_algorithms.cpp`
-                    - \+ `#include "../initial_partitioning/aon_hypermodularity_initial_partitioner.h"`
-                    - \+ define `AONHypermodularityPartitionerDispatcher`
-                    - in `register_initial_partitioning_algorithms()`: \+ register `AONHypermodularityPartitionerDispatcher`
+                    - \+ `#include "../initial_partitioning/aon_hypermodularity_initial_partitioner.h"`, `#include "../initial_partitioning/aon_hypermodularity_kernel_initial_partitioner.h"`
+                    - \+ define `AONHypermodularityPartitionerDispatcher`, `AONHypermodularityKernelPartitionerDispatcher`
+                    - in `register_initial_partitioning_algorithms()`: \+ register `AONHypermodularityPartitionerDispatcher`, `AONHypermodularityKernelPartitionerDispatcher`
             - in `io/`:
                 - `command_line_options.cpp`: 
-                    - by `"i-enabled-ip-algos"` example add aon_hypermodularity IP (and change the number of IP-algos at the end of the example)
+                    - by `"i-enabled-ip-algos"` example add aon_hypermodularity, aon_hypermodularity_kernel IP (and change the number of IP-algos at the end of the example)
                 - `presets.cpp`:
-                    - in `load_large_k_preset()`: by`// main -> initial_partitioning` add entry for `aon_hypermodularity` (`"0"`) 
+                    - in `load_large_k_preset()`: by`// main -> initial_partitioning` add entry for `aon_hypermodularity` (`"0"`), entry for `aon_hypermodularity_kernel` (`"0"`)
                     - in `load_clustering_preset()`: 
-                        - `"0" // singleton" IP`, `"1" // aon_hypermodularity`
+                        ```cpp
+                         "0" // singleton" IP
+                         "1" // aon_hypermodularity
+                         "1" // aon_hypermodularity_kernel
+                        ```
     - `config/cluster_preset.ini` and `mt-kahypar/io/presets.cpp`: in `# main -> initial_partitioning` set `i-runs=1` istead of 10 for `cluster` (as AON-hypermodularity is deterministic)
 
 3. `sanity_check(*target_graph)` in `context.cpp`:
-    - adjust conductance checks to allow `aon_hypermodularity` IP
-    - ensure, that `use_community_detection` is enabled if `aon_hypermodularity` IP is used
+    - adjust conductance checks to allow `aon_hypermodularity`, `aon_hypermodularity_kernel` IP
+    - ensure, that `use_community_detection` is enabled if a hypermodularity IP is used
 
 4. ~~[Idea] Change `context.partition.k` if it changed after IP (due to `aon_hypernodularity`)  &rarr; not done, as `new_k` shouldn't be greater than the number of nodes~~
 4. change `context.partition.k` in `multilevel.cpp` if it `aon_hypernodularity` IP is used \ 
 [analog. to `cluster` + `singleton` &rArr; `new_k = #_nodes`] 
+
+#### Define helper functions to detect hypermodularity IP
+
+`mt-kahypar/partition/context_enum_classes.h, cpp`:
+- \+ `bool isHypermodularityIP(InitialPartitioningAlgorithm algo)`
+
+`mt-kahypar/partition/context.h`:
+- \+ `bool usesHypermodularityIP() const`
+
+### Run Hypermodularity IPs on parallel
+Hypermodularity IP heavily depends on the visiting order of the nodes.
+&rArr; we run multiple hypermodularity IPs in parallel.
+
+**For now for hypermodularity IPs, I multiply the number of runs by the number of threads.**
+
+`mt-kahypar/partition/initial_partitioning/pool_initial_partitioner.cpp`:
+```cpp
+template<typename TypeTraits>
+void Pool<TypeTraits>::bipartition(...) {
+  //                        <..>
+  // Push the runs of the different initial partitioning algorithms into a task list
+  for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
+    if ( context.initial_partitioning.enabled_ip_algos[i] ) {
+      auto algorithm = static_cast<InitialPartitioningAlgorithm>(i);
+      size_t runs = context.initial_partitioning.runs;
+      if (isHypermodularityIP(algorithm)) {
+        runs *= context.shared_memory.original_num_threads;
+        LOG << "Running " << static_cast<InitialPartitioningAlgorithm>(algorithm) 
+            << " IP " << runs << " time(s) as a Hypermodularity IP";
+      }
+      for ( size_t j = 0; j < runs; ++j ) {
+        _ip_task_lists.emplace_back(algorithm, rng(), tag++);
+      }
+    }
+  }
+  //                        <...>
+}
+```
 
 ### Problems
 

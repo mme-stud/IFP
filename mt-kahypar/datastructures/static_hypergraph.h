@@ -834,7 +834,7 @@ public:
   // ! Get \beta for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _beta.size())
   inline double beta(std::size_t d) const noexcept {
-    ASSERT(d < _beta.size() || d < _max_edge_size || d < _original_max_edge_size,
+    ASSERT(d < _beta.size() || d <= _max_edge_size || d <= _original_max_edge_size,
            "d = " << d << " is out of bounds for beta vector of size " << _beta.size()
            << " and max edge size " << _max_edge_size 
            << " and saved original max edge size " << _original_max_edge_size);
@@ -844,7 +844,7 @@ public:
   // ! Get \gamma for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _gamma.size())
   inline double gamma(std::size_t d) const noexcept {
-    ASSERT(d < _gamma.size() || d < _max_edge_size || d < _original_max_edge_size,
+    ASSERT(d < _gamma.size() || d <= _max_edge_size || d <= _original_max_edge_size,
            "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size()
            << " and max edge size " << _max_edge_size
            << " and saved original max edge size " << _original_max_edge_size);

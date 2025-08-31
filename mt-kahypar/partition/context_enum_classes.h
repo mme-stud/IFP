@@ -151,8 +151,11 @@ enum class InitialPartitioningAlgorithm : uint8_t {
   greedy_sequential_max_net = 8,
   singleton = 9,
   aon_hypermodularity = 10,
-  UNDEFINED = 11
+  aon_hypermodularity_kernel = 11,
+  UNDEFINED = 12
 };
+
+bool isHypermodularityIP(const InitialPartitioningAlgorithm& algo);
 
 enum class LabelPropagationAlgorithm : uint8_t {
   label_propagation,
