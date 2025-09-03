@@ -39,7 +39,7 @@ ToDo:
 - implement Hypermodularity as an IP (no parallelization in IP as multiple IP algorithms could be ran simultaneously + kermel should normally be small)
 - introduce the new IP to the system:
     - register IP as an IP
-    - set it as default IP for `cluster` preset
+    - set it as default IP for `cluster` preset (`i-runs=3`)
     - adjust the AON-parameter calculation to take place only if the IP is chosen
 - try and debug
 
@@ -186,8 +186,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        total_gain += louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, 
+        new_gain += louvainStep(H_new, H_new_partitioned, map_z, _beta, _gamma, 
                                   edgeSizeThreshold, maxNumIter, eps, randomize);
+        z_changed = (new_gain > eps);
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -199,7 +200,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          *  - true is returned.
          */
         
-        z_changed = expand(H, H_new, H_new_partitioned, map_z, z);
+        expand(H, H_new, H_new_partitioned, map_z, z);
       }
 
       LOG << "AON IP finished Louvain with total gain " << total_gain;
@@ -353,11 +354,11 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
                 }
                 std::shuffle(nodes.begin(), nodes.end(), _rng);
                 for (const HypernodeID &i : nodes) {
-                    gain = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
+                    gain += louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
                 }
             } else {
                 for (const HypernodeID &i : H_new_partitioned.nodes()) {
-                    gain = louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
+                    gain += louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
                 }
             }
             total_gain += gain;
@@ -426,9 +427,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
                         ```cpp
                          "0" // singleton" IP
                          "1" // aon_hypermodularity
-                         "1" // aon_hypermodularity_kernel
+                         "0" // aon_hypermodularity_kernel (always worse)
                         ```
-    - `config/cluster_preset.ini` and `mt-kahypar/io/presets.cpp`: in `# main -> initial_partitioning` set `i-runs=1` istead of 10 for `cluster` (as AON-hypermodularity is deterministic)
+    - `config/cluster_preset.ini` and `mt-kahypar/io/presets.cpp`: in `# main -> initial_partitioning` set `i-runs=3` istead of 10 for `cluster` (as AON-hypermodularity is ~~deterministic~~ randomized and runs `i-runs * t` times)
 
 3. `sanity_check(*target_graph)` in `context.cpp`:
     - adjust conductance checks to allow `aon_hypermodularity`, `aon_hypermodularity_kernel` IP

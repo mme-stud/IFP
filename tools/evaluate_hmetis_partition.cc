@@ -107,7 +107,9 @@ int main(int argc, char* argv[]) {
             << " k=" << context.partition.k
             << " imbalance=" << metrics::imbalance(phg, context)
             << " cut=" << metrics::quality(phg, Objective::cut)
-            << " km1=" << metrics::quality(phg, Objective::km1) << std::endl;
+            << " km1=" << metrics::quality(phg, Objective::km1) << std::endl
+            << " conductance=" << metrics::quality(phg, Objective::conductance_local)
+            << " aon_hypermodularity=" << metrics::quality(phg, Objective::aon_hypermodularity);
 
   utils::delete_hypergraph(hypergraph);
 

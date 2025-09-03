@@ -69,7 +69,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
       H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       // current communities of hg: z: node -> community
-      vec<HypernodeID> z(H.initialNumEdges(), kInvalidPartition);
+      vec<HypernodeID> z(H.initialNumNodes(), kInvalidPartition);
 
       // =====================================================
       //          1. Singleton initial partitioning
@@ -109,8 +109,11 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        total_gain += louvainStep(H_new, H_new_partitioned, map_z, beta, gamma, 
+        double new_gain = louvainStep(H_new, H_new_partitioned, map_z, beta, gamma, 
                                   edgeSizeThreshold, maxNumIter, eps, randomize);
+        LOG << "AON IP: step gain " << new_gain;
+        total_gain += new_gain;
+        z_changed = (new_gain > eps);
         /// [debug] if (counter % 100 == 1)
         /// [debug] std::cout << "Outer Iteration: made a step" << counter << std::endl;
 
@@ -123,7 +126,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
          *  - z (communities for H) is updated via map_z;
          *  - true is returned.
          */
-        z_changed = expand(H, H_new, H_new_partitioned, map_z, z);
+        expand(H, H_new, H_new_partitioned, map_z, z);
         /// [debug] if (counter % 100 == 1)
         /// [debug] std::cout << "Outer Iteration: expanded" << counter << std::endl;
       } while (z_changed);
@@ -173,6 +176,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(
     community[hn] = H_new.communityID(hn);
   }
   H_new = H_new.contract(community /* community mapping */);
+  ASSERT(H_new.isOriginalSizeUsageInParallelNetsDetectionEnabled(), "Original size usage in parallel nets detection is not enabled");
   H_new_partitioned = PartitionedHypergraph(H_new.initialNumNodes(), H_new);
   H_new_partitioned.setNecessityOfConductancePriorityQueue(false);
   // create a mapping from the old community IDs to the new ones:
@@ -237,14 +241,14 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(
       }
       std::shuffle(nodes.begin(), nodes.end(), _rng);
       for (const HypernodeID &i : nodes) {
-        gain = louvainStepForANode(i, neighbors[i], visited, 
+        gain += louvainStepForANode(i, neighbors[i], visited, 
                                         H_new, H_new_partitioned, map_z, 
                                         beta, gamma, edgeSizeThreshold, 
                                         eps, randomize);
       }
     } else {
       for (const HypernodeID &i : H_new_partitioned.nodes()) {
-        gain = louvainStepForANode(i, neighbors[i], visited, 
+        gain += louvainStepForANode(i, neighbors[i], visited, 
                                         H_new, H_new_partitioned, map_z, 
                                         beta, gamma, edgeSizeThreshold, 
                                         eps, randomize);
@@ -280,7 +284,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(
     if (visitedParts[A]) continue;
     visitedParts[A] = true;
     double gain = QAONGain(H_new_partitioned, i, A, beta, gamma, edgeSizeThreshold);
-    if (gain > best_gain) {
+    if (gain > best_gain + eps) {
       best_gain = gain;
       best_partition = A;
     }
@@ -292,6 +296,8 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(
     // Update map_z with the new partition
     map_z[H_new.communityID(i)] = best_partition;
     H_new_partitioned.changeNodePart(i, part_i, best_partition);
+  } else if (! (best_gain <= 0)) {
+    LOG << "Louvain: THE GAIN IS TOO SMALL: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")";
   }
   return best_gain;
 }
@@ -341,7 +347,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
     double weight_he = static_cast<double>(H_new_partitioned.edgeWeight(he));
 
     // z_he
-    if (pin_count_part_i == size) {
+    if (pin_count_part_i == size && size > 1) {
       // not a cutting edge <=> kroneker_delta(z_he) = 1
       ASSERT(H_new_partitioned.connectivity(he) == 1, 
              "Pin count isn't consistent with connectivity of hyperedge " << he
@@ -351,7 +357,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
                   * weight_he; // as some edges are combined in contraction
     }
     // z_he i -> A
-    if (pin_count_A + 1 == size) {
+    if (pin_count_A + 1 == size && size > 1) {
       // won't be a cutting edge after i -> A  <=> kroneker_delta(z_he_i->A) = 1
       ASSERT(H_new_partitioned.connectivity(he) > 1 || size == 1, 
              "Pin count isn't consistent with connectivity of hyperedge " << he
@@ -389,8 +395,8 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
 }
 
 template<typename TypeTraits>
-bool AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z) {
-  // Check if something changed
+void AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z) {
+  /* Check if something changed
   bool z_changed = false;
   vec<bool> notEmptyPart(H_new.initialNumNodes(), false);
   for (const HypernodeID &hn : H_new.nodes()) {
@@ -406,7 +412,8 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
     notEmptyPart[partition] = true;
   }
   //if (! z_changed)
-  //  return z_changed /* = false */;
+  //  return z_changed;
+  */
 
   // Update communities in H_new (to be able to contract it later)
   for (const HypernodeID &hn : H_new.nodes()) {
@@ -424,7 +431,7 @@ bool AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
     z_new[hn] = map_z[community];
   }
   z = z_new;
-  return z_changed /* = true */;
+  // return z_changed /* = true */;
 }
 
 

@@ -99,8 +99,8 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
                          const HypernodeID i, const PartitionID A, 
                          const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold);
 
-  // Adjust current communities and check if they changed
-  inline bool expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
+  // Adjust current communities
+  inline void expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
 
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;

@@ -554,7 +554,7 @@ std::vector<option> load_clustering_preset() {
     create_option("c-rating-acceptance-criterion", "best_prefer_unmatched"),
     // main -> initial_partitioning
     create_option("i-mode", "direct"),
-    create_option("i-runs", "1"),
+    create_option("i-runs", "3"),
     { "i-enabled-ip-algos", {
             "0",    // greedy_round_robin_fm
             "0",    // greedy_global_fm
@@ -567,7 +567,7 @@ std::vector<option> load_clustering_preset() {
             "0",    // greedy_sequential_max_net
             "0",    // singleton
             "1",    // aon_hypermodularity
-            "1",    // aon_hypermodularity_kernel
+            "0",    // aon_hypermodularity_kernel
     } },
     create_option("i-use-adaptive-ip-runs", "false"),
     create_option("i-min-adaptive-ip-runs", "1"),

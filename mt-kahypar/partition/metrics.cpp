@@ -176,7 +176,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::aon_hypermodularity> 
     std::size_t k = static_cast<std::size_t>(phg.originalEdgeSize(he));
     // LOG << "Hyperedge " << he << " with size " << k;
     if (k < 2) {
-      LOG << RED << "Size 1 edge " << he;
+      // LOG << RED << "Size 1 edge " << he;
       return 0;                               // ignore size=1 edges
     }
     if (phg.connectivity(he) == 1) return 0;           // not cut
@@ -480,7 +480,7 @@ double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg) {
   };
 
   double edge_sum = 0.0;
-  for (const HyperedgeID& he : phg.hyperedges()) {
+  for (const HyperedgeID& he : phg.edges()) {
     edge_sum += double_edge_gain(phg, he);
   }
   double Q = edge_sum + aonVolumeTerm(phg);

@@ -891,7 +891,7 @@ public:
   /// filled and can be queried with beta(k), gamma(k), omegaIn/Out(k).
   inline void computeAONParameters(double eps = 1e-12) {
     unused(eps);
-    const std::size_t dmax = static_cast<std::size_t>(_max_edge_size);
+    const std::size_t dmax = static_cast<std::size_t>(_original_max_edge_size);
     // if (dmax < 2) { _beta.clear(); _gamma.clear(); _omega.clear(); return; }
 
     /* ------------------------------------------------------------
@@ -907,11 +907,11 @@ public:
     for (HypernodeID v : nodes())
       // ClusVol[communityID(v)] += static_cast<double>(nodeDegree(v));
       // [mariia's suggestion]:
-      ClusVol[communityID(v)] += static_cast<double>(nodeWeightedDegree(v));
+      ClusVol[communityID(v)] += static_cast<double>(nodeOriginalWeightedDegree(v));
 
     // const double vol_H = initialTotalVertexDegree();
     // [mariia's suggestion]:
-    const double vol_H = totalVolume();
+    const double vol_H = originalTotalVolume();
 
     /* ------------------------------------------------------------
      * 2. count edges and cut edges per size k
@@ -922,7 +922,7 @@ public:
     std::vector<double> cut_k(dmax + 1, 0.0);
 
     for (HyperedgeID e : edges()) {
-      const std::size_t d = static_cast<std::size_t>(edgeSize(e));
+      const std::size_t d = static_cast<std::size_t>(originalEdgeSize(e));
       if (d < 2) // ignore single pin nets
         continue;
       const double w = static_cast<double>(edgeWeight(e));

@@ -275,9 +275,9 @@ namespace mt_kahypar {
     if (context.usesHypermodularityIP() 
         || context.partition.objective == Objective::aon_hypermodularity ) {
       LOG << "Precomputing the parameters for AON-Hypermodularity IP";
-      hypergraph.computeAONParameters();
       hypergraph.snapshotOriginalEdgeSizes();
       hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
+      hypergraph.computeAONParameters();
       hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
     }
   }
