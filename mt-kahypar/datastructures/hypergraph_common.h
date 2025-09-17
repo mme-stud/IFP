@@ -200,8 +200,8 @@ struct SynchronizedEdgeUpdate {
   //! Pointers / views to the *global* βₖ and γₖ arrays of the **current
   //! hierarchy level**.  They never change during the whole node move, so a
   //! (const) pointer is enough and avoids copying the vectors for every edge.
-  const vec<double>* beta_vec        = nullptr;    // same object for all edges
-  const vec<double>* gamma_vec       = nullptr;
+  const vec</* long */ double>* beta_vec        = nullptr;    // same object for all edges
+  const vec</* long */ double>* gamma_vec       = nullptr;
   HyperedgeID original_edge_size;
   HyperedgeID hn_degree;
   HypergraphVolume original_volume_from_after;

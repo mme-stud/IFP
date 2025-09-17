@@ -758,28 +758,28 @@ class StaticGraph {
   bool hasAON() const { return false; }
 
   // ! Not supported for static graphs
-  inline double beta(std::size_t k) const { 
+  inline /* long */ double beta(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
       "beta(k) is not supported for static graph");
       return 0.0;
     }
     // ! Not supported for static graphs
-  inline double gamma(std::size_t k) const { 
+  inline /* long */ double gamma(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "gamma(k) is not supported for static graph");
     return 0.0;
   }
   // ! Not supported for static graphs
-  inline double omegaIn(std::size_t k) const { 
+  inline /* long */ double omegaIn(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaIn(k) is not supported for static graph");
     return 0.0;
   }
   // ! Not supported for static graphs
-  inline double omegaOut(std::size_t k) const { 
+  inline /* long */ double omegaOut(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaOut(k) is not supported for static graph");
@@ -787,14 +787,14 @@ class StaticGraph {
   }
   // ! _beta vector for AON-Hypermodularity
   // ! Not supported for static graphs
-  inline const vec<double>& betaVector()  const { 
+  inline const vec</* long */ double>& betaVector()  const { 
     throw UnsupportedOperationException(
       "betaVector() is not supported for static graph");
     return _dummy_double_vector;
   }
   // ! _gamma vector for AON-Hypermodularity
   // ! Not supported for static graphs
-  inline const vec<double>& gammaVector() const { 
+  inline const vec</* long */ double>& gammaVector() const { 
     throw UnsupportedOperationException(
       "gammaVector() is not supported for static graph");
     return _dummy_double_vector;
@@ -1103,7 +1103,7 @@ class StaticGraph {
   TmpContractionBuffer* _tmp_contraction_buffer;
 
   // ! Dummy vectors for AON-Hypermodularity
-  static const vec<double> _dummy_double_vector;
+  static const vec</* long */ double> _dummy_double_vector;
 };
 
 } // namespace ds

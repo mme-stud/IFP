@@ -911,28 +911,28 @@ private:
   inline bool hasAON() const { return false; }
 
   // Not supported for graphs
-  inline double beta (std::size_t k) const { 
+  inline /* long */ double beta (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "beta(k) is not supported for partitioned graph");
     return 0.0;
   }
   // Not supported for graphs
-  inline double gamma (std::size_t k) const { 
+  inline /* long */ double gamma (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "gamma(k) is not supported for partitioned graph");
     return 0.0;
   }
   // Not supported for graphs
-  inline double omegaIn (std::size_t k) const { 
+  inline /* long */ double omegaIn (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaIn(k) is not supported for partitioned graph");
     return 0.0;
   }
   // Not supported for graphs
-  inline double omegaOut (std::size_t k) const { 
+  inline /* long */ double omegaOut (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaOut(k) is not supported for partitioned graph");
@@ -941,13 +941,13 @@ private:
 
   // ! _beta vector for AON-Hypermodularity
   // ! Not supported for partitioned graphs
-  inline const vec<double>& betaVector()  const { 
+  inline const vec</* long */ double>& betaVector()  const { 
     throw UnsupportedOperationException(
             "betaVector() is not supported for partitioned graph");
   }
   // ! _gamma vector for AON-Hypermodularity
   // ! Not supported for partitioned graphs
-  inline const vec<double>& gammaVector() const { 
+  inline const vec</* long */ double>& gammaVector() const { 
     throw UnsupportedOperationException(
             "gammaVector() is not supported for partitioned graph");
   }

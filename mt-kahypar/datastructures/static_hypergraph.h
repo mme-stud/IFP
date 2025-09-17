@@ -833,7 +833,7 @@ public:
 
   // ! Get \beta for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _beta.size())
-  inline double beta(std::size_t d) const noexcept {
+  inline /* long */ double beta(std::size_t d) const noexcept {
     ASSERT(d < _beta.size() || d <= _max_edge_size || d <= _original_max_edge_size,
            "d = " << d << " is out of bounds for beta vector of size " << _beta.size()
            << " and max edge size " << _max_edge_size 
@@ -843,7 +843,7 @@ public:
 
   // ! Get \gamma for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _gamma.size())
-  inline double gamma(std::size_t d) const noexcept {
+  inline /* long */ double gamma(std::size_t d) const noexcept {
     ASSERT(d < _gamma.size() || d <= _max_edge_size || d <= _original_max_edge_size,
            "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size()
            << " and max edge size " << _max_edge_size
@@ -853,7 +853,7 @@ public:
 
   // ! Get \omega_{d0} for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
-  inline double omegaIn(std::size_t d) const noexcept {
+  inline /* long */ double omegaIn(std::size_t d) const noexcept {
     ASSERT(d < _omega.size(),
            "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
     return _omega[d][0];
@@ -862,7 +862,7 @@ public:
 
   // ! Get \omega_{d1} for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
-  inline double omegaOut(std::size_t d) const noexcept {
+  inline /* long */ double omegaOut(std::size_t d) const noexcept {
     ASSERT(d < _omega.size(),
            "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
     return _omega[d][1];
@@ -871,10 +871,10 @@ public:
 
   // ! _beta vector for AON-Hypermodularity. 
   // ! Zeros at the end are omitted!
-  inline const vec<double>& betaVector()  const { return _beta;  }
+  inline const vec</* long */ double>& betaVector()  const { return _beta;  }
   // ! _gamma vector for AON-Hypermodularity. 
   // ! Zeros at the end are omitted!
-  inline const vec<double>& gammaVector() const { return _gamma; }
+  inline const vec</* long */ double>& gammaVector() const { return _gamma; }
 
   // ──────────────────────────────────────────────────────────
   /// (Re)compute β, γ, ω for the **current** community assignment
@@ -968,6 +968,15 @@ public:
       /* long */ double omega_in = static_cast<double>( (m_k[d] - cut_k[d]) / vol_in );
       /* long */ double omega_out = static_cast<double>( cut_k[d] / vol_out );
       // (Normally) not NaN / +-Inf as m\_k, cut_k < total_volume. (vol_in and vol_out != NaN, 0)
+
+      /// [debug] std::cout << "Volume^d sum for d=" << d << ": " << vol_in << std::endl;
+      /// [debug] std::cout << "Volume^d for d=" << d << ": " << vol_H_d << std::endl;
+      /// [debug] std::cout << "d=" << d
+      /// [debug]           << ": edges=" << m_k[d] 
+      /// [debug]           << ", cuts=" << cut_k[d] 
+      /// [debug]           << ", omega_in=" << omega_in 
+      /// [debug]           << ", omega_out=" << omega_out << std::endl; 
+
 
       _omega[d] = {omega_in, omega_out};
       _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: \beta_k from (15)]
@@ -1400,9 +1409,9 @@ public:
   bool _has_original_edge_sizes = false;
   
   // AON HyperModularity Clustering Coefficients
-  vec<double> _beta;                 ///< β_k
-  vec<double> _gamma;                ///< β_k * γ_k
-  vec<std::array<double, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
+  vec</* long */ double> _beta;                 ///< β_k
+  vec</* long */ double> _gamma;                ///< β_k * γ_k
+  vec<std::array</* long */ double, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
 };
 
 } // namespace ds

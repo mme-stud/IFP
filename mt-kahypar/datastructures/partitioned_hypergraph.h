@@ -1473,18 +1473,18 @@ public:
   //  without exposing the whole vectors.
 
   // ! Getter for _beta[k]
-  inline double beta   (std::size_t k) const { return _hg->beta   (k); }
+  inline /* long */ double beta   (std::size_t k) const { return _hg->beta   (k); }
   // ! Getter for _gamma[k]
-  inline double gamma  (std::size_t k) const { return _hg->gamma  (k); }
+  inline /* long */ double gamma  (std::size_t k) const { return _hg->gamma  (k); }
   // ! Getter for _omegaIn[k]
-  inline double omegaIn (std::size_t k) const { return _hg->omegaIn (k); }
+  inline /* long */ double omegaIn (std::size_t k) const { return _hg->omegaIn (k); }
   // ! Getter for _omegaOut[k]
-  inline double omegaOut(std::size_t k) const { return _hg->omegaOut(k); }
+  inline /* long */ double omegaOut(std::size_t k) const { return _hg->omegaOut(k); }
 
   // ! _beta vector for AON-Hypermodularity
-  inline const vec<double>& betaVector()  const { return _hg->betaVector();  }
+  inline const vec</* long */ double>& betaVector()  const { return _hg->betaVector();  }
   // ! _gamma vector for AON-Hypermodularity
-  inline const vec<double>& gammaVector() const { return _hg->gammaVector(); }
+  inline const vec</* long */ double>& gammaVector() const { return _hg->gammaVector(); }
 
   // ####################### Memory Consumption #######################
 
