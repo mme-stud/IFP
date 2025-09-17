@@ -51,40 +51,39 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
       const vec<double> gamma = hg.gammaVector();
 
       // coarsest underlying hypergraph
-      UnderlyingHypergraph H = hg.hypergraph().copy();
-      
-      if (! useOriginalEdgeSizes || ! H.hasOriginalEdgeSizes()) {
+      UnderlyingHypergraph H_new = hg.hypergraph().copy();
+
+      if (! useOriginalEdgeSizes || ! H_new.hasOriginalEdgeSizes()) {
         useOriginalEdgeSizes = false;
-        if ( ! H.hasOriginalEdgeSizes() )
+        if ( ! H_new.hasOriginalEdgeSizes() && useOriginalEdgeSizes)
           LOG << "No snapshot of original edge size found: using edge sizes of the current hypergraph.";
         // save current edge sizes, weighted degrees and total volume
-        H.snapshotOriginalEdgeSizes();
-        H.snapshotOriginalWeightedDegreesAndTotalVolume();
-        H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
+        H_new.snapshotOriginalEdgeSizes();
+        H_new.snapshotOriginalWeightedDegreesAndTotalVolume();
       }
       if (useOriginalEdgeSizes)
-        LOG << "AON IP: Using original edge sizes.";
+        LOG << "AON IP: Using original edge sizes: # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
       else
-        LOG << "AON IP: Using current edge sizes.";
-      H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
+        LOG << "AON IP: Using current edge sizes. # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
+      H_new.enableSinglePinNetsRemoval(); // single pin nets are never cutting
+      H_new.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
 
       // current communities of hg: z: node -> community
-      vec<HypernodeID> z(H.initialNumNodes(), kInvalidPartition);
+      vec<HypernodeID> z(H_new.initialNumNodes(), kInvalidPartition);
 
       // =====================================================
       //          1. Singleton initial partitioning
       // =====================================================
-      for (const HypernodeID &hn : H.nodes()) {
+      for (const HypernodeID &hn : H_new.nodes()) {
         z[hn] = hn;
-        H.setCommunityID(hn, hn);
+        H_new.setCommunityID(hn, hn);
       }
 
       // =====================================================
       //          2. AllOrNothingHMLL: Louvain Cycle
       // =====================================================
-      UnderlyingHypergraph H_new = H.copy();
       PartitionedHypergraph H_new_partitioned;
-      vec<HypernodeID> map_z(H.initialNumNodes(), kInvalidPartition);
+      vec<HypernodeID> map_z(H_new.initialNumNodes(), kInvalidPartition);
       bool z_changed = false;
       double total_gain = 0.0;
       /// [debug] long long counter = 0;
@@ -101,8 +100,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
          *    PartitionIDs in H_new_partitioned.
          */
         collapse(H_new, H_new_partitioned, map_z);
-        /// [debug] if (counter % 100 == 1)
-        /// [debug] std::cout << "Outer Iteration: collapsed" << counter << std::endl;
+        /// [debug] std::cout << "Outer Iteration: collapse(..) finished " << counter << std::endl;
 
         /** ------------------ Louvain Step: ------------------
          *  - Nodes are moved to neighboring partitions as
@@ -114,8 +112,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
         LOG << "AON IP: step gain " << new_gain;
         total_gain += new_gain;
         z_changed = (new_gain > eps);
-        /// [debug] if (counter % 100 == 1)
-        /// [debug] std::cout << "Outer Iteration: made a step" << counter << std::endl;
+        /// [debug] std::cout << "Outer Iteration: louvainStep(..) finished " << counter << std::endl;
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -126,9 +123,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
          *  - z (communities for H) is updated via map_z;
          *  - true is returned.
          */
-        expand(H, H_new, H_new_partitioned, map_z, z);
-        /// [debug] if (counter % 100 == 1)
-        /// [debug] std::cout << "Outer Iteration: expanded" << counter << std::endl;
+        expand(hg, H_new, H_new_partitioned, map_z, z);
+        /// [debug] std::cout << "Outer Iteration: expand(..) finished " << counter << std::endl;
       } while (z_changed);
 
       LOG << "AON IP finished Louvain with total gain " << total_gain 
@@ -171,12 +167,6 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
 template<typename TypeTraits>
 void AONHypermodularityInitialPartitioner<TypeTraits>::collapse(
         UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z) {
-  vec<HypernodeID> community(H_new.initialNumNodes(), kInvalidPartition);
-  for (const HypernodeID& hn : H_new.nodes()) {
-    community[hn] = H_new.communityID(hn);
-  }
-  H_new = H_new.contract(community /* community mapping */);
-  ASSERT(H_new.isOriginalSizeUsageInParallelNetsDetectionEnabled(), "Original size usage in parallel nets detection is not enabled");
   H_new_partitioned = PartitionedHypergraph(H_new.initialNumNodes(), H_new);
   H_new_partitioned.setNecessityOfConductancePriorityQueue(false);
   // create a mapping from the old community IDs to the new ones:
@@ -227,35 +217,39 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(
   double total_gain = 0.0;
   bool improving = true;
   long long iter = 0;
-  while (improving && (iter++ < maxNumIter)) {
-    double gain = 0.0;
-    improving = false;
-      /// [debug] if (iter % 100 == 1) {
-      /// [debug]   std::cout << "Louvain: round " << iter << std::endl;
-      /// [debug] }
-    
-    if (randomize) {
-      vec<HypernodeID> nodes(numNodes, 0);
-      for (HypernodeID i = 0; i < numNodes; ++i) {
-        nodes[i] = i;
-      }
-      std::shuffle(nodes.begin(), nodes.end(), _rng);
+  if (randomize) {
+    vec<HypernodeID> nodes(numNodes, 0);
+    for (HypernodeID i = 0; i < numNodes; ++i) {
+      nodes[i] = i;
+    }
+    std::shuffle(nodes.begin(), nodes.end(), _rng);
+    while (improving && (iter++ < maxNumIter)) {
+      double gain = 0.0;
+      improving = false;
       for (const HypernodeID &i : nodes) {
+        if ( ! H_new_partitioned.nodeIsEnabled(i) ) continue;
         gain += louvainStepForANode(i, neighbors[i], visited, 
-                                        H_new, H_new_partitioned, map_z, 
-                                        beta, gamma, edgeSizeThreshold, 
-                                        eps, randomize);
+                                       H_new, H_new_partitioned, map_z, 
+                                       beta, gamma, edgeSizeThreshold, 
+                                       eps, randomize);
       }
-    } else {
+      total_gain += gain;
+      improving = (gain > eps);
+    }
+  } else {
+    while (improving && (iter++ < maxNumIter)) {
+      double gain = 0.0;
+      improving = false;
+      /// [debug]   std::cout << "Louvain: round " << iter << std::endl;
       for (const HypernodeID &i : H_new_partitioned.nodes()) {
         gain += louvainStepForANode(i, neighbors[i], visited, 
-                                        H_new, H_new_partitioned, map_z, 
-                                        beta, gamma, edgeSizeThreshold, 
-                                        eps, randomize);
+                                       H_new, H_new_partitioned, map_z, 
+                                       beta, gamma, edgeSizeThreshold, 
+                                       eps, randomize);
       }
+      total_gain += gain;
+      improving = (gain > eps);
     }
-    total_gain += gain;
-    improving = (gain > eps);
   }
   return total_gain;
 }
@@ -269,7 +263,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(
   unused(randomize);
   /// [debug] if (i % 1000 == 0)
   /// [debug] std::cout << "Louvain: node " << i << std::endl;
-  HypernodeID part_i = H_new_partitioned.partID(i);
+  PartitionID part_i = H_new_partitioned.partID(i);
 
   /// Check all neighboring partitions to find the best gain
   visitedParts.assign(H_new_partitioned.k(), false);
@@ -284,22 +278,34 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForANode(
     if (visitedParts[A]) continue;
     visitedParts[A] = true;
     double gain = QAONGain(H_new_partitioned, i, A, beta, gamma, edgeSizeThreshold);
-    if (gain > best_gain + eps) {
+    // LOG << "Louvain: node " << i << " -> " << A << " (gain: " << gain << ")";
+    if (gain > best_gain) {
       best_gain = gain;
       best_partition = A;
+    } else if (gain != gain) { // NaN
+      LOG << "Louvain: THE GAIN IS NaN: node " << i << " -> " << A << " (gain: " << gain << ")";
     }
   } 
 
   if (best_gain > eps) {
     // improving = true;
+    /// [debug] if(i % 1000 == 0)
     /// [debug] std::cout << "Louvain: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")" << std::endl;
     // Update map_z with the new partition
-    map_z[H_new.communityID(i)] = best_partition;
-    H_new_partitioned.changeNodePart(i, part_i, best_partition);
+    ASSERT(part_i == static_cast<PartitionID>(map_z[H_new.communityID(i)]),
+             "AONHypermodularityInitialPartitioner::louvainStepForANode: "
+             "node " << i << " is not assigned to its mapped community: "
+             "partID(i) = " << part_i << ", map_z[communityID(i)] = " << map_z[H_new.communityID(i)]);
+    if (H_new_partitioned.changeNodePart(i, part_i, best_partition)) { 
+      map_z[H_new.communityID(i)] = best_partition;
+      return best_gain;
+    } else {
+      LOG << "Louvain: node " << i << " -> " << best_partition << " FAILED";
+    }
   } else if (! (best_gain <= 0)) {
     LOG << "Louvain: THE GAIN IS TOO SMALL: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")";
   }
-  return best_gain;
+  return 0.0;
 }
 
 template<typename TypeTraits>
@@ -395,25 +401,7 @@ double AONHypermodularityInitialPartitioner<TypeTraits>::QAONGain(
 }
 
 template<typename TypeTraits>
-void AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z) {
-  /* Check if something changed
-  bool z_changed = false;
-  vec<bool> notEmptyPart(H_new.initialNumNodes(), false);
-  for (const HypernodeID &hn : H_new.nodes()) {
-    PartitionID partition = H_new_partitioned.partID(hn);
-    ASSERT(partition != kInvalidPartition,
-            "AONHypermodularityInitialPartitioner::expand : "
-            "partition of hypernode " << hn << " is invalid");
-    if (notEmptyPart[partition]) {
-      // Not a singleton => changed since the collapse
-      z_changed = true;
-      break;
-    }
-    notEmptyPart[partition] = true;
-  }
-  //if (! z_changed)
-  //  return z_changed;
-  */
+void AONHypermodularityInitialPartitioner<TypeTraits>::expand(const PartitionedHypergraph& initPhg, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z) {
 
   // Update communities in H_new (to be able to contract it later)
   for (const HypernodeID &hn : H_new.nodes()) {
@@ -423,7 +411,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
 
   // Update current communities on H
   vec<HypernodeID> z_new = z;
-  for (const HypernodeID &hn : H.nodes()) {
+  for (const HypernodeID& hn : initPhg.nodes()) {
     HypernodeID community = z[hn];
     ASSERT(static_cast<PartitionID>(map_z[community]) != kInvalidPartition,
             "AONHypermodularityInitialPartitioner::expand : "
@@ -431,6 +419,13 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::expand(UnderlyingHypergra
     z_new[hn] = map_z[community];
   }
   z = z_new;
+
+  vec<HypernodeID> community(H_new.initialNumNodes(), kInvalidPartition);
+  for (const HypernodeID& hn : H_new.nodes()) {
+    community[hn] = H_new.communityID(hn);
+  }
+  H_new = H_new.contract(community /* community mapping */);
+  ASSERT(H_new.isOriginalSizeUsageInParallelNetsDetectionEnabled(), "Original size usage in parallel nets detection is not enabled");
   // return z_changed /* = true */;
 }
 

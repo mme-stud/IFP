@@ -60,7 +60,7 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
  private:
   void partitionImpl() final {
     partitionImpl(
-      1e3 /* edgeSizeThreshold */,
+      std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,
       1e2 /* maxNumIter */,
       1e-8 /* eps */,
       true /* randomize */,
@@ -100,7 +100,7 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
                          const vec<double>& beta, const vec<double>& gamma, const HypernodeID edgeSizeThreshold);
 
   // Adjust current communities
-  inline void expand(UnderlyingHypergraph& H, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
+  inline void expand(const PartitionedHypergraph& initPhg, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
 
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;

@@ -48,7 +48,8 @@ class AONHypermodularityKernelInitialPartitioner : public IInitialPartitioner {
                            ip_data_container_t* ip_data,
                            const Context& context,
                            const int seed, const int tag) :
-    _aon_ip(InitialPartitioningAlgorithm::aon_hypermodularity_kernel, ip_data, context, seed, tag)
+    _aon_ip(InitialPartitioningAlgorithm::aon_hypermodularity_kernel, ip_data, context, seed, tag),
+    _context(context)
     { }
 
  private:
@@ -56,6 +57,7 @@ class AONHypermodularityKernelInitialPartitioner : public IInitialPartitioner {
   void partitionImpl() final;
 
   AONHypermodularityInitialPartitioner<TypeTraits> _aon_ip;
+  const Context& _context;
 };
 
 } // namespace mt_kahypar

@@ -31,7 +31,7 @@ template<typename TypeTraits>
 void AONHypermodularityKernelInitialPartitioner<TypeTraits>::partitionImpl() {
   /// [debug] std::cout << "AONHypermodularityKernelInitialPartitioner::partitionImpl()" << std::endl;
   _aon_ip.partitionImpl(
-    1e3 /* edgeSizeThreshold */,
+    std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,   
     1e2 /* maxNumIter */,
     1e-8 /* eps */,
     true /* randomize */,

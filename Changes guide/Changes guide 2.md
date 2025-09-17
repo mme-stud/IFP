@@ -36,7 +36,7 @@
 
 ToDo:
 - calculate parameters ($\omega_{k0}, \omega_{k1} \beta, \gamma$) needed for the AON-Hypermodularity IP &rarr; community detection in preprocessing
-- implement Hypermodularity as an IP (no parallelization in IP as multiple IP algorithms could be ran simultaneously + kermel should normally be small)
+- implement Hypermodularity as an IP (no parallelization in IP as multiple IP algorithms could be ran simultaneously + kernel should normally be small)
 - introduce the new IP to the system:
     - register IP as an IP
     - set it as default IP for `cluster` preset (`i-runs=3`)
@@ -214,7 +214,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 ```
 
 `aon_hypermodularity_kernel_initial_partitioner.h, .cpp`:
-- a single attribute `AONHypermodularityInitialPartitioner _aon_ip`
+- two attributes:
+    - `AONHypermodularityInitialPartitioner _aon_ip`
+    - `const Context& _context` (to get `k_context.partition.large_hyperedge_size_threshold` for the `edgeSizeThreshold` parameter)
 - calls `aon_hypermodularity` with `useOriginalEdgeSizes=false`
 
 #### Needed Additional Functionality (Static Hypergraph, Partitioned Hypergraph)
@@ -314,14 +316,12 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 
 
 #### Implementation Details
-0. The underlying hypergraph `H` can have too many single-pin hyperedges \ 
-&rArr; I contract it's singleton communities and after that disabled single-pin nets removal
 1. Louvain `Collapse(..)` and `Expand(..)`:
     ![Algorithm 3](<Algorithm 3: AllOrNothingHMLL.png>)
-    - **Main idea**: contract static hg (*= the result of the last contraction*) and create a partitioned hg from it = collapse
+    - **Main idea**: create a partitioned hg from singletons = collapse
     - after `collapse(..)` save mapping to `map_z`: \
     	`map_z[communityID(collapsed_hn)] = collapsed_hn`
-    - at `expand(..)` adjust `z` (*= the best found partitioning of the given coarsest hypergraph*): \
+    - at `expand(..)` adjust `z` (*= the best found partitioning of the given coarsest hypergraph*), contract static hg [here, as in `collapse` it's unnecessary at the first time and potentially takes too long]: \
 	    ```
         for hn in H:
             z_new[hn] = map_z[z[hn]]
@@ -347,25 +347,19 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     - `if randomize`: the nodes are contracted in a random order:
         ```cpp
         double total_gain = 0.0;
-        while (improving && (iter++ < maxNumIter)) {
+        if (randomize) {
+          //              shuffle nodes
+          while (improving && (iter++ < maxNumIter)) {
             improving = false;
             double gain = 0.0;
-            if (randomize) {
-                vec<HypernodeID> nodes(numNodes, 0);
-                for (HypernodeID i = 0; i < numNodes; ++i) {
-                    nodes[i] = i;
-                }
-                std::shuffle(nodes.begin(), nodes.end(), _rng);
-                for (const HypernodeID &i : nodes) {
-                    gain += louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
-                }
-            } else {
-                for (const HypernodeID &i : H_new_partitioned.nodes()) {
-                    gain += louvainStepForANode(i, neighbours[i], visited, H_new_partitioned, map_z, beta, gamma, maxNumIter, eps, randomize, edgeSizeThreshold);
-                }
+            for (const HypernodeID &i : nodes) {
+              gain += louvainStepForANode(i, ...);
             }
             total_gain += gain;
             improving = (gain > eps);
+          } 
+        } else {
+          // the same, but without shuffling
         }
         ```
 
@@ -381,7 +375,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     
     **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
 
-    [For now] I introduced `const HypernodeID edgeSizeThreshold=1e3` parameter to avoid too big loops in gain computation and (more importantly) calculating with infinities (as inf - Inf = NaN &rarr; the gain is `NaN` &rArr; move isn't done)
+    [For now] I introduced `const HypernodeID edgeSizeThreshold = std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,` parameter to avoid too big loops in gain computation and (more importantly) calculating with infinities (as inf - Inf = NaN &rarr; the gain is `NaN` &rArr; move isn't done)
+
+1000. [old] ~~The underlying hypergraph `H` can have too many single-pin hyperedges &rArr; I contract it's singleton communities and after that disabled single-pin nets removal~~ [not a problem, as single pin nets are removed now]
 
 ### Introduce of the new IP to the framework
 
