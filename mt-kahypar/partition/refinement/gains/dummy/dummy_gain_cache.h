@@ -404,6 +404,7 @@ class DeltaDummyGainCache {
 
   void memoryConsumption(utils::MemoryTreeNode* parent) const {
     ASSERT(parent);
+    unused(parent);
     // utils::MemoryTreeNode* gain_cache_delta_node = parent->addChild("Delta Gain Cache");
     // gain_cache_delta_node->updateSize(size_in_bytes());
   }

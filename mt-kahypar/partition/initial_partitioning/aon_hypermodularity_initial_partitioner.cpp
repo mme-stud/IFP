@@ -86,10 +86,9 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
       vec<HypernodeID> map_z(H_new.initialNumNodes(), kInvalidPartition);
       bool z_changed = false;
       /* long */ double total_gain = 0.0;
-      /// [debug] long long counter = 0;
+      /* [debug] */ long long counter = 0;
       do {
-        /// [debug] if ((counter++) % 100 == 0)
-        /// [debug] std::cout << "Outer Iteration: " << counter << std::endl;
+        /* [debug] */ std::cout << "Outer Iteration: " << counter << std::endl;
         /** -------------------- Collapse: --------------------
          *  - The community structure on H_new is collapsed by 
          *    merging nodes within the same community;
@@ -100,7 +99,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
          *    PartitionIDs in H_new_partitioned.
          */
         collapse(H_new, H_new_partitioned, map_z);
-        /// [debug] std::cout << "Outer Iteration: collapse(..) finished " << counter << std::endl;
+        /* [debug] */ std::cout << "Outer Iteration: collapse(..) finished " << counter << std::endl;
 
         /** ------------------ Louvain Step: ------------------
          *  - Nodes are moved to neighboring partitions as
@@ -112,7 +111,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
         LOG << "AON IP: step gain " << new_gain;
         total_gain += new_gain;
         z_changed = (new_gain > eps);
-        /// [debug] std::cout << "Outer Iteration: louvainStep(..) finished " << counter << std::endl;
+        /* [debug] */ std::cout << "Outer Iteration: louvainStep(..) finished " << counter << std::endl;
 
         /** --------------------- Expand: ---------------------
          *  - If H_new_partitioned is still in a singleton 
@@ -124,7 +123,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
          *  - true is returned.
          */
         expand(hg, H_new, H_new_partitioned, map_z, z);
-        /// [debug] std::cout << "Outer Iteration: expand(..) finished " << counter << std::endl;
+        /* [debug] */ std::cout << "Outer Iteration: expand(..) finished " << counter << std::endl;
       } while (z_changed);
 
       LOG << "AON IP finished Louvain with total gain " << total_gain 
@@ -235,7 +234,7 @@ template<typename TypeTraits>
     while (improving && (iter++ < maxNumIter)) {
       /* long */ double gain = 0.0;
       improving = false;
-      /// [debug]   std::cout << "Louvain: round " << iter << std::endl;
+      /* [debug] */   std::cout << "Louvain: round " << iter << std::endl;
       for (const HypernodeID &i : H_new_partitioned.nodes()) {
         gain += louvainStepForANode(i, neighbors[i], visited, 
                                        H_new, H_new_partitioned, map_z, 

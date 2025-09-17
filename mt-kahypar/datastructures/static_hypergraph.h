@@ -903,29 +903,29 @@ public:
       L = std::max<PartitionID>(L, communityID(v));
     ++L; // clusters are 0-based
 
-    std::vector<long double> ClusVol(L, 0.0);
+    std::vector</* long */ double> ClusVol(L, 0.0);
     for (HypernodeID v : nodes())
-      // ClusVol[communityID(v)] += static_cast<long double>(nodeDegree(v));
+      // ClusVol[communityID(v)] += static_cast</* long */ double>(nodeDegree(v));
       // [mariia's suggestion]:
-      ClusVol[communityID(v)] += static_cast<long double>(nodeOriginalWeightedDegree(v));
+      ClusVol[communityID(v)] += static_cast</* long */ double>(nodeOriginalWeightedDegree(v));
 
-    // const long double vol_H = initialTotalVertexDegree();
+    // const /* long */ double vol_H = initialTotalVertexDegree();
     // [mariia's suggestion]:
-    const long double vol_H = static_cast<long double>(originalTotalVolume());
+    const /* long */ double vol_H = static_cast</* long */ double>(originalTotalVolume());
 
     /* ------------------------------------------------------------
      * 2. count edges and cut edges per size k
      * ---------------------------------------------------------- */
     // m_k - sum of edge weights per size k
-    std::vector<long double> m_k(dmax + 1, 0.01); // small bias avoids log(0)
+    std::vector</* long */ double> m_k(dmax + 1, 0.01); // small bias avoids log(0)
     // cut_k - sum of cut edge weights per size k
-    std::vector<long double> cut_k(dmax + 1, 0.0);
+    std::vector</* long */ double> cut_k(dmax + 1, 0.0);
 
     for (HyperedgeID e : edges()) {
       const std::size_t d = static_cast<std::size_t>(originalEdgeSize(e));
       if (d < 2) // ignore single pin nets
         continue;
-      const long double w = static_cast<long double>(edgeWeight(e));
+      const /* long */ double w = static_cast</* long */ double>(edgeWeight(e));
 
       bool cutting = false;
       PartitionID first_c = communityID(*pins(e).begin());
@@ -950,11 +950,11 @@ public:
     std::size_t last_non_zero = 0; // to avoid _beta and _gamma being mostly filled with 0.0
     for (std::size_t d = 2; d <= dmax; ++d) {
       // sum of d-th powers of community volumes (no weights!!!)
-      long double vol_in = 0.0; 
-      for (long double vc : ClusVol)
+      /* long */ double vol_in = 0.0; 
+      for (/* long */ double vc : ClusVol)
         vol_in += std::pow(vc, static_cast<int>(d));
-      long double vol_out;
-      long double vol_H_d = std::pow(vol_H, static_cast<int>(d));
+      /* long */ double vol_out;
+      /* long */ double vol_H_d = std::pow(vol_H, static_cast<int>(d));
       if (std::isfinite(vol_in) || std::isfinite(vol_H_d)) {
         vol_out = vol_H_d - vol_in;
       } else {
@@ -963,7 +963,7 @@ public:
          *    if vol_in = +inf, vol_out should be at least near to +inf
          *    as vol_in = sum_i pow(vol(i), d), vol_H = sum_i vol(i)
         */
-        vol_out = std::numeric_limits<long double>::infinity();
+        vol_out = std::numeric_limits</* long */ double>::infinity();
       }
       /* long */ double omega_in = static_cast<double>( (m_k[d] - cut_k[d]) / vol_in );
       /* long */ double omega_out = static_cast<double>( cut_k[d] / vol_out );

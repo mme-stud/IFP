@@ -90,7 +90,7 @@ Problems:
 2. sometimes it's `NaN` (when one of omegas is Nan, or both are 0 or `+Inf`)
 
 &rarr; Current solution:
-0. use `long double` in volume calculations to avoid `Inf` as much as possible (withput using GMP...) *[Note: if `long doubles` are used for beta and gamma too, then the running time increases significantly (from <1 min to 10-20 min)]*
+0. ~~use `long double` in volume calculations to avoid `Inf` as much as possible (withput using GMP...) [Note: if `long doubles` are used for beta and gamma too, then the running time increases significantly (from <1 min to 10-20 min)]~~ [too slow, no benefit]
 1. Avoid `NaN` in omegas, by avoiding `vol_out = Inf - Inf = Nan`. If `vol_in = +Inf`, then `vol_out` should be set to `+Inf` as well \ 
     (as $(vol\_H)^d = (\sum_i vol(i))^d, vol\_in = \sum_i vol(i)^d \implies vol\_out = vol\_H^d - vol\_in$, so if `vol_in` is infinite, then `vol_out` should be at least near to `+Inf`)
 2. Set `_beta[d] = 0` if it's `Nan` (when both omegas are 0, `_beta[d] = log (+Inf / +Inf) = Inf - Inf = NaN`)
