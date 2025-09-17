@@ -1239,7 +1239,7 @@ Current conductance implementation supports collective `sync_update`s, but their
 - Assert only for non-conductance metrics;
 - ~~compute delta at the end of `refineImpl(..)` with the wrong current gain (i.e. delta = sum of Attributed Gains), so that delta is positive if any good moves were made~~ [overflow &rArr; `delta < 0`...]
 - recalculate the current gain at the end of `refineImpl(..)` with the actual metric value:
-- update the delta calculation accordingly
+- update the delta calculation accordingly in `refineImpl(..)` and use the actual current conductance value to check progress in  `labelPropagationRound(..)`
  ```cpp
 
  	// mt-kahypar/partition/refinement/label_propagation/label_propagation_refiner.cpp
@@ -1291,6 +1291,30 @@ Current conductance implementation supports collective `sync_update`s, but their
 		  return true; /* improvement found */
 		}
 		return delta > 0; /* improvement found? */
+	}
+
+	template <typename GraphAndGainTypes>
+	bool LabelPropagationRefiner<GraphAndGainTypes>::labelPropagationRound(...) {
+	  // ...
+	  Gain threshold = -1;
+      Gain delta_quality = old_quality - current_metrics.quality;
+      if (_context.partition.objective != Objective::conductance_local) {
+        threshold = _context.refinement.label_propagation.relative_improvement_threshold
+                  *  old_quality;
+      } else {
+        // in refinement rounds best_metrics_quality can become negative (due to virtual gains)
+        threshold = _context.refinement.label_propagation.relative_improvement_threshold
+                  * metrics::quality(hypergraph, _context,
+                                     !_context.refinement.label_propagation.execute_sequential);
+        if (delta_quality < 0) {
+          LOG << "LP: negative delta quality: " << delta_quality;
+          return should_stop;
+        }
+      }
+      // LOG << "Old Quality: " << old_quality << " and Current Quality: " << current_metrics.quality << " and diff: " << delta_quality;
+      // LOG << "Threshold " << _context.refinement.label_propagation.relative_improvement_threshold << " and cap: " << threshold;
+
+      return should_stop || delta_quality < threshold;
 	}
 ```
 

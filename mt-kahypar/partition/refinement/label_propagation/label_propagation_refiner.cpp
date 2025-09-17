@@ -137,7 +137,7 @@ namespace mt_kahypar {
       best_metrics.quality = metrics::quality(hypergraph, _context,
           !_context.refinement.label_propagation.execute_sequential);
     }
-    ASSERT(delta >= 0 || _context.objective == Objective::conductance_local, 
+    ASSERT(delta >= 0 || _context.partition.objective == Objective::conductance_local, 
            "LP refiner worsen solution quality");
 
     LOG << " LP Refiner: current objective value: " << V(best_metrics.quality);
@@ -245,11 +245,25 @@ namespace mt_kahypar {
     best_metrics = current_metrics;
 
     HEAVY_REFINEMENT_ASSERT(hypergraph.checkTrackedPartitionInformation(_gain_cache));
-    LOG << "Old Quality: " << old_quality << " and Current Quality: " << current_metrics.quality << " and diff: " << std::abs(old_quality - current_metrics.quality);
-    LOG << "Threshold " << _context.refinement.label_propagation.relative_improvement_threshold << " and cap: " << _context.refinement.label_propagation.relative_improvement_threshold * old_quality;
- 
-    return should_stop || old_quality - current_metrics.quality <
-                          _context.refinement.label_propagation.relative_improvement_threshold * old_quality;
+    Gain threshold = -1;
+    Gain delta_quality = old_quality - current_metrics.quality;
+    if (_context.partition.objective != Objective::conductance_local) {
+      threshold = _context.refinement.label_propagation.relative_improvement_threshold
+                  *  old_quality;
+    } else {
+      // in refinement rounds best_metrics_quality can become negative (due to virtual gains)
+      threshold = _context.refinement.label_propagation.relative_improvement_threshold
+                  * metrics::quality(hypergraph, _context,
+                                     !_context.refinement.label_propagation.execute_sequential);
+      if (delta_quality < 0) {
+        LOG << "LP: negative delta quality: " << delta_quality;
+        return should_stop;
+      }
+    }
+    // LOG << "Old Quality: " << old_quality << " and Current Quality: " << current_metrics.quality << " and diff: " << delta_quality;
+    // LOG << "Threshold " << _context.refinement.label_propagation.relative_improvement_threshold << " and cap: " << threshold;
+
+    return should_stop || delta_quality < threshold;
   }
 
   template <typename GraphAndGainTypes>
