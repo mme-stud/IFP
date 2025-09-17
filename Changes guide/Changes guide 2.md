@@ -636,3 +636,122 @@ i-r-lp-maximum-iterations=5
     ```
 - no gain cache for conductance &rarr; we use `CutGainCache`, which allocates an array of the size `original_num_nodes * k` &rArr; `segfault` on big hypergraphs (`circuit5M`):
     - **ToDo**: implement a (dummy?) gain cache
+
+
+## Side trip: GMP
+We planned to use GMP to avoid `Inf` and `NaN` problems in AON Hypermodularity. But for now, we decided to use `double` and avoid too long running times (as even `long double` increased running time drastically and `GMP` seems to be even slower).
+
+### Build: CMake
+As `GMP` is not installed on the system, I needed to build it from source. \ 
+*[The system didn't have many tools (at least updated) &rArr; the build process is really messy...]*
+
+```cmake
+# dependencies
+...
+option(KAHYPAR_DOWNLOAD_GMP "Download GMP automatically." OFF)
+
+...
+
+#################################################################
+## Setup of dependencies                                       ##
+#################################################################
+...
+set(KAHYPAR_GMP_VERSION          v6.2.1)
+
+...
+### [Old code - here for reference only]
+if(KAHYPAR_DOWNLOAD_TBB)
+  # Download TBB library
+  ...
+endif()
+target_link_libraries(MtKaHyPar-Include INTERFACE TBB::tbb TBB::tbbmalloc)
+### [End of old code - here for placing reference only]
+
+# Download GMP Library
+if(KAHYPAR_DOWNLOAD_GMP)
+  # Set the GMP install directory
+  set(GMP_INSTALL_DIR "${CMAKE_BINARY_DIR}/gmp")
+
+  # Download GMP source code
+  message(STATUS "Downloading GMP Source: version 6.2.1")
+  FetchContent_Declare(
+      GMP EXCLUDE_FROM_ALL SYSTEM
+      URL https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz
+      DOWNLOAD_COMMAND wget --no-check-certificate https://gmplib.org/download/gmp/gmp-6.2.1.tar.lz -O ${CMAKE_BINARY_DIR}/_deps/gmp-6.2.1.tar.lz
+  )
+
+  # Handle the unpacking, configuring, and building manually
+  FetchContent_GetProperties(GMP)
+  if(NOT GMP_POPULATED)
+      FetchContent_Populate(GMP)
+
+      set(GMP_SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps")
+      message(STATUS "Extracting GMP Source")
+      # Unpack the tarball manually
+      execute_process(
+          COMMAND ${CMAKE_COMMAND} -E tar xvf ${GMP_SOURCE_DIR}/gmp-6.2.1.tar.lz
+          WORKING_DIRECTORY ${GMP_SOURCE_DIR}
+          OUTPUT_QUIET
+      )
+
+      message(STATUS "Configuring GMP")
+      # Run configure for GMP
+      execute_process(
+          COMMAND ./configure --enable-cxx --prefix=${GMP_INSTALL_DIR}
+          WORKING_DIRECTORY ${GMP_SOURCE_DIR}/gmp-6.2.1
+          OUTPUT_QUIET
+      )
+
+      message(STATUS "Building GMP")
+      # Build GMP
+      execute_process(
+          COMMAND make -j8
+          WORKING_DIRECTORY ${GMP_SOURCE_DIR}/gmp-6.2.1
+          OUTPUT_QUIET
+      )
+
+      message(STATUS "Installing GMP")
+      # Install GMP
+      execute_process(
+          COMMAND make install
+          WORKING_DIRECTORY ${GMP_SOURCE_DIR}/gmp-6.2.1
+          OUTPUT_QUIET
+      )
+      message(STATUS "GMP Installed Successfully at ${GMP_SOURCE_DIR}/gmp-6.2.1")
+  endif()
+
+  # Set the include and library directories for GMP
+  set(GMP_INCLUDE_DIR "${GMP_INSTALL_DIR}/include")
+  set(GMP_LIBRARIES "${GMP_INSTALL_DIR}/lib/libgmp.a")
+
+  message(STATUS "GMP Include: ${GMP_INCLUDE_DIR}, GMP Library: ${GMP_LIBRARIES}")
+
+else()
+#  # Find system GMP library - !!! didn't seem to work properly !!!
+#  find_package(GMP REQUIRED)
+#  if(NOT GMP_FOUND)
+#    message(FATAL_ERROR "
+#      GMP library not found or current GMP version is too old. Install GMP on your system
+#      or add -DKAHYPAR_DOWNLOAD_GMP=On to the cmake build command.")
+#  endif()
+#  message(STATUS "GMP Include: ${GMP_INCLUDE_DIRS}, GMP Library: ${GMP_LIBRARY_DIRS}")
+endif()
+
+# Set include directories and link libraries to your project
+target_include_directories(MtKaHyPar-Include INTERFACE ${GMP_INCLUDE_DIR})
+target_link_libraries(MtKaHyPar-Include INTERFACE ${GMP_LIBRARIES})
+
+...
+
+# Add compile flags that enable warnings
+...
+
+# Add support for GNU Multiple Precision)
+target_compile_options(MtKaHyPar-BuildFlags INTERFACE -lgmpxx -lgmp)
+
+```
+
+### Include GMP
+```cpp
+#include <gmpxx.h> // GMP C++ interface
+```
