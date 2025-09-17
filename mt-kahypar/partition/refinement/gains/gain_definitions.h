@@ -48,6 +48,9 @@
 #include "mt-kahypar/partition/refinement/gains/conductance_global/conductance_global_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/aon_hypermodularity/aon_hypermodularity_gain_computation.h"
 #include "mt-kahypar/partition/refinement/gains/aon_hypermodularity/aon_hypermodularity_attributed_gains.h"
+#include "mt-kahypar/partition/refinement/gains/dummy/dummy_gain_cache.h"
+#include "mt-kahypar/partition/refinement/gains/dummy/dummy_rollback.h"
+#include "mt-kahypar/partition/refinement/gains/dummy/dummy_flow_network_construction.h"
 #ifdef KAHYPAR_ENABLE_SOED_METRIC
 #include "mt-kahypar/partition/refinement/gains/soed/soed_attributed_gains.h"
 #include "mt-kahypar/partition/refinement/gains/soed/soed_gain_computation.h"
@@ -97,10 +100,10 @@ struct CutGainTypes : public kahypar::meta::PolicyBase {
 struct ConductanceLocalGainTypes : public kahypar::meta::PolicyBase {
   using GainComputation = ConductanceLocalGainComputation;
   using AttributedGains = ConductanceLocalAttributedGains;
-  using GainCache = CutGainCache;
-  using DeltaGainCache = DeltaCutGainCache;
-  using Rollback = CutRollback;
-  using FlowNetworkConstruction = CutFlowNetworkConstruction;
+  using GainCache = DummyGainCache;
+  using DeltaGainCache = DeltaDummyGainCache;
+  using Rollback = DummyRollback;
+  using FlowNetworkConstruction = DummyFlowNetworkConstruction;
   /* To be hopefully implemented sometime
   using GainComputation = ConductanceLocalGainComputation;
   using AttributedGains = ConductanceGlobalAttributedGains;
@@ -114,10 +117,10 @@ struct ConductanceLocalGainTypes : public kahypar::meta::PolicyBase {
 struct ConductanceGlobalGainTypes : public kahypar::meta::PolicyBase {
   using GainComputation = ConductanceGlobalGainComputation;
   using AttributedGains = ConductanceGlobalAttributedGains;
-  using GainCache = CutGainCache;
-  using DeltaGainCache = DeltaCutGainCache;
-  using Rollback = CutRollback;
-  using FlowNetworkConstruction = CutFlowNetworkConstruction;
+  using GainCache = DummyGainCache;
+  using DeltaGainCache = DeltaDummyGainCache;
+  using Rollback = DummyRollback;
+  using FlowNetworkConstruction = DummyFlowNetworkConstruction;
   /* To be hopefully implemented sometime
   using GainComputation = ConductanceGlobalGainComputation;
   using AttributedGains = ConductanceGlobalAttributedGains;

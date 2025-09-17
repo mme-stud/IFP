@@ -38,9 +38,13 @@ set(SteinerTreeGraphSources
         gains/steiner_tree_for_graphs/steiner_tree_gain_cache_for_graphs.cpp
         gains/steiner_tree_for_graphs/steiner_tree_flow_network_construction_for_graphs.cpp)
 
+set(DummySources
+        gains/dummy/dummy_gain_cache.cpp)
+
 target_sources(MtKaHyPar-Sources INTERFACE ${RefinementSources})
 target_sources(MtKaHyPar-Sources INTERFACE ${Km1Sources})
 target_sources(MtKaHyPar-Sources INTERFACE ${CutSources})
+target_sources(MtKaHyPar-Sources INTERFACE ${DummySources})
 
 if ( KAHYPAR_ENABLE_SOED_METRIC )
   target_sources(MtKaHyPar-Sources INTERFACE ${SoedSources})

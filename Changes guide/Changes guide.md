@@ -509,7 +509,7 @@ in `mt-kahypar/partition/multilevel.cpp`:
 	- `GainCachePtr`: 
 		- add new GainPolicy types to all switch statements:
 		`applyWithConcreteGainCache(..)`, `applyWithConcreteGainCacheForHG(..)`, `constructGainCache(..)` \
-		**!!!** for now used `CutGainCache` &rarr; ***to be changed later**
+		**!!!** for now used ~~`CutGainCache` &rarr; ***to be changed later**~~ `DummyGainCache`
 5. `partition/deep_multilevel.cpp`: 
 	- `bipartition_each_block(...)`: ~~add the `GainPolicy` type of new objective functions to the switch statement~~ [no switch statements] &rarr; **nothing changed**
 6. `partition/context.cpp`:
@@ -1414,6 +1414,26 @@ You only have to add a mapping between a string representation of your new objec
     .def("conductance_global", &lib::conductance_global<true>,
       "Computes the global conductance metric of the partition")
 ```
+
+### Part 2.5 Guide: FM-Refinement
+
+#### Dummy Gain Cache
+For now, I just use `DummyGainCache`:
+- `mt-kahypar/partition/refinement/gains/`:
+	+ \+ `dummy/` folder:
+		- `dummy_gain_cache.h`, `dummy_gain_cache.cpp`, `dummy_rollback.h` : don't use any memory for gain cache, all methods are empty / trivial:
+		```
+		gain = benefit - penalty
+		--> benefit = -1, penalty = 1
+		``` 
+		**!!!** Add to `CMakeLists.txt`:
+		```cmake
+		set(DummySources
+        gains/dummy/dummy_gain_cache.cpp)
+		...
+		target_sources(MtKaHyPar-Sources INTERFACE ${DummySources})
+		```
+		- `dummy_flow_network_construction.h` - do nothing, return `false`, `0`
 
 ### Notes:
 #### Ideas for fm refinement: 
