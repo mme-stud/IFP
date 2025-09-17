@@ -87,20 +87,22 @@ Problems:
 2. sometimes it's `NaN` (when one of omegas is Nan, or both are 0 or `+Inf`)
 
 &rarr; Current solution:
+0. use `long double` in volume calculations to avoid `Inf` as much as possible (withput using GMP...) *[Note: if `long doubles` are used for beta and gamma too, then the running time increases significantly (from <1 min to 10-20 min)]*
 1. Avoid `NaN` in omegas, by avoiding `vol_out = Inf - Inf = Nan`. If `vol_in = +Inf`, then `vol_out` should be set to `+Inf` as well \ 
     (as $(vol\_H)^d = (\sum_i vol(i))^d, vol\_in = \sum_i vol(i)^d \implies vol\_out = vol\_H^d - vol\_in$, so if `vol_in` is infinite, then `vol_out` should be at least near to `+Inf`)
 2. Set `_beta[d] = 0` if it's `Nan` (when both omegas are 0, `_beta[d] = log (+Inf / +Inf) = Inf - Inf = NaN`)
 ```cpp
-    if (std::isfinite(vol_in))
-      vol_out = std::pow(vol_H, static_cast<int>(d)) - vol_in;
+    long double vol_H_d = std::pow(vol_H, static_cast<int>(d));
+    if (std::isfinite(vol_in) || std::isfinite(vol_H_d)) // 0 or Inf
+      vol_out = vol_H_d - vol_in;
     else {
       ASSERT(vol_in > 0, "vol_in is not finite, but non-positive: " << vol_in);
       // 1 (Avoiding inf - inf = NaN)
-      vol_out = std::numeric_limits<double>::infinity();
+      vol_out = std::numeric_limits<long double>::infinity();
     } 
 
-    double omega_in = (m_k[d] - cut_k[d]) / vol_in; 
-    double omega_out = cut_k[d] / vol_out;
+    double omega_in =  static_cast<double>( (m_k[d] - cut_k[d]) / vol_in ); 
+    double omega_out = static_cast<double>( cut_k[d] / vol_out );
     // (Normally) not NaN / +-Inf as m_k, cut_k < total_volume. (vol_in and vol_out != NaN, 0)
 
     _omega[d] = {omega_in, omega_out};
@@ -109,9 +111,10 @@ Problems:
     
     // Adjustments for Inf, Nan
     if (!std::isfinite(_beta[d])) {
-    ASSERT(_beta[d] > 0 || _beta[d] != _beta[d], 
-        "_beta[" << d << "] is not finite, not +inf and not NaN: " << _beta[d]);
-    _beta[d] = (_beta[d] > 0 ? 1e3 : 0);
+      if (_beta[d] != _beta[d]) // NaN
+        _beta[d] = 0; // both omegas are the same => Inf => beta = 0
+      else // +Inf
+        _beta[d] = (_beta[d] > 0 ? 1e3 : -1e3);
     // Idea: _beta[d] = NaN => both log omega-s are the same Inf => _beta[d] = 0
     }
 ```
@@ -578,7 +581,7 @@ Reference: Adil's commit [ab9be07](https://github.com/adilchhabra/mt-kahypar/com
     }
     ```
 - to print the resulting double AON Hypermodularity: 
-    - `compute_double_aon_hypermodularity(phg)` in `metrics.h, cpp`
+    - `long double compute_double_aon_hypermodularity(phg)` in `metrics.h, cpp` [uses `long double` to caculate volumes to avoid `Inf` as much as possible]
     - \+ `define AON_HYPERMODULARITY_DOUBLE` in `metrics.cpp`
     - print in `printObjectives` in `partitioning_output.cpp`
 

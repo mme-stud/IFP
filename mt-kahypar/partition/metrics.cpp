@@ -181,23 +181,23 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::aon_hypermodularity> 
     }
     if (phg.connectivity(he) == 1) return 0;           // not cut
 
-    double beta_k = phg.beta(k);                        // β_k from finest level
-    double w_e    = static_cast<double>(phg.edgeWeight(he));
+    long double beta_k = phg.beta(k);                        // β_k from finest level
+    long double w_e    = static_cast<long double>(phg.edgeWeight(he));
     // LOG << " returns weights = " << w_e << " times " << beta_k;
     return static_cast<Gain>(w_e * beta_k );
   }
 };
 
 template <typename PartitionedHypergraph>
-double aonVolumeTerm(const PartitionedHypergraph& phg)
+long double aonVolumeTerm(const PartitionedHypergraph& phg)
 {
   const std::size_t dmax = static_cast<std::size_t>(phg.topLevelMaxEdgeSize());
   if (dmax < 2) return 0.0;
 
-  double term = 0.0;
+  long double term = 0.0;
   for (std::size_t d = 2; d <= dmax; ++d) {
     // LOG << "For edge size d = " << d << ": beta_d = " << phg.beta(d) << ", gamma_d = " << phg.gamma(d);
-    double inner = 0.0;
+    long double inner = 0.0;
     for (auto c = 0; c < phg.k(); ++c) {
       inner += std::pow(phg.partOriginalVolume(c), static_cast<int>(d));
     }
@@ -457,14 +457,14 @@ double compute_double_conductance(const PartitionedHypergraph& phg) {
 }
 
 template<typename PartitionedHypergraph>
-double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg) {
+long double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg) {
   ASSERT( !PartitionedHypergraph::is_graph, "AON Hypermodularity objective is not supported for graphs" );
   ASSERT(phg.hasAON());
   ASSERT(phg.hasOriginalEdgeSizes());
   
   // Compute objective by iterating through all hyperedges
   auto double_edge_gain = [&](const PartitionedHypergraph& phg, const HyperedgeID he) 
-    -> double
+    -> long double
     {
     std::size_t k = static_cast<std::size_t>(phg.originalEdgeSize(he));
     // LOG << "Hyperedge " << he << " with size " << k;
@@ -473,17 +473,17 @@ double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg) {
     }
     if (phg.connectivity(he) == 1) return 0;           // not cut
 
-    double beta_k = phg.beta(k);                        // β_k from finest level
-    double w_e    = static_cast<double>(phg.edgeWeight(he));
+    long double beta_k = phg.beta(k);                        // β_k from finest level
+    long double w_e    = static_cast<long double>(phg.edgeWeight(he));
     // LOG << " returns weights = " << w_e << " times " << beta_k;
     return w_e * beta_k;
   };
 
-  double edge_sum = 0.0;
+  long double edge_sum = 0.0;
   for (const HyperedgeID& he : phg.edges()) {
     edge_sum += double_edge_gain(phg, he);
   }
-  double Q = edge_sum + aonVolumeTerm(phg);
+  long double Q = edge_sum + aonVolumeTerm(phg);
   return Q;
 
 }
@@ -496,7 +496,7 @@ namespace {
 #define IMBALANCE(X) double imbalance(const X& hypergraph, const Context& context)
 #define APPROX_FACTOR(X) double approximationFactorForProcessMapping(const X& hypergraph, const Context& context)
 #define CONDUCTANCE_DOUBLE(X) double compute_double_conductance(const X& phg)
-#define AON_HYPERMODULARITY_DOUBLE(X) double compute_double_aon_hypermodularity(const X& phg)
+#define AON_HYPERMODULARITY_DOUBLE(X) long double compute_double_aon_hypermodularity(const X& phg)
 }
 
 INSTANTIATE_FUNC_WITH_PARTITIONED_HG(OBJECTIVE_1)

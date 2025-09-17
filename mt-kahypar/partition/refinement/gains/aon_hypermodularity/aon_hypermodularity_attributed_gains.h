@@ -38,13 +38,13 @@ namespace mt_kahypar {
  */
 struct AONHypermodularityAttributedGains {
   static Gain gain(const SynchronizedEdgeUpdate &sync_update) {
-    double dVol = volumeDelta(sync_update) / sync_update.hn_degree;
+    long double dVol = volumeDelta(sync_update) / sync_update.hn_degree;
     // LOG << "Moving node " << sync_update.hn << " from " << sync_update.from
     // << " to " << sync_update.to << "; dvol = " << volumeDelta(sync_update);
     if (sync_update.edge_size < 2) // not a cutting edge
       return dVol;
     const vec<double> &beta = *sync_update.beta_vec;
-    const double wbeta = (
+    const long double wbeta = (
         sync_update.original_edge_size < beta.size() ?
           sync_update.edge_weight * beta[sync_update.original_edge_size] :
           0.0);
@@ -64,29 +64,29 @@ struct AONHypermodularityAttributedGains {
     return dVol;
   }
 
-  static double volumeDelta(const SynchronizedEdgeUpdate &sync_update) {
-    double dVol = 0;
+  static long double volumeDelta(const SynchronizedEdgeUpdate &sync_update) {
+    long double dVol = 0;
     // const vec<double> &beta = *sync_update.beta_vec;
     const vec<double> &gamma = *sync_update.gamma_vec;
-    const double v_from = static_cast<double>(
+    const long double v_from = static_cast<long double>(
         sync_update.original_volume_from_after + sync_update.original_weighted_degree); // volume *before*
-    const double v_to = static_cast<double>(
+    const long double v_to = static_cast<long double>(
         sync_update.original_volume_to_after - sync_update.original_weighted_degree); // volume *before*
-    const double dv =
-        static_cast<double>(sync_update.original_weighted_degree); // (= node volume)
+    const long double dv =
+        static_cast<long double>(sync_update.original_weighted_degree); // (= node volume)
 
     std::size_t max_d = std::min({ // beta.size() - 1,
                                    gamma.size() - 1,
                                    static_cast<std::size_t>(sync_update.max_edge_size)});
     for (std::size_t d = 2; d <= max_d; ++d) {
 
-      // const double b = beta[d];
-      const double g = gamma[d];
+      // const long double b = beta[d];
+      const long double g = gamma[d];
       if (g == 0.0)
         continue;
 
-      const double delta = + std::pow(v_from - dv, int(d))
-                           + std::pow(v_to + dv, int(d)) 
+      const long double delta = + std::pow(v_from - dv, int(d))
+                           + std::pow(v_to + dv, int(d))
                            - std::pow(v_from, int(d))
                            - std::pow(v_to, int(d));
       // dVol += b * g * delta;
