@@ -510,6 +510,15 @@ namespace mt_kahypar {
       }
     }
 
+    if (partition.preset_type == PresetType::cluster) {
+      if ( initial_partitioning.remove_degree_zero_hns_before_ip ) {
+        initial_partitioning.remove_degree_zero_hns_before_ip = false;
+        LOG << "Cluster preset does not support removal of "
+               "degree-zero hypernodes. Setting option "
+               "--i-remove-degree-zero-hns-before-ip to false";
+      }
+    }
+
     shared_memory.static_balancing_work_packages = std::clamp(shared_memory.static_balancing_work_packages, UL(4), UL(256));
 
     if ( partition.deterministic ) {

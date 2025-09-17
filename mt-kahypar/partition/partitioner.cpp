@@ -61,8 +61,6 @@ namespace mt_kahypar {
       context.partition.k = 32; // adil set default k = 2 for clustering manually here
       // this determines how the part weights and contraction limits are defined
       // [mariia] adil changed k to 32
-      // ! if community detection is enabled, k will be set to the number
-      // ! of communities in preprocess(..)
     }
 
     // Should be called as early as possible, but after setting Objective

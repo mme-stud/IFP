@@ -554,7 +554,7 @@ std::vector<option> load_clustering_preset() {
     create_option("c-rating-acceptance-criterion", "best_prefer_unmatched"),
     // main -> initial_partitioning
     create_option("i-mode", "direct"),
-    create_option("i-runs", "3"),
+    create_option("i-runs", "2"),
     { "i-enabled-ip-algos", {
             "0",    // greedy_round_robin_fm
             "0",    // greedy_global_fm
@@ -571,15 +571,15 @@ std::vector<option> load_clustering_preset() {
     } },
     create_option("i-use-adaptive-ip-runs", "false"),
     create_option("i-min-adaptive-ip-runs", "1"),
-    create_option("i-perform-refinement-on-best-partitions", "false"),
+    create_option("i-perform-refinement-on-best-partitions", "true"),
     create_option("i-fm-refinement-rounds", "0"),
     create_option("i-lp-maximum-iterations", "0"),
     create_option("i-lp-initial-block-size", "0"),
     // main -> initial_partitioning -> refinement
     create_option("i-r-refine-until-no-improvement", "false"),
     // main -> initial_partitioning -> refinement -> label_propagation
-    create_option("i-r-lp-type", "do_nothing"),
-    create_option("i-r-lp-maximum-iterations", "0"),
+    create_option("i-r-lp-type", "label_propagation"), // do_nothing
+    create_option("i-r-lp-maximum-iterations", "5"),
     create_option("i-r-lp-rebalancing", "false"),
     create_option("i-r-lp-he-size-activation-threshold", "100"),
     // main -> initial_partitioning -> refinement -> fm
@@ -588,6 +588,7 @@ std::vector<option> load_clustering_preset() {
     create_option("i-r-flow-algo", "do_nothing"),
     // main -> refinement
     create_option("r-rebalancer-type", "advanced_rebalancer"),
+    // create_option("r-rebalancer-type", "do_nothing"),
     create_option("r-refine-until-no-improvement", "true"),
     // main -> refinement -> label_propagation
     create_option("r-lp-type", "label_propagation"),

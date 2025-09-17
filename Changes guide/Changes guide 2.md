@@ -6,11 +6,13 @@
 - ~~in `partitioner.cpp` change `k` to the number of found communities, if `cluster && community_detection=true` (for now, I just recalculate the number of communities as done in `partitioner_output.cpp`)~~ [this way the kernel is bigger &rArr; AON IP couldn't find a good clustering and returned too many clusters...]
 - in `multilevel.cpp` before uncoarsening stage check if k has changed (+correctly change it, if so) &rarr; done, not used for now
 - **!!! I concider edge weights in the gain &rArr; use weighted degrees and use edge weight in _delta_cut** &rarr; ASK
-- enable single pin net removal (they are never cutting and volumes are tracked correctly)
+- [done] enable single pin net removal (they are never cutting and volumes are tracked correctly)
 - [done] set `_beta[d] = 0` if `NaN`
 - [done] disable balancing for clustering in lp
-- set lp to sequential (as it is bad in parallel :( )
-- run both original sized and reduced sized versions of AON IP + a couple of random IP's
+- set lp to sequential (as it is bad in parallel :( [not anymore!])
+- run both original sized and reduced sized versions of AON IP + a couple of random IP's [no need, as AON IP with original sizes is ~always better]
+- [done] run lp-refiner in the kernel after IP [**ToDo:** Check, if  works as intended]
+- [done] for edgeSizeThreshold, use `max(100, large_hyperedge_size_threshold / 10)`
 
 
 ## Questions
@@ -29,6 +31,7 @@
 - merge with Adil to allow `double` gains &rarr; maybe than return to `delta` = sum of all local "gains" by `conductance_local` in `refineImpl()` (`label_propagation_refiner.cpp`) 
 - try to improve local search (gain cache? another approach?)
 
+- **!!!** Fix a bug in IP: with `-t 8` IP fails on the asserion `partID(n) == kInvalidPartition` in `setOnlyNodeId(n, p)` &rarr; some partitions aren't empty... 
 
 ## Initial Partitioning: Hypermodularity
 
@@ -428,7 +431,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
                          "1" // aon_hypermodularity
                          "0" // aon_hypermodularity_kernel (always worse)
                         ```
-    - `config/cluster_preset.ini` and `mt-kahypar/io/presets.cpp`: in `# main -> initial_partitioning` set `i-runs=3` istead of 10 for `cluster` (as AON-hypermodularity is ~~deterministic~~ randomized and runs `i-runs * t` times)
+    - `config/cluster_preset.ini` and `mt-kahypar/io/presets.cpp`: in `# main -> initial_partitioning` set `i-runs=2` istead of 10 for `cluster` (as AON-hypermodularity is ~~deterministic~~ randomized and runs `i-runs * t` times)
 
 3. `sanity_check(*target_graph)` in `context.cpp`:
     - adjust conductance checks to allow `aon_hypermodularity`, `aon_hypermodularity_kernel` IP
@@ -446,11 +449,12 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
 `mt-kahypar/partition/context.h`:
 - \+ `bool usesHypermodularityIP() const`
 
-### Run Hypermodularity IPs on parallel
+### Run Hypermodularity IPs in parallel
 Hypermodularity IP heavily depends on the visiting order of the nodes.
 &rArr; we run multiple hypermodularity IPs in parallel.
 
 **For now for hypermodularity IPs, I multiply the number of runs by the number of threads.**
+`--i-runs=2`
 
 `mt-kahypar/partition/initial_partitioning/pool_initial_partitioner.cpp`:
 ```cpp
@@ -580,6 +584,27 @@ Reference: Adil's commit [ab9be07](https://github.com/adilchhabra/mt-kahypar/com
     - `long double compute_double_aon_hypermodularity(phg)` in `metrics.h, cpp` [uses `long double` to caculate volumes to avoid `Inf` as much as possible]
     - \+ `define AON_HYPERMODULARITY_DOUBLE` in `metrics.cpp`
     - print in `printObjectives` in `partitioning_output.cpp`
+
+
+## Configuration of cluster preset
+Use lp-refiner on the kernel after IP to improve conductance of the found clusters. *[Note: potential problem: it's almost always beneficial for `conductance_global` to merge clusters &rArr; lp refiner can merge too many clusters together]*
+
+Set in ``config/cluster_preset.ini`` (and analog. in `mt-kahypar/io/presets.cpp`):
+```ini
+# main -> initial_partitioning
+i-runs=2
+i-enabled-ip-algos=1 # aon_hypermodularity
+i-perform-refinement-on-best-partitions=true
+i-fm-refinement-rounds=0
+i-lp-maximum-iterations=0
+i-lp-initial-block-size=0
+...
+# main -> initial_partitioning -> refinement -> label_propagation
+i-r-lp-type=label_propagation
+i-r-lp-maximum-iterations=5
+...
+```
+**ToDo:** Check, if instead of this, `i-lp-maximum-iterations=0` with no `ip -> refinement -> lp` works as I intended
 
 ## Label Propagation
 
