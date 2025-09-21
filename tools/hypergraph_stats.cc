@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
   }, [&] {
     total_he_weight = tbb::parallel_reduce(
       tbb::blocked_range<size_t>(0, he_weights.size()), 0,
-      [&](tbb::blocked_range<size_t> r, HyperedgeWeight running_total) {
+      [&](const tbb::blocked_range<size_t> r, HyperedgeWeight running_total) {
           for (size_t i = r.begin(); i < r.end(); ++i) {
               running_total += he_weights[i];
           }

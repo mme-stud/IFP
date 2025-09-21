@@ -49,6 +49,7 @@ class Array {
   class ArrayIterator {
 
     public:
+      using iterator_concept = std::random_access_iterator_tag;
       using iterator_category = std::random_access_iterator_tag;
       using value_type = T;
       using reference = T&;
@@ -57,6 +58,10 @@ class Array {
 
       ArrayIterator() : _ptr(nullptr) { }
       ArrayIterator(T* ptr) : _ptr(ptr) { }
+
+      friend void swap(ArrayIterator& a, ArrayIterator& b) noexcept {
+        std::swap(a._ptr, b._ptr);
+      }
 
       reference operator*() const {
         return *_ptr;
@@ -90,6 +95,10 @@ class Array {
 
       ArrayIterator operator+(const difference_type& n) const {
         return ArrayIterator(_ptr + n);
+      }
+
+      friend ArrayIterator operator+(const difference_type& n, const ArrayIterator& it) {
+        return ArrayIterator(it._ptr + n);
       }
 
       ArrayIterator& operator+=(const difference_type& n) {
