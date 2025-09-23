@@ -39,7 +39,7 @@ namespace mt_kahypar {
 struct SoedFlowNetworkConstruction {
   // ! Capacity of the hyperedge
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight capacity(const PartitionedHypergraph& phg,
+  static Gain capacity(const PartitionedHypergraph& phg,
                                   const Context&,
                                   const HyperedgeID he,
                                   const PartitionID block_0,

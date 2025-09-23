@@ -45,21 +45,21 @@ struct ObjectiveFunction { };
 
 template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::cut> {
-  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+  Gain operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     return phg.connectivity(he) > 1 ? phg.edgeWeight(he) : 0;
   }
 };
 
 template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::km1> {
-  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+  Gain operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     return std::max(phg.connectivity(he) - 1, 0) * phg.edgeWeight(he);
   }
 };
 
 template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::soed> {
-  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+  Gain operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     const PartitionID connectivity = phg.connectivity(he);
     return connectivity > 1 ? connectivity * phg.edgeWeight(he) : 0;
   }
@@ -67,17 +67,17 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::soed> {
 
 template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::steiner_tree> {
-  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+  Gain operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasTargetGraph());
     const TargetGraph* target_graph = phg.targetGraph();
-    const HyperedgeWeight distance = target_graph->distance(phg.shallowCopyOfConnectivitySet(he));
+    const Gain distance = target_graph->distance(phg.shallowCopyOfConnectivitySet(he));
     return distance * phg.edgeWeight(he);
   }
 };
 
 template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
-  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+  Gain operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
 
@@ -102,20 +102,20 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
       // double_t scaled_contribution = 
       //    (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
       //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-      double_t scaled_contribution = 
+      Gain scaled_contribution = 
           (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(mt_kahypar::scaling_factor))
           / (static_cast<double_t>(top_part_min_volume));
 
       ASSERT(0 <= scaled_contribution);
 
       // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
-      const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
+      const Gain value_threshold = mt_kahypar::conductance_value_threshold;
       if (value_threshold < scaled_contribution) {
         LOG << "Scaled contribution of hyperedge " << he << " is too big: " << V(scaled_contribution) 
             << ". It is rounded to " << value_threshold;
         return value_threshold;
       }
-      return static_cast<HyperedgeWeight>(scaled_contribution);
+      return static_cast<Gain>(scaled_contribution);
     }
     // TODO: several parts with the same conductance?
   }
@@ -123,7 +123,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
 
 template<typename PartitionedHypergraph>
 struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
-  HyperedgeWeight operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
+  Gain operator()(const PartitionedHypergraph& phg, const HyperedgeID& he) const {
     ASSERT(phg.hasConductancePriorityQueue());
     ASSERT(phg.edgeIsEnabled(he), "Hyperedge " << he << " must be enabled to compute its contribution to the objective");
 
@@ -148,20 +148,20 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
       // double_t scaled_contribution = 
       //    (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
       //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-      double_t scaled_contribution = 
+      Gain scaled_contribution = 
           (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(mt_kahypar::scaling_factor))
           / (static_cast<double_t>(top_part_min_volume));
 
       ASSERT(0 <= scaled_contribution);
 
       // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
-      const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
+      const Gain value_threshold = mt_kahypar::conductance_value_threshold;
       if (value_threshold < scaled_contribution) {
         LOG << "Scaled contribution of hyperedge " << he << " is too big: " << V(scaled_contribution) 
             << ". It is rounded to " << value_threshold;
         return value_threshold;
       }
-      return static_cast<HyperedgeWeight>(scaled_contribution);
+      return static_cast<Gain>(scaled_contribution);
     }
     // TODO: several parts with the same conductance?
   }
@@ -209,7 +209,7 @@ long double aonVolumeTerm(const PartitionedHypergraph& phg)
 
 
 template<typename PartitionedHypergraph>
-HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) {
+Gain compute_conductance_objective(const PartitionedHypergraph& phg) {
   ASSERT( !PartitionedHypergraph::is_graph, "Conductance objective is not supported for graphs" );
   ASSERT(phg.hasConductancePriorityQueue());
   const ds::ConductanceInfo top_conductance_info = phg.topPartConductanceInfo();
@@ -239,17 +239,17 @@ HyperedgeWeight compute_conductance_objective(const PartitionedHypergraph& phg) 
   ASSERT(0 <= scaled_conductance);
 
   // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
-  const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
+  const Gain value_threshold = mt_kahypar::conductance_value_threshold;
   if (value_threshold < scaled_conductance) {
     LOG << "Scaled conductance is too big: " << V(scaled_conductance) 
         << ". It is rounded to " << value_threshold;
     return value_threshold;
   }
-  return static_cast<HyperedgeWeight>(scaled_conductance);
+  return static_cast<Gain>(scaled_conductance);
 }
 
 template<Objective objective, typename PartitionedHypergraph>
-HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
+Gain compute_objective_parallel(const PartitionedHypergraph& phg) {
   // Compute objective without for-loop through all hyperedges
   switch (objective) {
     case Objective::conductance_local:
@@ -259,7 +259,7 @@ HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
   }
   // Compute objective by iterating through all hyperedges
   ObjectiveFunction<PartitionedHypergraph, objective> func;
-  tbb::enumerable_thread_specific<HyperedgeWeight> obj(0);
+  tbb::enumerable_thread_specific<Gain> obj(0);
   phg.doParallelForAllEdges([&](const HyperedgeID he) {
     obj.local() += func(phg, he);
   });
@@ -274,7 +274,7 @@ HyperedgeWeight compute_objective_parallel(const PartitionedHypergraph& phg) {
 }
 
 template<Objective objective, typename PartitionedHypergraph>
-HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph& phg) {
+Gain compute_objective_sequentially(const PartitionedHypergraph& phg) {
   // Compute objective without for-loop through all hyperedges
   switch (objective) {
     case Objective::conductance_local:
@@ -284,7 +284,7 @@ HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph& phg)
   }
   // Compute objective by iterating through all hyperedges
   ObjectiveFunction<PartitionedHypergraph, objective> func;
-  HyperedgeWeight obj = 0;
+  Gain obj = 0;
   for (const HyperedgeID& he : phg.edges()) {
     obj += func(phg, he);
   }
@@ -300,7 +300,7 @@ HyperedgeWeight compute_objective_sequentially(const PartitionedHypergraph& phg)
 }
 
 template<Objective objective, typename PartitionedHypergraph>
-HyperedgeWeight contribution(const PartitionedHypergraph& phg, const HyperedgeID he) {
+Gain contribution(const PartitionedHypergraph& phg, const HyperedgeID he) {
   ObjectiveFunction<PartitionedHypergraph, objective> func;
   return func(phg, he);
 }
@@ -308,14 +308,14 @@ HyperedgeWeight contribution(const PartitionedHypergraph& phg, const HyperedgeID
 }
 
 template<typename PartitionedHypergraph>
-HyperedgeWeight quality(const PartitionedHypergraph& hg,
+Gain quality(const PartitionedHypergraph& hg,
                         const Context& context,
                         const bool parallel) {
   return quality(hg, context.partition.objective, parallel);
 }
 
 template<typename PartitionedHypergraph>
-HyperedgeWeight quality(const PartitionedHypergraph& hg,
+Gain quality(const PartitionedHypergraph& hg,
                         const Objective objective,
                         const bool parallel) {
   switch (objective) {
@@ -346,7 +346,7 @@ HyperedgeWeight quality(const PartitionedHypergraph& hg,
 }
 
 template<typename PartitionedHypergraph>
-HyperedgeWeight contribution(const PartitionedHypergraph& hg,
+Gain contribution(const PartitionedHypergraph& hg,
                              const HyperedgeID he,
                              const Objective objective) {
   switch (objective) {
@@ -401,7 +401,7 @@ double imbalance(const PartitionedHypergraph& hypergraph, const Context& context
 template<typename PartitionedHypergraph>
 double approximationFactorForProcessMapping(const PartitionedHypergraph& hypergraph, const Context& context) {
   if ( !PartitionedHypergraph::is_graph ) {
-    tbb::enumerable_thread_specific<HyperedgeWeight> approx_factor(0);
+    tbb::enumerable_thread_specific<Gain> approx_factor(0);
     hypergraph.doParallelForAllEdges([&](const HyperedgeID& he) {
       const size_t connectivity = hypergraph.connectivity(he);
       approx_factor.local() += connectivity <= context.mapping.max_steiner_tree_size ? 1 : 2;
@@ -489,9 +489,9 @@ long double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg)
 }
 
 namespace {
-#define OBJECTIVE_1(X) HyperedgeWeight quality(const X& hg, const Context& context, const bool parallel)
-#define OBJECTIVE_2(X) HyperedgeWeight quality(const X& hg, const Objective objective, const bool parallel)
-#define CONTRIBUTION(X) HyperedgeWeight contribution(const X& hg, const HyperedgeID he, const Objective objective)
+#define OBJECTIVE_1(X) Gain quality(const X& hg, const Context& context, const bool parallel)
+#define OBJECTIVE_2(X) Gain quality(const X& hg, const Objective objective, const bool parallel)
+#define CONTRIBUTION(X) Gain contribution(const X& hg, const HyperedgeID he, const Objective objective)
 #define IS_BALANCED(X) bool isBalanced(const X& phg, const Context& context)
 #define IMBALANCE(X) double imbalance(const X& hypergraph, const Context& context)
 #define APPROX_FACTOR(X) double approximationFactorForProcessMapping(const X& hypergraph, const Context& context)

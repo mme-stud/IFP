@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <limits>
 
@@ -72,7 +73,8 @@ using HypernodeWeight = int32_t;
 using HyperedgeWeight = int32_t;
 using HypergraphVolume = uint64_t;
 using PartitionID = int32_t;
-using Gain = HyperedgeWeight; // ToDo: change to double_t
+// using Gain = HyperedgeWeight; // ToDo: change to double_t
+using Gain = double;
 
 using ArcWeight = double;
 
@@ -93,7 +95,8 @@ struct Arc {
 static constexpr PartitionID kInvalidPartition = -1;
 static constexpr HypernodeID kInvalidHypernode = std::numeric_limits<HypernodeID>::max();
 static constexpr HypernodeID kInvalidHyperedge = std::numeric_limits<HyperedgeID>::max();
-static constexpr Gain kInvalidGain = std::numeric_limits<HyperedgeID>::min();
+// static constexpr Gain kInvalidGain = std::numeric_limits<HyperedgeID>::min();
+static constexpr Gain kInvalidGain = std::numeric_limits<double>::min();
 static constexpr size_t kEdgeHashSeed = 42;
 
 static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max();

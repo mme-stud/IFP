@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # define the project version
 set(MT_KAHYPAR_VERSION "1.5")
 string(SUBSTRING "${MT_KAHYPAR_VERSION}" 0 1 MT_KAHYPAR_SO_VERSION)
@@ -22,6 +25,23 @@ set(CMAKE_HAVE_THREADS_LIBRARY 1)
 set(CMAKE_USE_WIN32_THREADS_INIT 0)
 set(CMAKE_USE_PTHREADS_INIT 1)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+include(CheckCXXSourceCompiles)
+set(CMAKE_REQUIRED_FLAGS "-std=c++20")
+check_cxx_source_compiles("
+  #include <atomic>
+  int main() {
+    std::atomic<double> a(0.0);
+    a.fetch_add(1.0);
+    return 0;
+  }" SUPPORTS_ATOMIC_DOUBLE_FETCH_ADD)
+
+if(SUPPORTS_ATOMIC_DOUBLE_FETCH_ADD)
+  message(STATUS "Your compiler and standard library support std::atomic<double>::fetch_add")
+else()
+  message(FATAL_ERROR "Your compiler or standard library do not support std::atomic<double>::fetch_add.
+  Consider updating your compiler or using a compare‐exchange loop workaround.")
+endif()
 
 #################################################################
 ## Sanity checks and policies                                  ##

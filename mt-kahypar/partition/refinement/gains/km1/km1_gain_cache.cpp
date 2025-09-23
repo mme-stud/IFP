@@ -45,12 +45,12 @@ void Km1GainCache::initializeGainCache(const PartitionedHypergraph& partitioned_
   // Gain calculation consist of two stages
   //  1. Compute gain of all low degree vertices
   //  2. Compute gain of all high degree vertices
-  tbb::enumerable_thread_specific< vec<HyperedgeWeight> > ets_mtb(_k, 0);
+  tbb::enumerable_thread_specific< vec<Gain> > ets_mtb(_k, 0);
   tbb::concurrent_vector<HypernodeID> high_degree_vertices;
   // Compute gain of all low degree vertices
   tbb::parallel_for(tbb::blocked_range<HypernodeID>(HypernodeID(0), partitioned_hg.initialNumNodes()),
     [&](tbb::blocked_range<HypernodeID>& r) {
-      vec<HyperedgeWeight>& benefit_aggregator = ets_mtb.local();
+      vec<Gain>& benefit_aggregator = ets_mtb.local();
       for (HypernodeID u = r.begin(); u < r.end(); ++u) {
         if ( partitioned_hg.nodeIsEnabled(u)) {
           if ( partitioned_hg.nodeDegree(u) <= HIGH_DEGREE_THRESHOLD) {
@@ -66,9 +66,9 @@ void Km1GainCache::initializeGainCache(const PartitionedHypergraph& partitioned_
   auto aggregate_contribution_of_he_for_node =
     [&](const PartitionID block_of_u,
         const HyperedgeID he,
-        HyperedgeWeight& penalty_aggregator,
-        vec<HyperedgeWeight>& benefit_aggregator) {
-    HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+        Gain& penalty_aggregator,
+        vec<Gain>& benefit_aggregator) {
+    Gain edge_weight = partitioned_hg.edgeWeight(he);
     if (partitioned_hg.pinCountInPart(he, block_of_u) > 1) {
       penalty_aggregator += edge_weight;
     }
@@ -80,13 +80,13 @@ void Km1GainCache::initializeGainCache(const PartitionedHypergraph& partitioned_
 
   // Compute gain of all high degree vertices
   for ( const HypernodeID& u : high_degree_vertices ) {
-    tbb::enumerable_thread_specific<HyperedgeWeight> ets_mfp(0);
+    tbb::enumerable_thread_specific<Gain> ets_mfp(0);
     const PartitionID from = partitioned_hg.partID(u);
     const HypernodeID degree_of_u = partitioned_hg.nodeDegree(u);
     tbb::parallel_for(tbb::blocked_range<HypernodeID>(ID(0), degree_of_u),
       [&](tbb::blocked_range<HypernodeID>& r) {
-      vec<HyperedgeWeight>& benefit_aggregator = ets_mtb.local();
-      HyperedgeWeight& penalty_aggregator = ets_mfp.local();
+      vec<Gain>& benefit_aggregator = ets_mtb.local();
+      Gain& penalty_aggregator = ets_mfp.local();
       size_t current_pos = r.begin();
       for ( const HyperedgeID& he : partitioned_hg.incidentEdges(u, r.begin()) ) {
         aggregate_contribution_of_he_for_node(from, he,
@@ -99,10 +99,10 @@ void Km1GainCache::initializeGainCache(const PartitionedHypergraph& partitioned_
     });
 
     // Aggregate thread locals to compute overall gain of the high degree vertex
-    const HyperedgeWeight penalty_term = ets_mfp.combine(std::plus<HyperedgeWeight>());
+    const Gain penalty_term = ets_mfp.combine(std::plus<Gain>());
     _gain_cache[penalty_index(u)].store(penalty_term, std::memory_order_relaxed);
     for (PartitionID p = 0; p < _k; ++p) {
-      HyperedgeWeight move_to_benefit = 0;
+      Gain move_to_benefit = 0;
       for ( auto& l_move_to_benefit : ets_mtb ) {
         move_to_benefit += l_move_to_benefit[p];
         l_move_to_benefit[p] = 0;
@@ -128,7 +128,7 @@ void Km1GainCache::deltaGainUpdate(const PartitionedHypergraph& partitioned_hg,
   const HyperedgeID he = sync_update.he;
   const PartitionID from = sync_update.from;
   const PartitionID to = sync_update.to;
-  const HyperedgeWeight edge_weight = sync_update.edge_weight;
+  const Gain edge_weight = sync_update.edge_weight;
   const HypernodeID pin_count_in_from_part_after = sync_update.pin_count_in_from_part_after;
   const HypernodeID pin_count_in_to_part_after = sync_update.pin_count_in_to_part_after;
   if ( pin_count_in_from_part_after == 1 ) {
@@ -171,7 +171,7 @@ void Km1GainCache::uncontractUpdateAfterRestore(const PartitionedHypergraph& par
     // of hyperedge he does not decrease the connectivity any more after the
     // uncontraction => p(u) += w(he)
     const PartitionID block = partitioned_hg.partID(u);
-    const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+    const Gain edge_weight = partitioned_hg.edgeWeight(he);
     if ( pin_count_in_part_after == 2 ) {
       // u might be replaced by an other vertex in the batch
       // => search for other pin of the corresponding block and
@@ -203,7 +203,7 @@ void Km1GainCache::uncontractUpdateAfterReplacement(const PartitionedHypergraph&
   // => Pin counts of hyperedge he does not change
   if ( _is_initialized ) {
     const PartitionID block = partitioned_hg.partID(u);
-    const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+    const Gain edge_weight = partitioned_hg.edgeWeight(he);
     // Since u is no longer incident to hyperedge he its contribution for decreasing
     // the connectivity of he is shifted to vertex v
     if ( partitioned_hg.pinCountInPart(he, block) == 1 ) {
@@ -229,7 +229,7 @@ void Km1GainCache::uncontractUpdateAfterReplacement(const PartitionedHypergraph&
 
 void Km1GainCache::restoreSinglePinHyperedge(const HypernodeID u,
                                              const PartitionID block_of_u,
-                                             const HyperedgeWeight weight_of_he) {
+                                             const Gain weight_of_he) {
   if ( _is_initialized ) {
     _gain_cache[benefit_index(u, block_of_u)].add_fetch(
       weight_of_he, std::memory_order_relaxed);
@@ -243,7 +243,7 @@ void Km1GainCache::initializeGainCacheEntryForNode(const PartitionedHypergraph& 
   PartitionID from = partitioned_hg.partID(u);
   Gain penalty = 0;
   for (const HyperedgeID& e : partitioned_hg.incidentEdges(u)) {
-    HyperedgeWeight ew = partitioned_hg.edgeWeight(e);
+    Gain ew = partitioned_hg.edgeWeight(e);
     if ( partitioned_hg.pinCountInPart(e, from) > 1 ) {
       penalty += ew;
     }

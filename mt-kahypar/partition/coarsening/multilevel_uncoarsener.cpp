@@ -122,7 +122,7 @@ namespace mt_kahypar {
     if (_context.type == ContextType::main 
         && !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context)
         && _context.partition.preset_type != PresetType::cluster) {
-      const HyperedgeWeight quality_before = _current_metrics.quality;
+      const Gain quality_before = _current_metrics.quality;
       if (_context.partition.verbose_output) {
         LOG << RED << "Partition is imbalanced (Current Imbalance:"
         << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context) << ")" << END;
@@ -143,9 +143,9 @@ namespace mt_kahypar {
         _rebalancer->refine(phg, {}, _current_metrics, 0.0);
         _timer.stop_timer("rebalance");
 
-        const HyperedgeWeight quality_after = _current_metrics.quality;
+        const Gain quality_after = _current_metrics.quality;
         if (_context.partition.verbose_output) {
-          const HyperedgeWeight quality_delta = quality_after - quality_before;
+          const Gain quality_delta = quality_after - quality_before;
           if (quality_delta > 0) {
             LOG << RED << "Rebalancer decreased solution quality by" << quality_delta
             << "(Current Imbalance:" << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context) << ")" << END;
@@ -167,7 +167,7 @@ namespace mt_kahypar {
   }
 
   template<typename TypeTraits>
-  HyperedgeWeight MultilevelUncoarsener<TypeTraits>::getObjectiveImpl() const {
+  Gain MultilevelUncoarsener<TypeTraits>::getObjectiveImpl() const {
     return _current_metrics.quality;
   }
 
@@ -214,7 +214,7 @@ namespace mt_kahypar {
     mt_kahypar_partitioned_hypergraph_t phg = utils::partitioned_hg_cast(partitioned_hypergraph);
     while( improvement_found ) {
       improvement_found = false;
-      const HyperedgeWeight metric_before = _current_metrics.quality;
+      const Gain metric_before = _current_metrics.quality;
 
       if ( _rebalancer && _context.refinement.rebalancer != RebalancingAlgorithm::do_nothing ) {
         _rebalancer->initialize(phg);
@@ -256,7 +256,7 @@ namespace mt_kahypar {
           "does not match the metric updated by the refiners" << V(_current_metrics.quality));
       }
 
-      const HyperedgeWeight metric_after = _current_metrics.quality;
+      const Gain metric_after = _current_metrics.quality;
       const double relative_improvement = 1.0 -
         static_cast<double>(metric_after) / metric_before;
       if ( !_context.refinement.refine_until_no_improvement ||

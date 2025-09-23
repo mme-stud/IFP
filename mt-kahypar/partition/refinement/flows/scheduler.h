@@ -101,7 +101,7 @@ class FlowRefinementScheduler final : public IRefiner {
     CAtomic<int64_t> failed_updates_due_to_conflicting_moves;
     CAtomic<int64_t> failed_updates_due_to_conflicting_moves_without_rollback;
     CAtomic<int64_t> failed_updates_due_to_balance_constraint;
-    CAtomic<HyperedgeWeight> total_improvement;
+    CAtomic<Gain> total_improvement;
   };
 
   struct PartWeightUpdateResult {
@@ -180,7 +180,7 @@ public:
    * the balance constaint and not worsen solution quality.
    * Returns, improvement in solution quality.
    */
-  HyperedgeWeight applyMoves(const SearchID search_id,
+  Gain applyMoves(const SearchID search_id,
                              MoveSequence& sequence);
 
   /**

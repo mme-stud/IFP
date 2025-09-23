@@ -67,7 +67,7 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
   ASSERT(_phg == &phg);
   _quotient_graph.setObjective(best_metrics.quality);
 
-  std::atomic<HyperedgeWeight> overall_delta(0);
+  std::atomic<Gain> overall_delta(0);
   utils::Timer& timer = utils::Utilities::instance().getTimer(_context.utility_id);
   tbb::parallel_for(UL(0), _refiner.numAvailableRefiner(), [&](const size_t i) {
     while ( i < std::max(UL(1), static_cast<size_t>(
@@ -84,7 +84,7 @@ bool FlowRefinementScheduler<GraphAndGainTypes>::refineImpl(
         _quotient_graph.finalizeConstruction(search_id);
         timer.stop_timer("region_growing");
 
-        HyperedgeWeight delta = 0;
+        Gain delta = 0;
         bool improved_solution = false;
         if ( sub_hg.numNodes() > 0 ) {
           ++_stats.num_refinements;
@@ -270,7 +270,7 @@ void addCutHyperedgesToQuotientGraph(QuotientGraph<TypeTraits>& quotient_graph,
 } // namespace
 
 template<typename GraphAndGainTypes>
-HyperedgeWeight FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id, MoveSequence& sequence) {
+Gain FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const SearchID search_id, MoveSequence& sequence) {
   unused(search_id);
   ASSERT(_phg);
 
@@ -289,7 +289,7 @@ HyperedgeWeight FlowRefinementScheduler<GraphAndGainTypes>::applyMoves(const Sea
     }
   }
 
-  HyperedgeWeight improvement = 0;
+  Gain improvement = 0;
   vec<NewCutHyperedge> new_cut_hes;
   auto delta_func = [&](const SynchronizedEdgeUpdate& sync_update) {
     improvement -= AttributedGains::gain(sync_update);

@@ -144,7 +144,7 @@ ConductanceLocalGainComputation(const Context& context,
       if (fraction_from_before > fraction_to_before) {
         max_fraction_before = fraction_from_before;
       }
-      HyperedgeWeight local_conductance_before = 
+      Gain local_conductance_before = 
             ConductanceGlobalAttributedGains::compute_conductance_objective(
               total_volume, max_fraction_before, k); // at least one part wasn't empty
 
@@ -157,7 +157,7 @@ ConductanceLocalGainComputation(const Context& context,
         }
         HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
         HypernodeID pin_count_in_to_part = phg.pinCountInPart(he, to);
-        HyperedgeWeight he_weight = phg.edgeWeight(he);
+        Gain he_weight = phg.edgeWeight(he);
         if (pin_count_in_from_part == 1) {
           // Was a cutting edge before for "from" part
           // but not anymore
@@ -190,7 +190,7 @@ ConductanceLocalGainComputation(const Context& context,
       if (fraction_from_after > fraction_to_after) {
         max_fraction_after = fraction_from_after;
       }
-      HyperedgeWeight local_conductance_after = 
+      Gain local_conductance_after = 
             ConductanceGlobalAttributedGains::compute_conductance_objective(
               total_volume, max_fraction_after, k); // at least one part isn't empty
 
@@ -198,7 +198,7 @@ ConductanceLocalGainComputation(const Context& context,
     }
   }
  
-  HyperedgeWeight gain(const Gain to_score,
+  Gain gain(const Gain to_score,
                        const Gain) {
     return to_score;
   }

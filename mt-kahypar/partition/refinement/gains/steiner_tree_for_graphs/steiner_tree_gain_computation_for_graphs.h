@@ -87,7 +87,7 @@ class GraphSteinerTreeGainComputation : public GainComputationBase<GraphSteinerT
 
     // Precompute adjacent blocks of node and the w(u, V_k) terms
     const PartitionID from = phg.partID(hn);
-    vec<HyperedgeWeight>& incident_edge_weights = _ets_incident_edge_weights.local();
+    vec<Gain>& incident_edge_weights = _ets_incident_edge_weights.local();
     ds::Bitset& adjacent_blocks = consider_non_adjacent_blocks ?
       _all_blocks : _local_adjacent_blocks.local();
     ds::StaticBitset adjacent_blocks_view(
@@ -115,7 +115,7 @@ class GraphSteinerTreeGainComputation : public GainComputationBase<GraphSteinerT
     }
   }
 
-  HyperedgeWeight gain(const Gain to_score,
+  Gain gain(const Gain to_score,
                        const Gain) {
     return to_score;
   }
@@ -139,8 +139,8 @@ class GraphSteinerTreeGainComputation : public GainComputationBase<GraphSteinerT
     return ds::Bitset(_context.partition.k);
   }
 
-  vec<HyperedgeWeight> constructIncidentEdgeWeightVector() const {
-    return vec<HyperedgeWeight>(_context.partition.k, 0);
+  vec<Gain> constructIncidentEdgeWeightVector() const {
+    return vec<Gain>(_context.partition.k, 0);
   }
 
   using Base::_context;
@@ -151,7 +151,7 @@ class GraphSteinerTreeGainComputation : public GainComputationBase<GraphSteinerT
   ds::Bitset _all_blocks;
 
   // ! Array for precomputing the weight of all edges connecting a node to a particular block
-  tbb::enumerable_thread_specific<vec<HyperedgeWeight>> _ets_incident_edge_weights;
+  tbb::enumerable_thread_specific<vec<Gain>> _ets_incident_edge_weights;
 };
 
 }  // namespace mt_kahypar

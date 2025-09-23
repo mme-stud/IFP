@@ -156,7 +156,7 @@ namespace mt_kahypar {
   };
 
   template<typename GraphAndGainTypes>
-  HyperedgeWeight GlobalRollback<GraphAndGainTypes>::revertToBestPrefixParallel(
+  Gain GlobalRollback<GraphAndGainTypes>::revertToBestPrefixParallel(
           PartitionedHypergraph& phg, FMSharedData& sharedData,
           const vec<HypernodeWeight>& partWeights, const std::vector<HypernodeWeight>& maxPartWeights) {
     const MoveID numMoves = sharedData.moveTracker.numPerformedMoves();
@@ -217,17 +217,19 @@ namespace mt_kahypar {
         const MoveID m_id = tracker.moveOfNode[v];
         Move& m = tracker.getMove(m_id);
 
-        const HyperedgeWeight benefit = Rollback::benefit(phg, e, m_id, m, r);;
-        const HyperedgeWeight penalty = Rollback::penalty(phg, e, m_id, m, r);
+        const Gain benefit = Rollback::benefit(phg, e, m_id, m, r);;
+        const Gain penalty = Rollback::penalty(phg, e, m_id, m, r);
 
         if ( benefit > 0 ) {
           // increase gain of v by benefit
-          __atomic_fetch_add(&m.gain, benefit, __ATOMIC_RELAXED);
+          // __atomic_fetch_add(&m.gain, benefit, __ATOMIC_RELAXED);
+          std::atomic_ref<Gain>(m.gain).fetch_add(benefit, std::memory_order_relaxed);
         }
 
         if ( penalty > 0 ) {
           // decrease gain of v by penalty
-          __atomic_fetch_sub(&m.gain, penalty, __ATOMIC_RELAXED);
+          // __atomic_fetch_sub(&m.gain, penalty, __ATOMIC_RELAXED);
+          std::atomic_ref<Gain>(m.gain).fetch_sub(penalty, std::memory_order_relaxed);
         }
       }
     }
@@ -300,10 +302,11 @@ namespace mt_kahypar {
         connectivity_set.set(sync_update.to);
       }
       // This is the gain for reverting the move.
-      const HyperedgeWeight attributed_gain = AttributedGains::gain(sync_update);
+      const Gain attributed_gain = AttributedGains::gain(sync_update);
       // For recomputed gains, a postive gain means improvement. However, the opposite
       // is the case for attributed gains.
-      __atomic_fetch_add(&m.gain, attributed_gain, __ATOMIC_RELAXED);
+      // __atomic_fetch_add(&m.gain, attributed_gain, __ATOMIC_RELAXED);
+      std::atomic_ref<Gain>(m.gain).fetch_add(attributed_gain, std::memory_order_relaxed);
     }
   }
 
@@ -353,8 +356,9 @@ namespace mt_kahypar {
       sync_update.pin_count_in_to_part_after =
         first_m.to == second_m.from ? 2 : 1;
       sync_update.block_of_other_node = second_m.from;
-      const HyperedgeWeight attributed_gain = AttributedGains::gain(sync_update);
-      __atomic_fetch_add(&first_m.gain, -attributed_gain, __ATOMIC_RELAXED);
+      const Gain attributed_gain = AttributedGains::gain(sync_update);
+      // __atomic_fetch_add(&first_m.gain, -attributed_gain, __ATOMIC_RELAXED);
+      std::atomic_ref<Gain>(first_m.gain).fetch_add(-attributed_gain, std::memory_order_relaxed);
 
       if ( tracker.wasNodeMovedInThisRound(second_move) )  {
         // Compute gain of second move
@@ -365,8 +369,9 @@ namespace mt_kahypar {
         sync_update.pin_count_in_to_part_after =
           first_m.to == second_m.to ? 2 : 1;
         sync_update.block_of_other_node = first_m.to;
-        const HyperedgeWeight attributed_gain = AttributedGains::gain(sync_update);
-        __atomic_fetch_add(&second_m.gain, -attributed_gain, __ATOMIC_RELAXED);
+        const Gain attributed_gain = AttributedGains::gain(sync_update);
+        // __atomic_fetch_add(&second_m.gain, -attributed_gain, __ATOMIC_RELAXED);
+        std::atomic_ref<Gain>(second_m.gain).fetch_add(-attributed_gain, std::memory_order_relaxed);
       }
     }
   }
@@ -416,7 +421,7 @@ namespace mt_kahypar {
   }
 
   template<typename GraphAndGainTypes>
-  HyperedgeWeight GlobalRollback<GraphAndGainTypes>::revertToBestPrefixSequential(
+  Gain GlobalRollback<GraphAndGainTypes>::revertToBestPrefixSequential(
     PartitionedHypergraph& phg,
     FMSharedData& sharedData,
     const vec<HypernodeWeight>&,

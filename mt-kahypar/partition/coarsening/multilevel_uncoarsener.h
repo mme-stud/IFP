@@ -83,7 +83,7 @@ class MultilevelUncoarsener : public IUncoarsener<TypeTraits>,
     return _gain_cache;
   }
 
-  HyperedgeWeight getObjectiveImpl() const override;
+  Gain getObjectiveImpl() const override;
 
   void updateMetricsImpl() override;
 

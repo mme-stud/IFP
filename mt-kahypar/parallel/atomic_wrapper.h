@@ -66,6 +66,69 @@ public:
   }
 };
 
+template <>
+class CAtomic<double> : public std::atomic<double> {
+public:
+  using value_type = double;
+
+  explicit CAtomic(double value = 0.0) : std::atomic<double>(value) { }
+  
+  CAtomic(const CAtomic& other) : std::atomic<double>(other.load(std::memory_order_relaxed)) { }
+
+  CAtomic& operator=(const CAtomic& other) {
+    this->store(other.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    return *this;
+  }
+
+  CAtomic(CAtomic&& other) : std::atomic<double>(other.load(std::memory_order_relaxed)) { }
+
+  CAtomic& operator=(CAtomic&& other) {
+    this->store(other.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    return *this;
+  }
+
+  // Implement fetch_add using a compare_exchange_weak loop.
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE double fetch_add(double arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+    double old_val = this->load(order);
+    // Loop until the compare_exchange_weak succeeds.
+    while (!this->compare_exchange_weak(old_val, old_val + arg, order, std::memory_order_relaxed)) {
+      // old_val is updated with the current value upon failure.
+    }
+
+    return old_val;
+  }
+
+  // Implement fetch_sub using a similar loop.
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE double fetch_sub(double arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+    double old_val = this->load(order);
+    while (!this->compare_exchange_weak(old_val, old_val - arg, order, std::memory_order_relaxed)) {
+      // Loop until successful.
+    }
+
+    return old_val;
+  }
+
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE double add_fetch(double arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+    return fetch_add(arg, order) + arg;
+  }
+
+  MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE double sub_fetch(double arg, std::memory_order order = std::memory_order_seq_cst) noexcept {
+    return fetch_sub(arg, order) - arg;
+  }
+
+  // Overload assignment for convenience.
+
+  CAtomic<double>& operator=(double desired) noexcept {
+    this->store(desired);
+    return *this;
+  }
+
+  // Allow conversion to double.
+  operator double() const noexcept {
+    return this->load();
+  }
+};
+
 class SpinLock {
 public:
   // boilerplate to make it 'copyable'. but we just clear the spinlock. there is never a use case to copy a locked spinlock

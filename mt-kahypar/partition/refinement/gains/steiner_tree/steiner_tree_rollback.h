@@ -69,7 +69,7 @@ class SteinerTreeRollback {
   }
 
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight benefit(const PartitionedHypergraph&,
+  static Gain benefit(const PartitionedHypergraph&,
                                  const HyperedgeID,
                                  const MoveID,
                                  const Move&,
@@ -80,7 +80,7 @@ class SteinerTreeRollback {
   }
 
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight penalty(const PartitionedHypergraph&,
+  static Gain penalty(const PartitionedHypergraph&,
                                  const HyperedgeID,
                                  const MoveID,
                                  const Move&,
