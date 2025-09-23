@@ -758,3 +758,47 @@ target_compile_options(MtKaHyPar-BuildFlags INTERFACE -lgmpxx -lgmp)
 ```cpp
 #include <gmpxx.h> // GMP C++ interface
 ```
+
+## Scripts for experiments
+Folder: `_experimental_results/`
+- `survey_benchmark/` - all benchmarks from the survey paper [Comparison of modularity-based approaches for nodes clustering in hypergraphs](https://arxiv.org/pdf/2401.14028)
+- `run_experiments_write_clusters_times_conductances.cc`:
+    - command line arguments:
+        + `-m` - name of the mode (`DCHSBM / HyperSBM / HyperSBM`)
+        + `-s` - scenario name (`scenA1 / ...`)
+        + `-t` - number of threads for the experiment
+        + `-n` - optional number of instances to run (default: all instances in the scenario: 25)
+    - output files:
+        + `survey_benchmark/<mode>/<scenario>/mt_kahyper_<hgrname.hgr>_<num_threads>threads.part` - resulting clusters
+        + `survey_benchmark/<mode>/<scenario>/mt_kahyper_<num_threads>threads.results.t_c` - running times and conductances:\
+            ```
+                Time (sec.) = [t1, t2, ..., tn]
+                Conductance = [c1, c2, ..., cn]
+            ```
+- `analyze_results_script.jl`: - runs analysis of the results and writes a summary file:
+    - reference: `AON_HMLL_sript.jl` from [the survey repository](https://github.com/veronicapoda/modularity/), uses `AON_HMLL_axuliary.jl`
+    - command line arguments:
+        + `-d` - data root directory (`survey_benchmark/`)
+        + `-m` - name of the generating model (`"DCHSBM/" / "HyperSBM/" / "HyperSBM/"`)
+        + `-s` - scenario name (`scenA1 / ...`)
+        + `-n` - optional number of instances to analyze (default: all instances in the scenario: 25)
+        + `-t` - number of threads for the experiment
+    - output files:
+        + `survey_benchmark/<mode>/<scenario>/mt_kahyper_results_<num_threads>threads.results` - summary of all stats + previously saved of running times and conductances: \
+            ```
+                ARI=[i_1, i_2, ..., i_n]                  # adjusted rand indices (see [wikipedia](https://en.wikipedia.org/wiki/Rand_index))
+                CPU time = [t_1, t_2, ..., t_n]
+                Modularity = [m_1, m_2, ..., m_n]
+                GT_Mod = [gtm_1, gtm_2, ..., gtm_m]       # ground truth modularities
+                K_hat = [k'_1, k'_2, ..., k'_n]
+                K_true = [k_1, k_2, ..., k_m]             # ground truth number of clusters
+                Conductance_hat = [c'_1, c'_2, ..., c'_n]
+            ```
+- `build_exp.sh`, `run_exp.sh`, `analyze_exp.sh` - scripts to build, run and analyze the experiments
+
+To build and use the library:
+- build the library after building the project via: `make install-mtkahypar` after normal `cmake` call
+- the `.so` file should be in `LD_LIBRARY_PATH` (e.g. `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/mt-kahypar/lib`)
+- in `.cc`: `#include "<mtkahypar.h>` 
+- link:  \
+    ```g++ -DNDEBUG -o exp -O3 -std=c++20 run_experiments_write_clusters_times_conductances.cc $LIB_DIR/libmtkahypar.so -I .../IFP/include -lpthread```

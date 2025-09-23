@@ -149,7 +149,7 @@ function main()
         # save partial results
         filename= string(model,scenario,"mt_kahypar_results_$(nthreads)threads.results")
         open(filename, "w") do f
-            write(f, "ARI=$(string(Ari))"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true\n"*"Conductance = $conductance_hat")
+            write(f, "ARI=$(string(Ari))"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true\n"*"Conductance_hat = $conductance_hat")
         end
     end
 end
