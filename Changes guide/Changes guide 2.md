@@ -589,6 +589,9 @@ Reference: Adil's commit [ab9be07](https://github.com/adilchhabra/mt-kahypar/com
 ## Configuration of cluster preset
 Use lp-refiner on the kernel after IP to improve conductance of the found clusters. *[Note: potential problem: it's almost always beneficial for `conductance_global` to merge clusters &rArr; lp refiner can merge too many clusters together]*
 
+Bug fix: `setNodePart(..)` was used in `performRefinementOnPartition(..)` &rArr; I call `needsConductancePriorityQueue()` afterwards.
+
+
 Set in ``config/cluster_preset.ini`` (and analog. in `mt-kahypar/io/presets.cpp`):
 ```ini
 # main -> initial_partitioning

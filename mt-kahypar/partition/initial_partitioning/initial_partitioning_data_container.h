@@ -272,6 +272,7 @@ class InitialPartitioningDataContainer {
         ASSERT(_partitioned_hypergraph.partID(hn) == kInvalidPartition);
         _partitioned_hypergraph.setNodePart(hn, partition[hn]);
       }
+      _partitioned_hypergraph.needsConductancePriorityQueue();
 
       HEAVY_INITIAL_PARTITIONING_ASSERT(
         current_metric.quality == metrics::quality(_partitioned_hypergraph, _context, false));
@@ -493,8 +494,10 @@ class InitialPartitioningDataContainer {
   void commit(const InitialPartitioningAlgorithm algorithm, std::mt19937& prng, size_t deterministic_tag,
               const double time = 0.0) {
     // already commits the result if non-deterministic
+    /// std::cout << "Starting committing partition" << std::endl;
     auto& my_ip_data = _local_hg.local();
     auto my_result = my_ip_data.refineAndUpdateStats(algorithm, prng, time);
+    /// std::cout << "Finished refinement" << std::endl;
     const double eps = _context.partition.epsilon;
 
     if ( _context.partition.deterministic ) {
@@ -522,6 +525,7 @@ class InitialPartitioningDataContainer {
         my_ip_data.copyPartition(my_ip_data._partition);
       }
     }
+    /// std::cout << "Finishing committing partition" << std::endl;
     my_ip_data._partitioned_hypergraph.resetPartition();
   }
 
