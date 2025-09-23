@@ -48,7 +48,7 @@ struct ConductanceLocalAttributedGains {
   // - total_volume: the used version of total volume of the hypergraph
   // - weighted_degree: the used version of weighted degree of the node that is moved
   // - k: the number of partitions
-  static HyperedgeWeight gain(const SynchronizedEdgeUpdate& sync_update) {
+  static Gain gain(const SynchronizedEdgeUpdate& sync_update) {
     // ASSERT(SyncUpdatePreferences::collective_sync_updates_in_phg, 
     //  "Synchronized gain updates should be enabled for Conductance Attribted Gains");
     // Note: can't check if collective sync_updates are enabled, 
@@ -85,16 +85,16 @@ struct ConductanceLocalAttributedGains {
       new_local_top_fraction = new_fraction_to;
     }
 
-    HyperedgeWeight new_local_conductance = compute_conductance_objective(sync_update.total_volume,
+    Gain new_local_conductance = compute_conductance_objective(sync_update.total_volume,
                                                                           new_local_top_fraction,
                                                                           sync_update.k);
-    HyperedgeWeight old_local_conductance = compute_conductance_objective(sync_update.total_volume,
+    Gain old_local_conductance = compute_conductance_objective(sync_update.total_volume,
                                                                           old_local_top_fraction,
                                                                           sync_update.k);
     return new_local_conductance - old_local_conductance; // gain is positive if conductance increases
   }
 
-  static HyperedgeWeight compute_conductance_objective(const HypergraphVolume& total_volume_version,
+  static Gain compute_conductance_objective(const HypergraphVolume& total_volume_version,
                                                        const ds::ConductanceFraction& fraction, 
                                                        const PartitionID& k) {
     unused(k);
@@ -113,18 +113,18 @@ struct ConductanceLocalAttributedGains {
     //  LOG << "Weights are right";
     //}
     if ( top_part_cut_weight <= top_part_min_volume ) {
-      double_t scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
+      Gain scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
                                   / static_cast<double_t>(top_part_min_volume)
                                   * static_cast<double_t>(mt_kahypar::scaling_factor);
       ASSERT(0 <= scaled_conductance);
       // HyperedgeWeight value_threshold = std::numeric_limits<HyperedgeWeight>::max();
-      const HyperedgeWeight value_threshold = mt_kahypar::conductance_value_threshold;
+      const Gain value_threshold = mt_kahypar::conductance_value_threshold;
       if (value_threshold < scaled_conductance) {
         LOG << "Scaled conductance is too big: " << V(scaled_conductance) 
             << ". It is rounded to " << value_threshold;
         return value_threshold;
       }
-      return static_cast<HyperedgeWeight>(scaled_conductance);
+      return static_cast<Gain>(scaled_conductance);
     }
     // weights are wrong, but conductnace could  therefore be high
     return mt_kahypar::scaling_factor;

@@ -112,7 +112,7 @@ ConductanceGlobalGainComputation(const Context& context,
 
     // Current conductance objective
     ds::ConductanceFraction conductance_fraction_now = phg.topPartConductanceInfo().fraction;
-    HyperedgeWeight conductance_now = ConductanceGlobalAttributedGains::
+    Gain conductance_now = ConductanceGlobalAttributedGains::
           compute_conductance_objective(sync_update.total_volume, conductance_fraction_now, sync_update.k);
 
     // Compute the gain to all concident blocks
@@ -130,7 +130,7 @@ ConductanceGlobalGainComputation(const Context& context,
         }
         HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, sync_update.from);
         HypernodeID pin_count_in_to_part = phg.pinCountInPart(he, to);
-        HyperedgeWeight he_weight = phg.edgeWeight(he);
+        Gain he_weight = phg.edgeWeight(he);
         if (pin_count_in_from_part == 1) {
           // Was a cutting edge before for "from" part
           // but not anymore
@@ -152,13 +152,13 @@ ConductanceGlobalGainComputation(const Context& context,
       }
 
       // Get the new conductance objective
-      HyperedgeWeight conductance_after = 
+      Gain conductance_after = 
             ConductanceGlobalAttributedGains::gain(sync_update);
       tmp_scores[to] = conductance_after - conductance_now;
     }
   }
  
-  HyperedgeWeight gain(const Gain to_score,
+  Gain gain(const Gain to_score,
                        const Gain) {
     return to_score;
   }

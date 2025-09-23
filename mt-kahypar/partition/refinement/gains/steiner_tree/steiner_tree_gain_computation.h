@@ -90,9 +90,9 @@ class SteinerTreeGainComputation : public GainComputationBase<SteinerTreeGainCom
     PartitionID from = phg.partID(hn);
     for (const HyperedgeID& he : phg.incidentEdges(hn)) {
       HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
-      HyperedgeWeight he_weight = phg.edgeWeight(he);
+      Gain he_weight = phg.edgeWeight(he);
       ds::Bitset& connectivity_set = phg.deepCopyOfConnectivitySet(he);
-      const HyperedgeWeight distance_before = target_graph->distance(connectivity_set);
+      const Gain distance_before = target_graph->distance(connectivity_set);
 
       if ( pin_count_in_from_part == 1 ) {
         // Moving the node out of its current block removes
@@ -106,14 +106,14 @@ class SteinerTreeGainComputation : public GainComputationBase<SteinerTreeGainCom
       // distances in the target graph. We therefore have to consider all adjacent blocks
       // of the node to compute the correct gain.
       for ( const PartitionID to : adjacent_blocks_view ) {
-        const HyperedgeWeight distance_after =
+        const Gain distance_after =
           target_graph->distanceWithBlock(connectivity_set, to);
         tmp_scores[to] += (distance_after - distance_before) * he_weight;
       }
     }
   }
 
-  HyperedgeWeight gain(const Gain to_score,
+  Gain gain(const Gain to_score,
                        const Gain) {
     return to_score;
   }

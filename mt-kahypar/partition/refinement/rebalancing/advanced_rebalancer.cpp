@@ -55,12 +55,12 @@ namespace impl {
     const HypernodeWeight wu = phg.nodeWeight(u);
     const HypernodeWeight from_weight = phg.partWeight(from);
     PartitionID to = kInvalidPartition;
-    HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
+    Gain to_benefit = std::numeric_limits<Gain>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     for (PartitionID i = 0; i < context.partition.k; ++i) {
       if (i != from) {
         const HypernodeWeight to_weight = phg.partWeight(i);
-        const HyperedgeWeight benefit = gain_cache.benefitTerm(u, i);
+        const Gain benefit = gain_cache.benefitTerm(u, i);
         if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
             to_weight + wu <= context.partition.max_part_weights[i]) {
           to_benefit = benefit;
@@ -84,12 +84,12 @@ namespace impl {
     const HypernodeWeight wu = phg.nodeWeight(u);
     const HypernodeWeight from_weight = phg.partWeight(from);
     PartitionID to = kInvalidPartition;
-    HyperedgeWeight to_benefit = std::numeric_limits<HyperedgeWeight>::min();
+    Gain to_benefit = std::numeric_limits<Gain>::min();
     HypernodeWeight best_to_weight = from_weight - wu;
     for (PartitionID i : parts) {
       if (i != from && i != kInvalidPartition) {
         const HypernodeWeight to_weight = phg.partWeight(i);
-        const HyperedgeWeight benefit = gain_cache.benefitTerm(u, i);
+        const Gain benefit = gain_cache.benefitTerm(u, i);
         if ((benefit > to_benefit || (benefit == to_benefit && to_weight < best_to_weight)) &&
             to_weight + wu <= context.partition.max_part_weights[i]) {
           to_benefit = benefit;
@@ -308,9 +308,9 @@ namespace impl {
   }
 
   template <typename GraphAndGainTypes>
-  std::pair<int64_t, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(mt_kahypar_partitioned_hypergraph_t& hypergraph) {
+  std::pair<Gain, size_t> AdvancedRebalancer<GraphAndGainTypes>::findMoves(mt_kahypar_partitioned_hypergraph_t& hypergraph) {
     auto& phg = utils::cast<PartitionedHypergraph>(hypergraph);
-    int64_t attributed_gain = 0;
+    Gain attributed_gain = 0;
     size_t global_move_id = 0;
     size_t num_overloaded_blocks = _overloaded_blocks.size();
 
@@ -410,7 +410,8 @@ namespace impl {
 
         _moves[move_id] = m;
       }
-      __atomic_fetch_add(&attributed_gain, local_attributed_gain, __ATOMIC_RELAXED);
+      // __atomic_fetch_add(&attributed_gain, local_attributed_gain, __ATOMIC_RELAXED);
+      std::atomic_ref<Gain>(attributed_gain).fetch_add(local_attributed_gain, std::memory_order_relaxed);
     };
 
     tbb::task_group tg;

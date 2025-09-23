@@ -126,7 +126,7 @@ class DummyGainCache {
   // ! Returns the penalty term of node u.
   // ! More formally, p(u) := (w(I(u)) - w({ e \in I(u) | pin_count(e, V_i) = |e| })
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight penaltyTerm(const HypernodeID u,
+  Gain penaltyTerm(const HypernodeID u,
                               const PartitionID /* only relevant for graphs */) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     unused(u);
@@ -147,7 +147,7 @@ class DummyGainCache {
   // ! Returns the benefit term for moving node u to block to.
   // ! More formally, b(u, V_j) := w({ e \in I(u) | pin_count(e, V_j) = |e| - 1 })
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight benefitTerm(const HypernodeID u, const PartitionID to) const {
+  Gain benefitTerm(const HypernodeID u, const PartitionID to) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     unused(u);
     unused(to);
@@ -157,7 +157,7 @@ class DummyGainCache {
   // ! Returns the gain of moving node u from its current block to a target block V_j.
   // ! More formally, g(u, V_j) := b(u, V_j) - p(u).
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight gain(const HypernodeID u,
+  Gain gain(const HypernodeID u,
                        const PartitionID, /* only relevant for graphs */
                        const PartitionID to ) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
@@ -211,7 +211,7 @@ class DummyGainCache {
   // ! u is the only pin of the corresponding hyperedge, while block_of_u is its corresponding block ID.
   void restoreSinglePinHyperedge(const HypernodeID,
                                  const PartitionID,
-                                 const HyperedgeWeight) {
+                                 const Gain) {
     // Do nothing here
   }
 
@@ -231,12 +231,12 @@ class DummyGainCache {
 
   template<typename PartitionedHypergraph>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight recomputePenaltyTerm(const PartitionedHypergraph& partitioned_hg,
+  Gain recomputePenaltyTerm(const PartitionedHypergraph& partitioned_hg,
                                        const HypernodeID u) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     unused(partitioned_hg);
     unused(u);
-    HyperedgeWeight penalty = 1; 
+    Gain penalty = 1; 
     /* gain = benefit - penalty 
      * gain > 0 --> improvement
      * Dummy: benefit = -1, penalty = 1 --> never improvement
@@ -246,13 +246,13 @@ class DummyGainCache {
 
   template<typename PartitionedHypergraph>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight recomputeBenefitTerm(const PartitionedHypergraph& partitioned_hg,
+  Gain recomputeBenefitTerm(const PartitionedHypergraph& partitioned_hg,
                                        const HypernodeID u,
                                        const PartitionID to) const {
     unused(partitioned_hg);
     unused(u);
     unused(to);
-    HyperedgeWeight benefit = -1; // benefit = old - new
+    Gain benefit = -1; // benefit = old - new
     return benefit;
   }
 
@@ -367,7 +367,7 @@ class DeltaDummyGainCache {
   // ! Returns the penalty term of node u.
   // ! More formally, p(u) := (w(I(u)) - w({ e \in I(u) | pin_count(e, V_i) = |e| })
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight penaltyTerm(const HypernodeID u,
+  Gain penaltyTerm(const HypernodeID u,
                               const PartitionID from) const {
     return _gain_cache.penaltyTerm(u, from);
   }
@@ -375,7 +375,7 @@ class DeltaDummyGainCache {
   // ! Returns the benefit term for moving node u to block to.
   // ! More formally, b(u, V_j) := w({ e \in I(u) | pin_count(e, V_j) = |e| - 1 })
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight benefitTerm(const HypernodeID u, const PartitionID to) const {
+  Gain benefitTerm(const HypernodeID u, const PartitionID to) const {
     ASSERT(to != kInvalidPartition && to < _gain_cache._k);
     return _gain_cache.benefitTerm(u, to);
   }
@@ -383,7 +383,7 @@ class DeltaDummyGainCache {
   // ! Returns the gain of moving node u from its current block to a target block V_j.
   // ! More formally, g(u, V_j) := b(u, V_j) - p(u).
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight gain(const HypernodeID u,
+  Gain gain(const HypernodeID u,
                        const PartitionID from,
                        const PartitionID to ) const {
     return benefitTerm(u, to) - penaltyTerm(u, from);

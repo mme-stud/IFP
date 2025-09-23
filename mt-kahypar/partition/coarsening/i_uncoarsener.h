@@ -82,7 +82,7 @@ class IUncoarsener {
       return getGainCacheImpl();
     }
 
-    HyperedgeWeight getObjective() const {
+    Gain getObjective() const {
       return getObjectiveImpl();
     }
 
@@ -114,7 +114,7 @@ class IUncoarsener {
     virtual void refineImpl() = 0;
     virtual void rebalancingImpl() = 0;
     virtual gain_cache_t getGainCacheImpl() = 0;
-    virtual HyperedgeWeight getObjectiveImpl() const = 0;
+    virtual Gain getObjectiveImpl() const = 0;
     virtual void updateMetricsImpl() = 0;
     virtual PartitionedHypergraph& currentPartitionedHypergraphImpl() = 0;
     virtual HypernodeID currentNumberOfNodesImpl() const = 0;

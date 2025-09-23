@@ -57,7 +57,7 @@ struct BipartitioningPolicy {
     return false;
   }
 
-  static HyperedgeWeight nonCutEdgeMultiplier(const GainPolicy policy) {
+  static Gain nonCutEdgeMultiplier(const GainPolicy policy) {
     switch(policy) {
       case GainPolicy::cut: return 1;
       case GainPolicy::km1: return 1;

@@ -60,8 +60,8 @@ class InitialPartitioningDataContainer {
     PartitioningResult() = default;
 
     PartitioningResult(InitialPartitioningAlgorithm algorithm,
-                       HyperedgeWeight objective_ip,
-                       HyperedgeWeight objective,
+                       Gain objective_ip,
+                       Gain objective,
                        double imbalance) :
       _algorithm(algorithm),
       _objective_ip(objective_ip),
@@ -92,8 +92,8 @@ class InitialPartitioningDataContainer {
     }
 
     InitialPartitioningAlgorithm _algorithm = InitialPartitioningAlgorithm::UNDEFINED;
-    HyperedgeWeight _objective_ip = std::numeric_limits<HyperedgeWeight>::max();
-    HyperedgeWeight _objective = std::numeric_limits<HyperedgeWeight>::max();
+    Gain _objective_ip = std::numeric_limits<Gain>::max();
+    Gain _objective = std::numeric_limits<Gain>::max();
     double _imbalance = std::numeric_limits<double>::max();
     size_t _random_tag = std::numeric_limits<size_t>::max();
     size_t _deterministic_tag = std::numeric_limits<size_t>::max();
@@ -107,9 +107,9 @@ class InitialPartitioningDataContainer {
       average_quality(0.0),
       sum_of_squares(0.0),
       n(0),
-      best_quality(std::numeric_limits<HyperedgeWeight>::max()) { }
+      best_quality(std::numeric_limits<Gain>::max()) { }
 
-    void add_run(const HyperedgeWeight quality) {
+    void add_run(const Gain quality) {
       ++n;
       // Incremental update standard deviation
       // Incremental update average quality
@@ -131,7 +131,7 @@ class InitialPartitioningDataContainer {
     double average_quality;
     long double sum_of_squares;
     size_t n;
-    HyperedgeWeight best_quality;
+    Gain best_quality;
   };
 
   // ! Aggregates global stats of all initial partitioning algorithms.
@@ -145,7 +145,7 @@ class InitialPartitioningDataContainer {
       _stat_mutex(),
       _context(context),
       _stats(),
-      _best_quality(std::numeric_limits<HyperedgeWeight>::max()) {
+      _best_quality(std::numeric_limits<Gain>::max()) {
       const uint8_t num_initial_partitioner = static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED);
       for ( uint8_t algo = 0; algo < num_initial_partitioner; ++algo ) {
         _stats.emplace_back(static_cast<InitialPartitioningAlgorithm>(algo));
@@ -153,7 +153,7 @@ class InitialPartitioningDataContainer {
     }
 
     void add_run(const InitialPartitioningAlgorithm algorithm,
-                 const HyperedgeWeight quality,
+                 const Gain quality,
                  const bool is_feasible) {
       std::lock_guard<std::mutex> _lock(_stat_mutex);
       const uint8_t algo_idx = static_cast<uint8_t>(algorithm);
@@ -186,7 +186,7 @@ class InitialPartitioningDataContainer {
     std::mutex _stat_mutex;
     const Context& _context;
     parallel::scalable_vector<InitialPartitioningRunStats> _stats;
-    HyperedgeWeight _best_quality;
+    Gain _best_quality;
   };
 
   struct LocalInitialPartitioningHypergraph {
@@ -241,7 +241,7 @@ class InitialPartitioningDataContainer {
       current_metric.quality = metrics::quality(_partitioned_hypergraph, _context, false);
       current_metric.imbalance = metrics::imbalance(_partitioned_hypergraph, _context);
 
-      const HyperedgeWeight quality_before_refinement = current_metric.quality;
+      const Gain quality_before_refinement = current_metric.quality;
 
       refineCurrentPartition(current_metric, prng);
 
@@ -544,7 +544,7 @@ class InitialPartitioningDataContainer {
       stats.emplace_back(static_cast<InitialPartitioningAlgorithm>(algo));
     }
     InitialPartitioningAlgorithm best_flat_algo = InitialPartitioningAlgorithm::UNDEFINED;
-    HyperedgeWeight best_feasible_objective = std::numeric_limits<HyperedgeWeight>::max(); unused(best_feasible_objective);
+    Gain best_feasible_objective = std::numeric_limits<Gain>::max(); unused(best_feasible_objective);
 
     if ( _context.partition.deterministic ) {
       for (auto& p : _local_hg) {

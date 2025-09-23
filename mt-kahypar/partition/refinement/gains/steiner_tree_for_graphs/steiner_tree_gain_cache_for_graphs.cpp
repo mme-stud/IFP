@@ -46,7 +46,7 @@ void GraphSteinerTreeGainCache::initializeGainCache(const PartitionedHypergraph&
   // Compute gain of all nodes
     tbb::parallel_for(tbb::blocked_range<HypernodeID>(HypernodeID(0), partitioned_hg.initialNumNodes()),
       [&](tbb::blocked_range<HypernodeID>& r) {
-        vec<HyperedgeWeight>& gain_aggregator = _ets_benefit_aggregator.local();
+        vec<Gain>& gain_aggregator = _ets_benefit_aggregator.local();
         for (HypernodeID u = r.begin(); u < r.end(); ++u) {
           if ( partitioned_hg.nodeIsEnabled(u)) {
             initializeGainCacheEntryForNode(partitioned_hg, u, gain_aggregator);
@@ -67,7 +67,7 @@ void GraphSteinerTreeGainCache::initializeGainCache(const PartitionedHypergraph&
 template<typename PartitionedHypergraph>
 void GraphSteinerTreeGainCache::initializeGainCacheEntryForNode(const PartitionedHypergraph& partitioned_hg,
                                                                 const HypernodeID hn) {
-  vec<HyperedgeWeight>& gain_aggregator = _ets_benefit_aggregator.local();
+  vec<Gain>& gain_aggregator = _ets_benefit_aggregator.local();
   initializeAdjacentBlocksOfNode(partitioned_hg, hn);
   initializeGainCacheEntryForNode(partitioned_hg, hn, gain_aggregator);
 }
@@ -105,12 +105,12 @@ void GraphSteinerTreeGainCache::deltaGainUpdate(const PartitionedHypergraph& par
   if ( !partitioned_hg.isSinglePin(he) ) {
     const PartitionID from = sync_update.from;
     const PartitionID to = sync_update.to;
-    const HyperedgeWeight edge_weight = sync_update.edge_weight;
+    const Gain edge_weight = sync_update.edge_weight;
     const TargetGraph& target_graph = *sync_update.target_graph;
 
     const HypernodeID v = partitioned_hg.edgeTarget(he);
     for ( const PartitionID& target : _adjacent_blocks.connectivitySet(v) ) {
-      const HyperedgeWeight delta = ( target_graph.distance(from, target) -
+      const Gain delta = ( target_graph.distance(from, target) -
         target_graph.distance(to, target) ) * edge_weight ;
       _gain_cache[gain_entry_index(v, target)].add_fetch(delta, std::memory_order_relaxed);
     }
@@ -143,7 +143,7 @@ void GraphSteinerTreeGainCache::uncontractUpdateAfterRestore(const PartitionedHy
     ASSERT(partitioned_hg.edgeSource(he) == v);
     const TargetGraph& target_graph = *partitioned_hg.targetGraph();
     const PartitionID from = partitioned_hg.partID(u);
-    const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+    const Gain edge_weight = partitioned_hg.edgeWeight(he);
     for ( const PartitionID& to : _adjacent_blocks.connectivitySet(u) ) {
       _gain_cache[gain_entry_index(u, to)].fetch_sub(
         target_graph.distance(from, to) * edge_weight, std::memory_order_relaxed);
@@ -168,7 +168,7 @@ void GraphSteinerTreeGainCache::uncontractUpdateAfterReplacement(const Partition
     const TargetGraph& target_graph = *partitioned_hg.targetGraph();
     const HypernodeID w = partitioned_hg.edgeTarget(he);
     const PartitionID block_of_w = partitioned_hg.partID(w);
-    const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+    const Gain edge_weight = partitioned_hg.edgeWeight(he);
     for ( const PartitionID& to : _adjacent_blocks.connectivitySet(u) ) {
       _gain_cache[gain_entry_index(u, to)].fetch_add(
         target_graph.distance(block_of_w, to) * edge_weight, std::memory_order_relaxed);
@@ -183,7 +183,7 @@ void GraphSteinerTreeGainCache::uncontractUpdateAfterReplacement(const Partition
 
 void GraphSteinerTreeGainCache::restoreSinglePinHyperedge(const HypernodeID,
                                                           const PartitionID,
-                                                          const HyperedgeWeight) {
+                                                          const Gain) {
   // Do nothing
 }
 
@@ -296,7 +296,7 @@ void GraphSteinerTreeGainCache::initializeGainCacheEntryForNode(const Partitione
     if ( !partitioned_hg.isSinglePin(e) ) {
       ASSERT(partitioned_hg.edgeSource(e) == u);
       const PartitionID block_of_target = partitioned_hg.partID(partitioned_hg.edgeTarget(e));
-      const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(e);
+      const Gain edge_weight = partitioned_hg.edgeWeight(e);
       ASSERT(_adjacent_blocks.contains(u, partitioned_hg.partID(u)));
       for ( const PartitionID& to : _adjacent_blocks.connectivitySet(u) ) {
         gain_aggregator[to] -= target_graph.distance(to, block_of_target) * edge_weight;
@@ -322,7 +322,7 @@ void GraphSteinerTreeGainCache::initializeGainCacheEntry(const PartitionedHyperg
   while ( !success ) {
     success = true;
     seen_versions.clear();
-    HyperedgeWeight gain = 0;
+    Gain gain = 0;
     for ( const HyperedgeID& he : partitioned_hg.incidentEdges(u) ) {
       if ( !partitioned_hg.isSinglePin(he) ) {
         ASSERT(partitioned_hg.edgeSource(he) == u);

@@ -166,7 +166,7 @@ class GraphSteinerTreeGainCache {
 
   // ! Returns the penalty term p(u) := -Ψ(u,Π[u]) of node u.
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight penaltyTerm(const HypernodeID u, const PartitionID from) const {
+  Gain penaltyTerm(const HypernodeID u, const PartitionID from) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     return _gain_cache[gain_entry_index(u, from)].load(std::memory_order_relaxed);
   }
@@ -181,14 +181,14 @@ class GraphSteinerTreeGainCache {
 
   // ! Returns the benefit term b(u, V_j) := -Ψ(u,V_j) of node u.
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight benefitTerm(const HypernodeID u, const PartitionID to) const {
+  Gain benefitTerm(const HypernodeID u, const PartitionID to) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     return _gain_cache[gain_entry_index(u, to)].load(std::memory_order_relaxed);
   }
 
   // ! Returns the gain value g(u,V_j) = b(u,V_j) - p(u) for moving node u to block to.
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight gain(const HypernodeID u,
+  Gain gain(const HypernodeID u,
                        const PartitionID from,
                        const PartitionID to ) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
@@ -242,7 +242,7 @@ class GraphSteinerTreeGainCache {
   // ! u is the only pin of the corresponding edge, while block_of_u is its corresponding block ID.
   void restoreSinglePinHyperedge(const HypernodeID u,
                                  const PartitionID block_of_u,
-                                 const HyperedgeWeight weight_of_he);
+                                 const Gain weight_of_he);
 
   // ! This function is called after restoring a net that became identical to another due to a contraction.
   template<typename PartitionedHypergraph>
@@ -258,10 +258,10 @@ class GraphSteinerTreeGainCache {
 
   template<typename PartitionedHypergraph>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight recomputePenaltyTerm(const PartitionedHypergraph& partitioned_hg,
+  Gain recomputePenaltyTerm(const PartitionedHypergraph& partitioned_hg,
                                        const HypernodeID u) const {
     ASSERT(partitioned_hg.hasTargetGraph());
-    HyperedgeWeight gain = 0;
+    Gain gain = 0;
     const TargetGraph& target_graph = *partitioned_hg.targetGraph();
     const PartitionID from = partitioned_hg.partID(u);
     for ( const HyperedgeID& e : partitioned_hg.incidentEdges(u) ) {
@@ -275,11 +275,11 @@ class GraphSteinerTreeGainCache {
 
   template<typename PartitionedHypergraph>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight recomputeBenefitTerm(const PartitionedHypergraph& partitioned_hg,
+  Gain recomputeBenefitTerm(const PartitionedHypergraph& partitioned_hg,
                                        const HypernodeID u,
                                        const PartitionID to) const {
     ASSERT(partitioned_hg.hasTargetGraph());
-    HyperedgeWeight gain = 0;
+    Gain gain = 0;
     const TargetGraph& target_graph = *partitioned_hg.targetGraph();
     for ( const HyperedgeID& e : partitioned_hg.incidentEdges(u) ) {
       if ( !partitioned_hg.isSinglePin(e) ) {
@@ -376,7 +376,7 @@ class GraphSteinerTreeGainCache {
   PartitionID _k;
 
   // ! Array of size |V| * (k + 1), which stores the benefit and penalty terms of each node.
-  ds::Array< CAtomic<HyperedgeWeight> > _gain_cache;
+  ds::Array< CAtomic<Gain> > _gain_cache;
 
   // ! Thread-local for initializing gain cache entries
   tbb::enumerable_thread_specific<vec<Gain>> _ets_benefit_aggregator;
@@ -467,29 +467,29 @@ class GraphDeltaSteinerTreeGainCache {
 
   // ! Returns the penalty term p(u) := -Ψ(u,Π[u]) of node u.
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight penaltyTerm(const HypernodeID u,
+  Gain penaltyTerm(const HypernodeID u,
                               const PartitionID from) const {
     return benefitTerm(u, from);
   }
 
   // ! Returns the benefit term b(u, V_j) := -Ψ(u,V_j) of node u.
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight benefitTerm(const HypernodeID u,
+  Gain benefitTerm(const HypernodeID u,
                               const PartitionID to) const {
     ASSERT(to != kInvalidPartition && to < _gain_cache._k);
     const bool use_benefit_term_from_shared_gain_cache =
       !_invalid_gain_cache_entry.contains(_gain_cache.gain_entry_index(u, to)) &&
       _gain_cache._adjacent_blocks.contains(u, to);
-    const HyperedgeWeight benefit_term =
+    const Gain benefit_term =
       use_benefit_term_from_shared_gain_cache * _gain_cache.benefitTerm(u, to);
-    const HyperedgeWeight* benefit_delta =
+    const Gain* benefit_delta =
       _gain_cache_delta.get_if_contained(_gain_cache.gain_entry_index(u, to));
     return benefit_term + ( benefit_delta ? *benefit_delta : 0 );
   }
 
   // ! Returns the gain value g(u,V_j) = b(u,V_j) - p(u) for moving node u to block to.
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight gain(const HypernodeID u,
+  Gain gain(const HypernodeID u,
                        const PartitionID from,
                        const PartitionID to ) const {
     return benefitTerm(u, to) - penaltyTerm(u, from);
@@ -507,12 +507,12 @@ class GraphDeltaSteinerTreeGainCache {
     if ( !partitioned_hg.isSinglePin(he) ) {
       const PartitionID from = sync_update.from;
       const PartitionID to = sync_update.to;
-      const HyperedgeWeight edge_weight = sync_update.edge_weight;
+      const Gain edge_weight = sync_update.edge_weight;
       const TargetGraph& target_graph = *sync_update.target_graph;
 
       const HypernodeID v = partitioned_hg.edgeTarget(he);
       for ( const PartitionID& target : adjacentBlocks(v) ) {
-        const HyperedgeWeight delta = ( target_graph.distance(from, target) -
+        const Gain delta = ( target_graph.distance(from, target) -
           target_graph.distance(to, target) ) * edge_weight ;
         _gain_cache_delta[_gain_cache.gain_entry_index(v, target)] += delta;
       }
@@ -587,7 +587,7 @@ class GraphDeltaSteinerTreeGainCache {
                                 const PartitionID to) {
     ASSERT(partitioned_hg.hasTargetGraph());
     const TargetGraph& target_graph = *partitioned_hg.targetGraph();
-    HyperedgeWeight gain = 0;
+    Gain gain = 0;
     for ( const HyperedgeID& he : partitioned_hg.incidentEdges(u) ) {
       ASSERT(partitioned_hg.edgeSource(he) == u);
       const HypernodeID v = partitioned_hg.edgeTarget(he);
@@ -601,7 +601,7 @@ class GraphDeltaSteinerTreeGainCache {
 
   // ! Stores the delta of each locally touched gain cache entry
   // ! relative to the shared gain cache
-  ds::DynamicFlatMap<size_t, HyperedgeWeight> _gain_cache_delta;
+  ds::DynamicFlatMap<size_t, Gain> _gain_cache_delta;
 
   // ! If we initialize a gain cache entry locally, we mark that entry
   // ! as invalid such that we do not access the shared gain cache when

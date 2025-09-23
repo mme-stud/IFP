@@ -203,12 +203,12 @@ namespace mt_kahypar {
     if ( _hierarchy.empty() ) {
       // After we reach the top-level hypergraph, we perform an additional
       // refinement step on all border nodes.
-      const HyperedgeWeight objective_before = _current_metrics.quality;
+      const Gain objective_before = _current_metrics.quality;
       const double time_limit = Base::refinementTimeLimit(_context, _uncoarseningData.round_coarsening_times.back());
       globalRefine(*_uncoarseningData.partitioned_hg, time_limit);
       _uncoarseningData.round_coarsening_times.pop_back();
       ASSERT(_uncoarseningData.round_coarsening_times.size() == 0);
-      const HyperedgeWeight objective_after = _current_metrics.quality;
+      const Gain objective_after = _current_metrics.quality;
       if ( _context.partition.verbose_output && objective_after < objective_before ) {
         LOG << GREEN << "Top-Level Refinment improved objective from"
         << objective_before << "to" << objective_after << END;
@@ -231,7 +231,7 @@ namespace mt_kahypar {
     // If we reach the top-level hypergraph and the partition is still imbalanced,
     // we use a rebalancing algorithm to restore balance.
     if ( _context.type == ContextType::main && !metrics::isBalanced(*_uncoarseningData.partitioned_hg, _context)) {
-      const HyperedgeWeight quality_before = _current_metrics.quality;
+      const Gain quality_before = _current_metrics.quality;
       if ( _context.partition.verbose_output ) {
         LOG << RED << "Partition is imbalanced (Current Imbalance:"
         << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context) << ") ->"
@@ -248,9 +248,9 @@ namespace mt_kahypar {
       _rebalancer->refine(phg, {}, _current_metrics, 0.0);
       _timer.stop_timer("rebalance");
 
-      const HyperedgeWeight quality_after = _current_metrics.quality;
+      const Gain quality_after = _current_metrics.quality;
       if ( _context.partition.verbose_output ) {
-        const HyperedgeWeight quality_delta = quality_after - quality_before;
+        const Gain quality_delta = quality_after - quality_before;
         if ( quality_delta > 0 ) {
           LOG << RED << "Rebalancer worsen solution quality by" << quality_delta
           << "(Current Imbalance:" << metrics::imbalance(*_uncoarseningData.partitioned_hg, _context) << ")" << END;
@@ -266,7 +266,7 @@ namespace mt_kahypar {
   }
 
   template<typename TypeTraits>
-  HyperedgeWeight NLevelUncoarsener<TypeTraits>::getObjectiveImpl() const {
+  Gain NLevelUncoarsener<TypeTraits>::getObjectiveImpl() const {
     return _current_metrics.quality;
   }
 
@@ -378,7 +378,7 @@ namespace mt_kahypar {
       mt_kahypar_partitioned_hypergraph_t phg = utils::partitioned_hg_cast(partitioned_hypergraph);
       while( improvement_found ) {
         improvement_found = false;
-        const HyperedgeWeight metric_before = _current_metrics.quality;
+        const Gain metric_before = _current_metrics.quality;
 
         if ( _fm && _context.refinement.fm.algorithm != FMAlgorithm::do_nothing ) {
           _timer.start_timer("fm", "FM");
@@ -402,7 +402,7 @@ namespace mt_kahypar {
               "does not match the metric updated by the refiners" << V(_current_metrics.quality));
         }
 
-        const HyperedgeWeight metric_after = _current_metrics.quality;
+        const Gain metric_after = _current_metrics.quality;
         const double relative_improvement = 1.0 -
           static_cast<double>(metric_after) / metric_before;
         if ( !_context.refinement.global_fm.refine_until_no_improvement ||

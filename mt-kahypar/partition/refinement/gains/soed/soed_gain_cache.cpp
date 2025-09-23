@@ -45,12 +45,12 @@ void SoedGainCache::initializeGainCache(const PartitionedHypergraph& partitioned
   // Gain calculation consist of two stages
   //  1. Compute gain of all low degree vertices
   //  2. Compute gain of all high degree vertices
-  tbb::enumerable_thread_specific< vec<HyperedgeWeight> > ets_mtb(_k, 0);
+  tbb::enumerable_thread_specific< vec<Gain> > ets_mtb(_k, 0);
   tbb::concurrent_vector<HypernodeID> high_degree_vertices;
   // Compute gain of all low degree vertices
   tbb::parallel_for(tbb::blocked_range<HypernodeID>(HypernodeID(0), partitioned_hg.initialNumNodes()),
     [&](tbb::blocked_range<HypernodeID>& r) {
-      vec<HyperedgeWeight>& benefit_aggregator = ets_mtb.local();
+      vec<Gain>& benefit_aggregator = ets_mtb.local();
       for (HypernodeID u = r.begin(); u < r.end(); ++u) {
         if ( partitioned_hg.nodeIsEnabled(u)) {
           if ( partitioned_hg.nodeDegree(u) <= HIGH_DEGREE_THRESHOLD) {
@@ -66,18 +66,18 @@ void SoedGainCache::initializeGainCache(const PartitionedHypergraph& partitioned
   auto aggregate_contribution_of_he_for_node =
     [&](const PartitionID block_of_u,
         const HyperedgeID he,
-        HyperedgeWeight& penalty_aggregator,
-        vec<HyperedgeWeight>& benefit_aggregator) {
+        Gain& penalty_aggregator,
+        vec<Gain>& benefit_aggregator) {
     const HypernodeID edge_size = partitioned_hg.edgeSize(he);
     if ( edge_size > 1 ) {
-      const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+      const Gain edge_weight = partitioned_hg.edgeWeight(he);
       const HypernodeID pin_count_from = partitioned_hg.pinCountInPart(he, block_of_u);
-      const HyperedgeWeight penalty_multiplier =
+      const Gain penalty_multiplier =
         ( pin_count_from > 1 ) + ( pin_count_from == edge_size );
       penalty_aggregator += penalty_multiplier * edge_weight;
 
       for (const PartitionID to : partitioned_hg.connectivitySet(he)) {
-        const HyperedgeWeight benefit_multiplier = 1 +
+        const Gain benefit_multiplier = 1 +
           ( partitioned_hg.pinCountInPart(he, to) == edge_size - 1 );
         benefit_aggregator[to] += benefit_multiplier * edge_weight;
       }
@@ -86,13 +86,13 @@ void SoedGainCache::initializeGainCache(const PartitionedHypergraph& partitioned
 
   // Compute gain of all high degree vertices
   for ( const HypernodeID& u : high_degree_vertices ) {
-    tbb::enumerable_thread_specific<HyperedgeWeight> ets_mfp(0);
+    tbb::enumerable_thread_specific<Gain> ets_mfp(0);
     const PartitionID from = partitioned_hg.partID(u);
     const HypernodeID degree_of_u = partitioned_hg.nodeDegree(u);
     tbb::parallel_for(tbb::blocked_range<HypernodeID>(ID(0), degree_of_u),
       [&](tbb::blocked_range<HypernodeID>& r) {
-      vec<HyperedgeWeight>& benefit_aggregator = ets_mtb.local();
-      HyperedgeWeight& penalty_aggregator = ets_mfp.local();
+      vec<Gain>& benefit_aggregator = ets_mtb.local();
+      Gain& penalty_aggregator = ets_mfp.local();
       size_t current_pos = r.begin();
       for ( const HyperedgeID& he : partitioned_hg.incidentEdges(u, r.begin()) ) {
         aggregate_contribution_of_he_for_node(from, he,
@@ -105,10 +105,10 @@ void SoedGainCache::initializeGainCache(const PartitionedHypergraph& partitioned
     });
 
     // Aggregate thread locals to compute overall gain of the high degree vertex
-    const HyperedgeWeight penalty_term = ets_mfp.combine(std::plus<HyperedgeWeight>());
+    const Gain penalty_term = ets_mfp.combine(std::plus<Gain>());
     _gain_cache[penalty_index(u)].store(penalty_term, std::memory_order_relaxed);
     for (PartitionID p = 0; p < _k; ++p) {
-      HyperedgeWeight move_to_benefit = 0;
+      Gain move_to_benefit = 0;
       for ( auto& l_move_to_benefit : ets_mtb ) {
         move_to_benefit += l_move_to_benefit[p];
         l_move_to_benefit[p] = 0;
@@ -140,7 +140,7 @@ void SoedGainCache::deltaGainUpdate(const PartitionedHypergraph& partitioned_hg,
     const HyperedgeID he = sync_update.he;
     const PartitionID from = sync_update.from;
     const PartitionID to = sync_update.to;
-    const HyperedgeWeight edge_weight = sync_update.edge_weight;
+    const Gain edge_weight = sync_update.edge_weight;
     const HypernodeID pin_count_in_from_part_after = sync_update.pin_count_in_from_part_after;
     const HypernodeID pin_count_in_to_part_after = sync_update.pin_count_in_to_part_after;
     // Delta gain updates for connectivity metric (see km1_gain_cache.cpp)
@@ -212,7 +212,7 @@ void SoedGainCache::uncontractUpdateAfterRestore(const PartitionedHypergraph& pa
     // of hyperedge he does not decrease the connectivity any more after the
     // uncontraction => p(u) += w(he)
     const PartitionID from = partitioned_hg.partID(u);
-    const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+    const Gain edge_weight = partitioned_hg.edgeWeight(he);
     const HypernodeID edge_size = partitioned_hg.edgeSize(he);
     const PartitionID connectivity = partitioned_hg.connectivity(he);
 
@@ -298,7 +298,7 @@ void SoedGainCache::uncontractUpdateAfterReplacement(const PartitionedHypergraph
     const HypernodeID edge_size = partitioned_hg.edgeSize(he);
     if ( edge_size > 1 ) {
       const PartitionID from = partitioned_hg.partID(u);
-      const HyperedgeWeight edge_weight = partitioned_hg.edgeWeight(he);
+      const Gain edge_weight = partitioned_hg.edgeWeight(he);
       const HypernodeID pin_count_from = partitioned_hg.pinCountInPart(he, from);
       if ( pin_count_from > 1 ) {
         // In this case, we shift the contribution of hyperedge he to the penalty term
@@ -334,7 +334,7 @@ void SoedGainCache::uncontractUpdateAfterReplacement(const PartitionedHypergraph
 
 void SoedGainCache::restoreSinglePinHyperedge(const HypernodeID,
                                               const PartitionID,
-                                              const HyperedgeWeight) {
+                                              const Gain) {
   // Do nothing here
 }
 
@@ -347,14 +347,14 @@ void SoedGainCache::initializeGainCacheEntryForNode(const PartitionedHypergraph&
   for (const HyperedgeID& e : partitioned_hg.incidentEdges(u)) {
     const HypernodeID edge_size = partitioned_hg.edgeSize(e);
     if ( edge_size > 1 ) {
-      const HyperedgeWeight ew = partitioned_hg.edgeWeight(e);
+      const Gain ew = partitioned_hg.edgeWeight(e);
       const HypernodeID pin_count_from = partitioned_hg.pinCountInPart(e, from);
-      const HyperedgeWeight penalty_multiplier =
+      const Gain penalty_multiplier =
         ( pin_count_from > 1 ) + ( pin_count_from == edge_size );
       penalty += penalty_multiplier * ew;
 
       for (const PartitionID& to : partitioned_hg.connectivitySet(e)) {
-        const HyperedgeWeight benefit_multiplier = 1 +
+        const Gain benefit_multiplier = 1 +
           ( partitioned_hg.pinCountInPart(e, to) == edge_size - 1 );
         benefit_aggregator[to] += benefit_multiplier * ew;
       }

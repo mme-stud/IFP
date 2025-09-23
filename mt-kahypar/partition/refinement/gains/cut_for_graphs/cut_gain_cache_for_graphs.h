@@ -92,7 +92,7 @@ class GraphCutGainCache {
 
   void reset(const bool run_parallel = true) {
     if ( _is_initialized ) {
-      _gain_cache.assign(_gain_cache.size(),  CAtomic<HyperedgeWeight>(0), run_parallel);
+      _gain_cache.assign(_gain_cache.size(),  CAtomic<Gain>(0), run_parallel);
     }
     _is_initialized = false;
   }
@@ -124,7 +124,7 @@ class GraphCutGainCache {
   // ! Returns the penalty term of node u.
   // ! More formally, p(u) := w(u, partID(u))
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight penaltyTerm(const HypernodeID u,
+  Gain penaltyTerm(const HypernodeID u,
                               const PartitionID from) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     return _gain_cache[incident_weight_index(u, from)].load(std::memory_order_relaxed);
@@ -140,7 +140,7 @@ class GraphCutGainCache {
   // ! Returns the benefit term for moving node u to block to.
   // ! More formally, b(u, V_j) := w(u, V_j)
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight benefitTerm(const HypernodeID u, const PartitionID to) const {
+  Gain benefitTerm(const HypernodeID u, const PartitionID to) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     return _gain_cache[incident_weight_index(u, to)].load(std::memory_order_relaxed);
   }
@@ -148,7 +148,7 @@ class GraphCutGainCache {
   // ! Returns the gain of moving node u from its current block to a target block V_j.
   // ! More formally, g(u, V_j) := b(u, V_j) - p(u).
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight gain(const HypernodeID u, const PartitionID from, const PartitionID to) const {
+  Gain gain(const HypernodeID u, const PartitionID from, const PartitionID to) const {
     ASSERT(_is_initialized, "Gain cache is not initialized");
     return benefitTerm(u, to) - penaltyTerm(u, from);
   }
@@ -198,7 +198,7 @@ class GraphCutGainCache {
 
   void restoreSinglePinHyperedge(const HypernodeID,
                                  const PartitionID,
-                                 const HyperedgeWeight) {
+                                 const Gain) {
     // Do nothing here (only relevant for hypergraph gain cache)
   }
 
@@ -218,10 +218,10 @@ class GraphCutGainCache {
 
   template<typename PartitionedGraph>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight recomputePenaltyTerm(const PartitionedGraph& partitioned_graph,
+  Gain recomputePenaltyTerm(const PartitionedGraph& partitioned_graph,
                                        const HypernodeID u) const {
     PartitionID block_of_u = partitioned_graph.partID(u);
-    HyperedgeWeight penalty = 0;
+    Gain penalty = 0;
     for (HyperedgeID e : partitioned_graph.incidentEdges(u)) {
       if (!partitioned_graph.isSinglePin(e) &&
           partitioned_graph.partID(partitioned_graph.edgeTarget(e)) == block_of_u) {
@@ -233,10 +233,10 @@ class GraphCutGainCache {
 
   template<typename PartitionedGraph>
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight recomputeBenefitTerm(const PartitionedGraph& partitioned_graph,
+  Gain recomputeBenefitTerm(const PartitionedGraph& partitioned_graph,
                                        const HypernodeID u,
                                        const PartitionID to) const {
-    HyperedgeWeight benefit = 0;
+    Gain benefit = 0;
     for (HyperedgeID e : partitioned_graph.incidentEdges(u)) {
       if (!partitioned_graph.isSinglePin(e) &&
           partitioned_graph.partID(partitioned_graph.edgeTarget(e)) == to) {
@@ -282,7 +282,7 @@ class GraphCutGainCache {
   PartitionID _k;
 
   // ! Array of size |V| * k, which stores the benefit and penalty terms of each node.
-  ds::Array< CAtomic<HyperedgeWeight> > _gain_cache;
+  ds::Array< CAtomic<Gain> > _gain_cache;
 
   // ! Provides an iterator from 0 to k (:= number of blocks)
   IntegerRangeIterator<PartitionID> _dummy_adjacent_blocks;
@@ -336,9 +336,9 @@ class DeltaGraphCutGainCache {
   // ! Returns the penalty term of node u.
   // ! More formally, p(u) := w(u, partID(u))
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight penaltyTerm(const HypernodeID u,
+  Gain penaltyTerm(const HypernodeID u,
                               const PartitionID from) const {
-    const HyperedgeWeight* penalty_delta =
+    const Gain* penalty_delta =
       _incident_weight_in_part_delta.get_if_contained(
         _gain_cache.incident_weight_index(u, from));
     return _gain_cache.penaltyTerm(u, from) + (penalty_delta ? *penalty_delta : 0);
@@ -347,8 +347,8 @@ class DeltaGraphCutGainCache {
   // ! Returns the benefit term for moving node u to block to.
   // ! More formally, b(u, V_j) := w(u, V_j)
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight benefitTerm(const HypernodeID u, const PartitionID to) const {
-    const HyperedgeWeight* benefit_delta =
+  Gain benefitTerm(const HypernodeID u, const PartitionID to) const {
+    const Gain* benefit_delta =
       _incident_weight_in_part_delta.get_if_contained(
         _gain_cache.incident_weight_index(u, to));
     return _gain_cache.benefitTerm(u, to) + (benefit_delta ? *benefit_delta : 0);
@@ -357,7 +357,7 @@ class DeltaGraphCutGainCache {
   // ! Returns the gain of moving node u from its current block to a target block V_j.
   // ! More formally, g(u, V_j) := b(u, V_j) - p(u).
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE
-  HyperedgeWeight gain(const HypernodeID u,
+  Gain gain(const HypernodeID u,
                        const PartitionID from,
                        const PartitionID to ) const {
     return benefitTerm(u, to) - penaltyTerm(u, from);
@@ -390,7 +390,7 @@ class DeltaGraphCutGainCache {
 
   // ! Stores the delta of each locally touched gain cache entry
   // ! relative to the gain cache in '_phg'
-  ds::DynamicFlatMap<size_t, HyperedgeWeight> _incident_weight_in_part_delta;
+  ds::DynamicFlatMap<size_t, Gain> _incident_weight_in_part_delta;
 };
 
 }  // namespace mt_kahypar

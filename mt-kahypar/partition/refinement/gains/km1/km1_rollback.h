@@ -88,7 +88,7 @@ class Km1Rollback {
   }
 
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight benefit(const PartitionedHypergraph& phg,
+  static Gain benefit(const PartitionedHypergraph& phg,
                                  const HyperedgeID e,
                                  const MoveID m_id,
                                  const Move& m,
@@ -102,7 +102,7 @@ class Km1Rollback {
   }
 
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight penalty(const PartitionedHypergraph& phg,
+  static Gain penalty(const PartitionedHypergraph& phg,
                                  const HyperedgeID e,
                                  const MoveID m_id,
                                  const Move& m,

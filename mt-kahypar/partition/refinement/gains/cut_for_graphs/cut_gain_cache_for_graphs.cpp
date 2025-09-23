@@ -83,7 +83,7 @@ void GraphCutGainCache::uncontractUpdateAfterRestore(const PartitionedGraph& par
   if ( _is_initialized ) {
     // the edge weight is added to u and v
     const PartitionID block = partitioned_graph.partID(u);
-    const HyperedgeWeight we = partitioned_graph.edgeWeight(he);
+    const Gain we = partitioned_graph.edgeWeight(he);
     _gain_cache[incident_weight_index(u, block)].fetch_add(we, std::memory_order_relaxed);
     _gain_cache[incident_weight_index(v, block)].fetch_add(we, std::memory_order_relaxed);
   }
@@ -99,7 +99,7 @@ void GraphCutGainCache::uncontractUpdateAfterReplacement(const PartitionedGraph&
     // the edge weight shifts from u to v
     const HypernodeID w = partitioned_graph.edgeTarget(he);
     const PartitionID block_of_w = partitioned_graph.partID(w);
-    const HyperedgeWeight we = partitioned_graph.edgeWeight(he);
+    const Gain we = partitioned_graph.edgeWeight(he);
     _gain_cache[incident_weight_index(u, block_of_w)].fetch_sub(we, std::memory_order_relaxed);
     _gain_cache[incident_weight_index(v, block_of_w)].fetch_add(we, std::memory_order_relaxed);
   }

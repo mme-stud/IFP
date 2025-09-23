@@ -46,17 +46,17 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void swap(CommunicationHypergraph& communicat
   communication_hg.changeNodePart(v, block_of_v, block_of_u);
 }
 
-MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight swap_gain(const TargetGraph& target_graph,
+MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Gain swap_gain(const TargetGraph& target_graph,
                                                              ds::Bitset& connectivity_set,
-                                                             const HyperedgeWeight edge_weight,
+                                                             const Gain edge_weight,
                                                              const PartitionID removed_block,
                                                              const PartitionID new_block) {
   ASSERT(connectivity_set.isSet(removed_block));
   ASSERT(!connectivity_set.isSet(new_block));
   // Current distance between all nodes in the connectivity set
-  const HyperedgeWeight distance_before = target_graph.distance(connectivity_set);
+  const Gain distance_before = target_graph.distance(connectivity_set);
   // Distance between all nodes in the connectivity set after the swap operation
-  const HyperedgeWeight distance_after =
+  const Gain distance_after =
     target_graph.distanceAfterExchangingBlocks(connectivity_set, removed_block, new_block);
   return (distance_before - distance_after) * edge_weight;
 }
@@ -64,12 +64,12 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight swap_gain(const TargetGraph& 
 // This function computes the gain of swapping the blocks of node u and v
 // in the communication hypergraph for the steiner tree metric.
 template<typename CommunicationHypergraph>
-MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight swap_gain(CommunicationHypergraph& communication_hg,
+MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Gain swap_gain(CommunicationHypergraph& communication_hg,
                                                              const TargetGraph& target_graph,
                                                              const HypernodeID u,
                                                              const HypernodeID v,
                                                              vec<bool>& marked_hes) {
-  HyperedgeWeight gain = 0;
+  Gain gain = 0;
   const PartitionID block_of_u = communication_hg.partID(u);
   const PartitionID block_of_v = communication_hg.partID(v);
 
@@ -111,7 +111,7 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE HyperedgeWeight swap_gain(CommunicationHyperg
 using Swap = std::pair<HypernodeID, HypernodeID>;
 
 struct PQElement {
-  HyperedgeWeight gain;
+  Gain gain;
   Swap swap;
 };
 
@@ -132,7 +132,7 @@ void KerninghanLin<CommunicationHypergraph>::improve(CommunicationHypergraph& co
                                                      const TargetGraph& target_graph) {
   ASSERT(communication_hg.initialNumNodes() == target_graph.graph().initialNumNodes());
 
-  HyperedgeWeight current_objective = metrics::quality(communication_hg, Objective::steiner_tree, false);
+  Gain current_objective = metrics::quality(communication_hg, Objective::steiner_tree, false);
   vec<bool> marked_hes(communication_hg.initialNumEdges(), false);
   bool found_improvement = true;
   size_t fruitless_rounds = 0;
@@ -140,14 +140,14 @@ void KerninghanLin<CommunicationHypergraph>::improve(CommunicationHypergraph& co
   while ( found_improvement ) {
     DBG << "Start of pass" << pass_nr << "( Current Objective =" << current_objective << ")";
     found_improvement = false;
-    HyperedgeWeight objective_before = current_objective;
+    Gain objective_before = current_objective;
 
     // Initialize priority queue
     PQ pq;
     for ( const HypernodeID& u : communication_hg.nodes() ) {
       for ( const HypernodeID& v : communication_hg.nodes() ) {
         if ( u < v ) {
-          const HyperedgeWeight gain = swap_gain(communication_hg, target_graph, u, v, marked_hes);
+          const Gain gain = swap_gain(communication_hg, target_graph, u, v, marked_hes);
           pq.push(PQElement { gain, std::make_pair(u, v) });
         }
       }
@@ -155,13 +155,13 @@ void KerninghanLin<CommunicationHypergraph>::improve(CommunicationHypergraph& co
 
     // Perform swap operations
     int best_idx = 0;
-    HyperedgeWeight best_objective = current_objective;
+    Gain best_objective = current_objective;
     vec<PQElement> performed_swaps;
     vec<bool> already_moved(communication_hg.initialNumNodes(), false);
     while ( !pq.empty() ) {
       const PQElement elem = pq.top();
       pq.pop();
-      const HyperedgeWeight gain = elem.gain;
+      const Gain gain = elem.gain;
       const HypernodeID u = elem.swap.first;
       const HypernodeID v = elem.swap.second;
 
@@ -171,7 +171,7 @@ void KerninghanLin<CommunicationHypergraph>::improve(CommunicationHypergraph& co
       }
 
       // Recompute gain
-      const HyperedgeWeight recomputed_gain = swap_gain(communication_hg, target_graph, u, v, marked_hes);
+      const Gain recomputed_gain = swap_gain(communication_hg, target_graph, u, v, marked_hes);
       if ( gain != recomputed_gain ) {
         // Lazy update of PQ
         // Note that since we do not immediately update the PQ after a swap operation, we may not be

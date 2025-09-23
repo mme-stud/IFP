@@ -93,12 +93,12 @@ class SoedRollback {
   }
 
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight benefit(const PartitionedHypergraph& phg,
+  static Gain benefit(const PartitionedHypergraph& phg,
                                  const HyperedgeID e,
                                  const MoveID m_id,
                                  const Move& m,
                                  vec<RecalculationData>& r) {
-    const HyperedgeWeight edge_weight = phg.edgeWeight(e);
+    const Gain edge_weight = phg.edgeWeight(e);
     const HypernodeID edge_size = phg.edgeSize(e);
     // KM1 PART OF SOED METRIC
     // The node move reduces the connectivity of the currently considered hyperedge if m is the last
@@ -119,12 +119,12 @@ class SoedRollback {
   }
 
   template<typename PartitionedHypergraph>
-  static HyperedgeWeight penalty(const PartitionedHypergraph& phg,
+  static Gain penalty(const PartitionedHypergraph& phg,
                                  const HyperedgeID e,
                                  const MoveID m_id,
                                  const Move& m,
                                  vec<RecalculationData>& r) {
-    const HyperedgeWeight edge_weight = phg.edgeWeight(e);
+    const Gain edge_weight = phg.edgeWeight(e);
     const HypernodeID edge_size = phg.edgeSize(e);
     // KM1 PART OF SOED METRIC
     // The node move increases the connectivity of the currently considered hyperedge if m is the

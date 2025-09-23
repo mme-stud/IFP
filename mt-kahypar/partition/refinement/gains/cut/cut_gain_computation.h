@@ -64,7 +64,7 @@ class CutGainComputation : public GainComputationBase<CutGainComputation, CutAtt
     for (const HyperedgeID& he : phg.incidentEdges(hn)) {
       PartitionID connectivity = phg.connectivity(he);
       HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
-      HyperedgeWeight weight = phg.edgeWeight(he);
+      Gain weight = phg.edgeWeight(he);
       if (connectivity == 1 && phg.edgeSize(he) > 1) {
         // In case, the hyperedge is a non-cut hyperedge, we would increase
         // the cut, if we move vertex hn to an other block.
@@ -83,7 +83,7 @@ class CutGainComputation : public GainComputationBase<CutGainComputation, CutAtt
     }
   }
 
-  HyperedgeWeight gain(const Gain to_score,
+  Gain gain(const Gain to_score,
                        const Gain isolated_block_gain) {
     return isolated_block_gain - to_score;
   }

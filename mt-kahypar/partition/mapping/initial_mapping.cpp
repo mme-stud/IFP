@@ -201,7 +201,7 @@ void map_to_target_graph(PartitionedHypergraph& communication_hg,
   contracted_phg.setTargetGraph(&target_graph);
   timer.stop_timer("contract_partition");
 
-  const HyperedgeWeight objective_before = metrics::quality(contracted_phg, Objective::steiner_tree);
+  const Gain objective_before = metrics::quality(contracted_phg, Objective::steiner_tree);
   ASSERT(metrics::quality(communication_hg, Objective::steiner_tree) == objective_before);
 
   // Solve one-to-one mapping problem
@@ -209,7 +209,7 @@ void map_to_target_graph(PartitionedHypergraph& communication_hg,
     GreedyMapping<PartitionedHypergraph>::mapToTargetGraph(contracted_phg, target_graph, context);
   }
 
-  const HyperedgeWeight objective_after = metrics::quality(contracted_phg, Objective::steiner_tree);
+  const Gain objective_after = metrics::quality(contracted_phg, Objective::steiner_tree);
   if ( objective_after < objective_before ) {
     if ( context.partition.verbose_output ) {
       LOG << GREEN << "Initial one-to-one mapping algorithm has improved objective by"

@@ -165,7 +165,7 @@ namespace mt_kahypar {
       }
 
       timer.start_timer("rollback", "Rollback to Best Solution");
-      HyperedgeWeight improvement = globalRollback.revertToBestPrefix(phg, sharedData, initialPartWeights, max_part_weights);
+      Gain improvement = globalRollback.revertToBestPrefix(phg, sharedData, initialPartWeights, max_part_weights);
       timer.stop_timer("rollback");
 
       const double roundImprovementFraction = improvementFraction(improvement,
