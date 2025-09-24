@@ -6,6 +6,7 @@ set(InitialPartitioningSources
         singleton_initial_partitioner.cpp
         aon_hypermodularity_initial_partitioner.cpp
         aon_hypermodularity_kernel_initial_partitioner.cpp
+        aon_hypermodularity_bayesian_initial_partitioner.cpp
         )
 
 target_sources(MtKaHyPar-Sources INTERFACE ${InitialPartitioningSources})

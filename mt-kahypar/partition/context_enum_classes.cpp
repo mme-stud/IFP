@@ -221,6 +221,7 @@ namespace mt_kahypar {
       case InitialPartitioningAlgorithm::singleton: return os << "singleton";
       case InitialPartitioningAlgorithm::aon_hypermodularity: return os << "aon_hypermodularity";
       case InitialPartitioningAlgorithm::aon_hypermodularity_kernel: return os << "aon_hypermodularity_kernel";
+      case InitialPartitioningAlgorithm::aon_hypermodularity_bayesian: return os << "aon_hypermodularity_bayesian";
       case InitialPartitioningAlgorithm::UNDEFINED: return os << "UNDEFINED";
         // omit default case to trigger compiler warning for missing cases
     }
@@ -452,6 +453,8 @@ namespace mt_kahypar {
       return InitialPartitioningAlgorithm::aon_hypermodularity;
     } else if (algo == "aon_hypermodularity_kernel") {
       return InitialPartitioningAlgorithm::aon_hypermodularity_kernel;
+    } else if (algo == "aon_hypermodularity_bayesian") {
+      return InitialPartitioningAlgorithm::aon_hypermodularity_bayesian;
     }
     throw InvalidParameterException("Illegal option: " + algo);
     return InitialPartitioningAlgorithm::UNDEFINED;
@@ -527,6 +530,7 @@ namespace mt_kahypar {
     switch (algo) {
       case InitialPartitioningAlgorithm::aon_hypermodularity: return true;
       case InitialPartitioningAlgorithm::aon_hypermodularity_kernel: return true;
+      case InitialPartitioningAlgorithm::aon_hypermodularity_bayesian: return true;
       default: return false;
     }
   }

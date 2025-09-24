@@ -42,6 +42,7 @@
 #include "mt-kahypar/partition/initial_partitioning/singleton_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/aon_hypermodularity_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/aon_hypermodularity_kernel_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/aon_hypermodularity_bayesian_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/policies/gain_computation_policy.h"
 #include "mt-kahypar/partition/initial_partitioning/policies/pq_selection_policy.h"
 
@@ -119,6 +120,10 @@ using AONHypermodularityKernelPartitionerDispatcher = kahypar::meta::StaticMulti
                                           AONHypermodularityKernelInitialPartitioner,
                                           IInitialPartitioner,
                                           kahypar::meta::Typelist<TypeTraitsList>>;
+using AONHypermodularityBayesianPartitionerDispatcher = kahypar::meta::StaticMultiDispatchFactory<
+                                          AONHypermodularityBayesianInitialPartitioner,
+                                          IInitialPartitioner,
+                                          kahypar::meta::Typelist<TypeTraitsList>>;
 
 
 void register_initial_partitioning_algorithms() {
@@ -168,6 +173,10 @@ void register_initial_partitioning_algorithms() {
                                           context.partition.partition_type));
   REGISTER_DISPATCHED_INITIAL_PARTITIONER(InitialPartitioningAlgorithm::aon_hypermodularity_kernel,
                                           AONHypermodularityKernelPartitionerDispatcher,
+                                          kahypar::meta::PolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
+                                          context.partition.partition_type));
+  REGISTER_DISPATCHED_INITIAL_PARTITIONER(InitialPartitioningAlgorithm::aon_hypermodularity_bayesian,
+                                          AONHypermodularityBayesianPartitionerDispatcher,
                                           kahypar::meta::PolicyRegistry<mt_kahypar_partition_type_t>::getInstance().getPolicy(
                                           context.partition.partition_type));
 }

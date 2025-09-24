@@ -54,8 +54,11 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   void partitionImpl(const HypernodeID edgeSizeThreshold, 
                      const long long maxNumIter, 
                      const /* long */ double eps, 
+                     const /* long */ double clusterpPenalty,
                      const bool randomize,
-                     bool useOriginalEdgeSizes);
+                     bool useOriginalEdgeSizes,
+                     const InitialPartitioningAlgorithm ipName
+                     );
   
  private:
   void partitionImpl() final {
@@ -63,10 +66,22 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
       std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,
       1e2 /* maxNumIter */,
       1e-8 /* eps */,
+      0.0 /* clusterpPenalty */,
       true /* randomize */,
-      true /* useOriginalEdgeSizes */
+      true /* useOriginalEdgeSizes */,
+      InitialPartitioningAlgorithm::aon_hypermodularity /* ip_name */
     );
   }
+
+  // All or Nothing Hypermodularity Louvain
+  // if clusterpPenalty > 0.0, there is incentive to form fewer clusters
+  void AON_HMLL(PartitionedHypergraph& hg,
+                const HypernodeID edgeSizeThreshold, 
+                const long long maxNumIter, 
+                const /* long */ double eps, 
+                const /* long */ double clusterpPenalty,
+                const bool randomize,
+                bool useOriginalEdgeSizes);
 
   bool fitsIntoBlock(PartitionedHypergraph& hypergraph,
                      const HypernodeID hn,
@@ -80,27 +95,36 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   inline void randomPartition(PartitionedHypergraph& hypergraph);
 
   // Contract communities of the coarsest hypergraph and rewrites its partition
-  inline void collapse(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z);
+  inline void collapse(
+      UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, 
+      vec<HypernodeID>& map_z, ds::Array<HypernodeID>& clusterSizes);
 
   // Perform the Louvain step on the collapsed hypergraph
-  /* long */ double louvainStep(UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, 
-                  const vec</* long */ double>& beta, const vec</* long */ double>& gamma, const HypernodeID edgeSizeThreshold,
-                  const long long maxNumIter, const /* long */ double eps, const bool randomize);
+  /* long */ double louvainStep(
+      UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, ds::Array<HypernodeID>& clusterSizes,
+      const vec</* long */ double>& beta, const vec</* long */ double>& gamma, const HypernodeID edgeSizeThreshold,
+      const long long maxNumIter, const /* long */ double eps, const /* long */ double clusterpPenalty, const bool randomize);
 
   // Perform the Louvain step for a single node on the collapsed hypergraph
-  inline /* long */ double louvainStepForANode(const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, 
-                                  UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z,
-                                   const vec</* long */ double>& beta, const vec</* long */ double>& gamma, const HypernodeID edgeSizeThreshold,
-                                   const /* long */ double eps, const bool randomize);
+  inline /* long */ double louvainStepForANode(
+      const HypernodeID& i, const vec<HypernodeID>& neighbors_i, ds::Array<bool>& visitedParts, 
+      PartitionID& k_now, ds::Array<HypernodeID>& clusterSizes,
+      UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z,
+      const vec</* long */ double>& beta, const vec</* long */ double>& gamma, const HypernodeID edgeSizeThreshold,
+      const /* long */ double eps,  const /* long */ double clusterpPenalty, const bool randomize);
 
   // Calculate the gain of moving node i to partition A
   // using the AllOrNothing-Hypermodularity gain function
-  inline /* long */ double QAONGain(PartitionedHypergraph& H_new_partitioned, 
-                         const HypernodeID i, const PartitionID A, 
-                         const vec</* long */ double>& beta, const vec</* long */ double>& gamma, const HypernodeID edgeSizeThreshold);
+  inline /* long */ double QAONGain(
+      PartitionedHypergraph& H_new_partitioned, 
+      const HypernodeID i, const PartitionID A,
+      const vec</* long */ double>& beta, const vec</* long */ double>& gamma, 
+      const HypernodeID edgeSizeThreshold);
 
   // Adjust current communities
-  inline void expand(const PartitionedHypergraph& initPhg, UnderlyingHypergraph& H_new, PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
+  inline void expand(
+      const PartitionedHypergraph& initPhg, UnderlyingHypergraph& H_new, 
+      PartitionedHypergraph& H_new_partitioned, vec<HypernodeID>& map_z, vec<HypernodeID>& z);
 
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;

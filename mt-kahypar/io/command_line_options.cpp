@@ -620,19 +620,20 @@ namespace mt_kahypar {
             po::value<std::vector<bool> >(&context.initial_partitioning.enabled_ip_algos)->multitoken(),
             "Indicate which IP algorithms should be executed. E.g. i-enabled-ip-algos=1 1 0 1 0 1 1 1 0 0 0 0\n"
             "indicates that\n"
-            "  1.) greedy_round_robin_fm       (is executed)\n"
-            "  2.) greedy_global_fm            (is executed)\n"
-            "  3.) greedy_sequential_fm        (is NOT executed)\n"
-            "  4.) random                      (is executed)\n"
-            "  5.) bfs                         (is NOT executed)\n"
-            "  6.) label_propagation           (is executed)\n"
-            "  7.) greedy_round_robin_max_net  (is executed)\n"
-            "  8.) greedy_global_max_net       (is executed)\n"
-            "  9.) greedy_sequential_max_net   (is NOT executed)\n"
-            "  10.) singleton                  (is NOT executed)\n"
-            "  11.) aon_hypermodularity        (is NOT executed)\n"
-            "  12.) aon_hypermodularity_kernel (is NOT executed)\n"
-            "Note vector must exactly contain 12 values otherwise partitioner will exit with failure")
+            "  1.) greedy_round_robin_fm         (is executed)\n"
+            "  2.) greedy_global_fm              (is executed)\n"
+            "  3.) greedy_sequential_fm          (is NOT executed)\n"
+            "  4.) random                        (is executed)\n"
+            "  5.) bfs                           (is NOT executed)\n"
+            "  6.) label_propagation             (is executed)\n"
+            "  7.) greedy_round_robin_max_net    (is executed)\n"
+            "  8.) greedy_global_max_net         (is executed)\n"
+            "  9.) greedy_sequential_max_net     (is NOT executed)\n"
+            "  10.) singleton                    (is NOT executed)\n"
+            "  11.) aon_hypermodularity          (is NOT executed)\n"
+            "  12.) aon_hypermodularity_kernel   (is NOT executed)\n"
+            "  13.) aon_hypermodularity_bayesian (is NOT executed)\n"
+            "Note vector must exactly contain 13 values otherwise partitioner will exit with failure")
             ("i-runs",
              po::value<size_t>(&context.initial_partitioning.runs)->value_name("<size_t>")->default_value(20),
              "Number of runs for each bipartitioning algorithm.")

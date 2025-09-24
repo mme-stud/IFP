@@ -487,6 +487,7 @@ std::vector<option> load_large_k_preset() {
       "0",    // singleton
       "0",    // aon_hypermodularity
       "0",    // aon_hypermodularity_kernel
+      "0",    // aon_hypermodularity_bayesian
     } },
     create_option("i-use-adaptive-ip-runs", "true"),
     create_option("i-min-adaptive-ip-runs", "3"),
@@ -567,7 +568,8 @@ std::vector<option> load_clustering_preset() {
             "0",    // greedy_sequential_max_net
             "0",    // singleton
             "1",    // aon_hypermodularity
-            "0",    // aon_hypermodularity_kernel
+            "1",    // aon_hypermodularity_kernel
+            "1",    // aon_hypermodularity_bayesian
     } },
     create_option("i-use-adaptive-ip-runs", "false"),
     create_option("i-min-adaptive-ip-runs", "1"),

@@ -47,6 +47,7 @@ struct PartitioningParameters {
   double epsilon = std::numeric_limits<double>::max();
   PartitionID k = std::numeric_limits<PartitionID>::max();
   PartitionID initial_k = -1;
+  HypernodeID initial_num_nodes = -1;
   int seed = 0;
   size_t num_vcycles = 0;
   bool perform_parallel_recursion_in_deep_multilevel = true;
