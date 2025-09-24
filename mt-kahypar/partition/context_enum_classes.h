@@ -154,7 +154,8 @@ enum class InitialPartitioningAlgorithm : uint8_t {
   singleton = 9,
   aon_hypermodularity = 10,
   aon_hypermodularity_kernel = 11,
-  UNDEFINED = 12
+  aon_hypermodularity_bayesian = 12,
+  UNDEFINED = 13
 };
 
 bool isHypermodularityIP(const InitialPartitioningAlgorithm& algo);

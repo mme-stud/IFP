@@ -60,6 +60,7 @@ std::string serialize(const PartitionedHypergraph& hypergraph,
         << " partition_type=" << context.partition.partition_type
         << " k=" << context.partition.k
         << " initial_k=" << context.partition.initial_k
+        << " initial_num_nodes=" << context.partition.initial_num_nodes
         << " epsilon=" << context.partition.epsilon
         << " seed=" << context.partition.seed
         << " num_vcycles=" << context.partition.num_vcycles

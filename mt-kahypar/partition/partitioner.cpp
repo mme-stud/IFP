@@ -53,6 +53,7 @@ namespace mt_kahypar {
   template<typename Hypergraph>
   void setupContext(Hypergraph& hypergraph, Context& context, TargetGraph* target_graph) {
     context.partition.initial_k = context.partition.k; // mariia saved initial k to reset it later
+    context.partition.initial_num_nodes = hypergraph.initialNumNodes(); // needed in AON IP for clusterpenalty
     if ( target_graph ) {
       context.partition.k = target_graph->numBlocks();
     } else if (context.partition.preset_type == PresetType::cluster) {

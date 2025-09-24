@@ -20,7 +20,7 @@
  * SOFTWARE.
 ******************************************************************************/
 
-#include "mt-kahypar/partition/initial_partitioning/aon_hypermodularity_kernel_initial_partitioner.h"
+#include "mt-kahypar/partition/initial_partitioning/aon_hypermodularity_bayesian_initial_partitioner.h"
 
 #include "mt-kahypar/definitions.h"
  
@@ -28,19 +28,19 @@
 namespace mt_kahypar {
 
 template<typename TypeTraits>
-void AONHypermodularityKernelInitialPartitioner<TypeTraits>::partitionImpl() {
+void AONHypermodularityBayesianInitialPartitioner<TypeTraits>::partitionImpl() {
   /// [debug] std::cout << "AONHypermodularityKernelInitialPartitioner::partitionImpl()" << std::endl;
   _aon_ip.partitionImpl(
     std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,   
     1e2 /* maxNumIter */,
     1e-8 /* eps */,
-    0.0 /* clusterpPenalty */,
+    _context.partition.initial_num_nodes / 100 /* clusterPenalty */,
     true /* randomize */,
-    false /* useOriginalEdgeSizes */,
-    InitialPartitioningAlgorithm::aon_hypermodularity_kernel /* ip_name */
+    true /* useOriginalEdgeSizes */,
+    InitialPartitioningAlgorithm::aon_hypermodularity_bayesian /* ip_name */
   );
 }
 
-INSTANTIATE_CLASS_WITH_TYPE_TRAITS(AONHypermodularityKernelInitialPartitioner)
+INSTANTIATE_CLASS_WITH_TYPE_TRAITS(AONHypermodularityBayesianInitialPartitioner)
  
 } // namespace mt_kahypar
