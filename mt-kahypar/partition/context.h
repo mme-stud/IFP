@@ -306,6 +306,8 @@ class Context {
 
   bool usesHypermodularityIP() const;
 
+  bool accountForLargeK() const;
+
   // ! \brief This function sets a flag enable_collective_sync_updates
   // ! based on the partitioning objective.
   // ! If set, partitioned HYPERGRAPH will send one sync_update per changeNodePart

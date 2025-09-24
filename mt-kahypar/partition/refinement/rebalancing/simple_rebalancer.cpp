@@ -64,7 +64,8 @@ namespace mt_kahypar {
         _gain.computeDeltaForHyperedge(sync_update);
       };
 
-      if ( _context.partition.preset_type != PresetType::large_k ) {
+      // if ( _context.partition.preset_type != PresetType::large_k ) {
+      if ( !(_context.accountForLargeK()) ) {
         // TODO: This code must be optimized to work for large k
         vec<Move> moves_to_empty_blocks = repairEmptyBlocks(phg);
         for (Move& m : moves_to_empty_blocks) {

@@ -301,6 +301,16 @@ namespace mt_kahypar {
     return false;
   }
 
+  // ! \brief Returns true if we should account for large k in the algorithms
+  // ! If true, we will skip memory intensive parts
+  bool Context::accountForLargeK() const {
+      switch (partition.preset_type) {
+        case PresetType::large_k: return true;
+        case PresetType::cluster: return (partition.k >= 1024);
+      }
+    return false;
+  }
+
   // ! \brief This function sets a flag enable_collective_sync_updates
   // ! based on the partitioning objective.
   // ! If set, partitioned HYPERGRAPH will send one sync_update per changeNodePart

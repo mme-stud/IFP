@@ -762,6 +762,26 @@ target_compile_options(MtKaHyPar-BuildFlags INTERFACE -lgmpxx -lgmp)
 ```
 
 ## Side trip: k
+### Skip some parts if k is large
+`LARGE_K` preset skips some allocations to spare time (and memory?). 
+We want to skip them too, if `k >= 1024`:
+
+`context.cpp, h`:
+```cpp
+  bool accountForLargeK() const {
+    switch (preset_type) {
+      case PresetType::large_k:
+        return true;
+      case PresetType::cluster:
+        return k >= 1024;
+    }
+    return false;
+  }
+```
+&rarr; for now only used in `simple_rebalancer.cpp` to skip moving nodes to empty parts [Note: `simple_rebalancer` isn't used in `cluster` preset...]
+
+All other places [that I've found] are `switch`-es or skipped `MemoryPool`-registration &rArr; are specific to `LARGE_K` preset...)
+
 ### Not necessary to enter blocks (k), epsilon (eps) for clustering
 - `command_line_options.cpp`:
     - Disable `.required()` for `-k / --blocks`, `-e / --epsilon` parameters
