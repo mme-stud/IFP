@@ -103,7 +103,7 @@ static constexpr HypernodeID invalidNode = std::numeric_limits<HypernodeID>::max
 static constexpr Gain invalidGain = std::numeric_limits<Gain>::min();
 
 // static constexpr size_t scaling_factor = std::numeric_limits<HyperedgeWeight>::max() / 1000;
-static constexpr size_t scaling_factor = 1e4;
+static constexpr size_t scaling_factor = 1;
 static constexpr HyperedgeWeight conductance_value_threshold = scaling_factor * 10;
 
 

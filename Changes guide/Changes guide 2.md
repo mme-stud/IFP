@@ -28,7 +28,10 @@
 - compare clustering with Hypermodularity (metric = AON &rarr; Adil has implemented the objective)
 
 - iterate between local and global conductance in local search
-- merge with Adil to allow `double` gains &rarr; maybe than return to `delta` = sum of all local "gains" by `conductance_local` in `refineImpl()` (`label_propagation_refiner.cpp`) 
+- [done] merge with Adil to allow `double` gains:
+    - adjust according to comments in PR #1
+    - set `scaling_factor = 1` in `hypergraph_common.h`
+    - [already was done when scaling was 1000] maybe than return to `delta` = sum of all local "gains" by `conductance_local` in `refineImpl()` (`label_propagation_refiner.cpp`)
 - try to improve local search (gain cache? another approach?)
 
 - **!!!** Fix a bug in IP: with `-t 8` IP fails on the asserion `partID(n) == kInvalidPartition` in `setOnlyNodeId(n, p)` &rarr; some partitions aren't empty... 
@@ -615,8 +618,7 @@ i-r-lp-maximum-iterations=5
 - more than 3 threads &rArr; bad results :(
     - **ToDo (?)**: set a sequential flag for LP to be able to run multiple IP in parallel
 - [solved for now] lp refiner summs up all Attributed gains of the moves in a `delta`. With `HyperedgeWeight` gains I get an overflow &rArr; `refineImpl(..)` returns `detla > 0  = false` and the refinement round finishes:
-    - Current solution: recalculate `delta` with the actual conductance gain
-    - To be changed (?) after introducting `double` gains
+    - ~~Current solution: recalculate `delta` with the actual conductance gain (To be changed (?) after introducting `double` gains)~~ [was already changed after scaling * 1000]
 - [solved for now] didn't move the last node from it's cluster what resulted in a bad conductance:
     - Current solution: practically disable `isBalanced(..)` (`metrics.cpp`) check called in `LabelPropagationRefiner<GraphAndGainTypes>::labelPropagationRound(..)` (it wasn't balanced &rArr; called rebalancer &rArr; sometimes / mostly (?) finished LP) 
     ```cpp

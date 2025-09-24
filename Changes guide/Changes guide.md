@@ -1237,9 +1237,9 @@ Current conductance implementation supports collective `sync_update`s, but their
 
 **Current solution:**
 - Assert only for non-conductance metrics;
-- ~~compute delta at the end of `refineImpl(..)` with the wrong current gain (i.e. delta = sum of Attributed Gains), so that delta is positive if any good moves were made~~ [overflow &rArr; `delta < 0`...]
-- recalculate the current gain at the end of `refineImpl(..)` with the actual metric value:
-- update the delta calculation accordingly in `refineImpl(..)` and use the actual current conductance value to check progress in  `labelPropagationRound(..)`
+- ~~compute delta at the end of `refineImpl(..)` with the wrong current gain (i.e. delta = sum of Attributed Gains), so that delta is positive if any good moves were made~~ [~~overflow &rArr; `delta < 0`...~~ no overflow after `using Gain = double`]
+- only print recalculated current gain at the end of `refineImpl(..)` with the actual metric value:
+- use normal delta calculation in `refineImpl(..)` and use the actual current conductance value as the progress threshold in  `labelPropagationRound(..)`
  ```cpp
 
  	// mt-kahypar/partition/refinement/label_propagation/label_propagation_refiner.cpp
@@ -1261,10 +1261,8 @@ Current conductance implementation supports collective `sync_update`s, but their
 		 *  =>  the assertion always fails for conductance.
 		 * 
 		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 
-		 *  if any good moves were made. But for now it's not working properly, as overflows 
-		 *  occur and make the delta negative :(
+		 *  if any good moves were made.
 		 *  
-		 *  ToDo: uncomment delta after moving to double gains
 		 */ 
 		// Update metrics statistics
 		Gain delta = old_quality - best_metrics.quality;
@@ -1285,10 +1283,8 @@ Current conductance implementation supports collective `sync_update`s, but their
 							.update_stat("lp_improvement", old_quality - best_metrics.quality);
 			
 		if (delta < 0) {
-		  LOG << " LP Refiner: Detected negative delta." 
+		  LOG << RED << >>" LP Refiner: Detected negative delta." 
 			  << V(delta) << V(old_quality) << V(best_metrics.quality);
-		  // Reason should be an overflow in best_metrics.quality (-inf, as many good local moves)
-		  return true; /* improvement found */
 		}
 		return delta > 0; /* improvement found? */
 	}
@@ -1307,7 +1303,7 @@ Current conductance implementation supports collective `sync_update`s, but their
                   * metrics::quality(hypergraph, _context,
                                      !_context.refinement.label_propagation.execute_sequential);
         if (delta_quality < 0) {
-          LOG << "LP: negative delta quality: " << delta_quality;
+          LOG << RED << "LP: negative delta quality: " << delta_quality;
           return should_stop;
         }
       }

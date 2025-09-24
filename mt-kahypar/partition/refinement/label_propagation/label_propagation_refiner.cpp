@@ -119,10 +119,7 @@ namespace mt_kahypar {
 		 *  =>  the assertion always fails for conductance.
 		 * 
 		 *  Delta should still be calculated with the incorrect quality, so that delta > 0 
-     *  if any good moves were made. But for now it's not working properly, as overflows 
-     *  occur and make the delta negative :(
-     *  
-     *  ToDo: uncomment delta after moving to double gains
+     *  if any good moves were made.
 		 */ 
 		// Update metrics statistics
 		Gain delta = old_quality - best_metrics.quality;
@@ -146,10 +143,8 @@ namespace mt_kahypar {
 						.update_stat("lp_improvement", old_quality - best_metrics.quality);
 		
     if (delta < 0) {
-      LOG << " LP Refiner: Detected negative delta." 
+      LOG << RED << " LP Refiner: Detected negative delta." 
           << V(delta) << V(old_quality) << V(best_metrics.quality);
-      // Reason should be an overflow in best_metrics.quality (-inf, as many good local moves)
-      return true; /* improvement found */
     }
 		return delta > 0; /* improvement found? */
   }
@@ -256,7 +251,7 @@ namespace mt_kahypar {
                   * metrics::quality(hypergraph, _context,
                                      !_context.refinement.label_propagation.execute_sequential);
       if (delta_quality < 0) {
-        LOG << "LP: negative delta quality: " << delta_quality;
+        LOG << RED << "LP: negative delta quality: " << delta_quality;
         return should_stop;
       }
     }
