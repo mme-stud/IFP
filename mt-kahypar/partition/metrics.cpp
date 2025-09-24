@@ -102,7 +102,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_local> {
       // double_t scaled_contribution = 
       //    (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
       //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-      Gain scaled_contribution = 
+      double_t scaled_contribution = 
           (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(mt_kahypar::scaling_factor))
           / (static_cast<double_t>(top_part_min_volume));
 
@@ -148,7 +148,7 @@ struct ObjectiveFunction<PartitionedHypergraph, Objective::conductance_global> {
       // double_t scaled_contribution = 
       //    (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(total_volume_version)) /
       //    (static_cast<double_t>(top_part_min_volume) * static_cast<double_t>(phg.k()));
-      Gain scaled_contribution = 
+      double_t scaled_contribution = 
           (static_cast<double_t>(phg.edgeWeight(he)) * static_cast<double_t>(mt_kahypar::scaling_factor))
           / (static_cast<double_t>(top_part_min_volume));
 

@@ -52,3 +52,7 @@ build*
 _debug*
 instances/*
 MtKaHyPar_*_pimod*
+mt_kahypar_*.part
+mt_kahypar_*.results*
+*.so
+*.so.*

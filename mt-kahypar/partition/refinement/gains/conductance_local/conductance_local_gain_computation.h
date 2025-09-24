@@ -157,7 +157,7 @@ ConductanceLocalGainComputation(const Context& context,
         }
         HypernodeID pin_count_in_from_part = phg.pinCountInPart(he, from);
         HypernodeID pin_count_in_to_part = phg.pinCountInPart(he, to);
-        Gain he_weight = phg.edgeWeight(he);
+        HyperedgeWeight he_weight = phg.edgeWeight(he);
         if (pin_count_in_from_part == 1) {
           // Was a cutting edge before for "from" part
           // but not anymore

@@ -125,7 +125,7 @@ struct ConductanceGlobalAttributedGains {
     //  LOG << "Weights are right";
     //}
     if ( top_part_cut_weight <= top_part_min_volume ) {
-      Gain scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
+      double_t scaled_conductance = static_cast<double_t>(top_part_cut_weight) 
                                   / static_cast<double_t>(top_part_min_volume)
                                   * static_cast<double_t>(mt_kahypar::scaling_factor);
       ASSERT(0 <= scaled_conductance);
