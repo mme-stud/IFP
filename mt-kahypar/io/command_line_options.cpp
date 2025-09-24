@@ -781,10 +781,10 @@ namespace mt_kahypar {
              po::value<std::string>(&context.partition.graph_filename)->value_name("<string>")->required(),
              "Hypergraph filename")
             ("blocks,k",
-             po::value<PartitionID>(&context.partition.k)->value_name("<int>")->required(),
+             po::value<PartitionID>(&context.partition.k)->value_name("<int>"),//->required(),
              "Number of blocks")
             ("epsilon,e",
-             po::value<double>(&context.partition.epsilon)->value_name("<double>")->required(),
+             po::value<double>(&context.partition.epsilon)->value_name("<double>"),//->required(),
              "Imbalance parameter epsilon")
             ("objective,o",
              po::value<std::string>()->value_name("<string>")->required()->notifier([&](const std::string& s) {
@@ -850,18 +850,20 @@ namespace mt_kahypar {
     po::notify(cmd_vm);
 
     // Validate that blocks is specified
-    if ( (context.partition.objective != Objective::conductance_local && 
-          context.partition.objective != Objective::conductance_global && 
+    if ( (context.partition.preset_type != PresetType::cluster &&
           context.partition.objective != Objective::aon_hypermodularity) 
         && !cmd_vm.count("blocks")) {
-      throw po::error("The --blocks option is required when the objective is not 'conductance_local/conductance_global/aon_hypermodularity'");
+      throw po::error("The --blocks option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
+    } else {
+        context.partition.k = 2;
     }
     // Validate that Epsilon is specified
-    if ( (context.partition.objective != Objective::conductance_local && 
-          context.partition.objective != Objective::conductance_global && 
+    if ( (context.partition.preset_type != PresetType::cluster &&
           context.partition.objective != Objective::aon_hypermodularity) 
         && !cmd_vm.count("epsilon")) {
-      throw po::error("The --epsilon option is required when the objective is not 'conductance_local/conductance_global/aon_hypermodularity'");
+      throw po::error("The --epsilon option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
+    } else {
+        context.partition.epsilon = 10000.0; // effectively disables imbalance checks
     }
 
     po::options_description ini_line_options;

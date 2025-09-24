@@ -761,6 +761,30 @@ target_compile_options(MtKaHyPar-BuildFlags INTERFACE -lgmpxx -lgmp)
 #include <gmpxx.h> // GMP C++ interface
 ```
 
+## Side trip: k
+### Not necessary to enter blocks (k), epsilon (eps) for clustering
+- `command_line_options.cpp`:
+    - Disable `.required()` for `-k / --blocks`, `-e / --epsilon` parameters
+    - after parsing, throw an error if neither `cluster` preset nor `Objective::aon_hypermodularity` is used:
+    ```cpp
+    // Validate that blocks is specified
+    if ( (context.partition.preset_type != PresetType::cluster &&
+          context.partition.objective != Objective::aon_hypermodularity) 
+        && !cmd_vm.count("blocks")) {
+      throw po::error("The --blocks option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
+    } else {
+        context.partition.k = 2;
+    }
+    // Validate that Epsilon is specified
+    if ( (context.partition.preset_type != PresetType::cluster &&
+          context.partition.objective != Objective::aon_hypermodularity) 
+        && !cmd_vm.count("epsilon")) {
+      throw po::error("The --epsilon option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
+    } else {
+        context.partition.epsilon = 10000.0; // effectively disables imbalance checks
+    }
+    ```
+
 ## Scripts for experiments
 Folder: `_experimental_results/`
 - `survey_benchmark/` - all benchmarks from the survey paper [Comparison of modularity-based approaches for nodes clustering in hypergraphs](https://arxiv.org/pdf/2401.14028)
