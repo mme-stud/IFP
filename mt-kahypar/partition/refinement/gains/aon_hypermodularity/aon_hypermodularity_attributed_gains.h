@@ -43,7 +43,7 @@ struct AONHypermodularityAttributedGains {
     // << " to " << sync_update.to << "; dvol = " << volumeDelta(sync_update);
     if (sync_update.edge_size < 2) // not a cutting edge
       return dVol;
-    const vec</* long */ double> &beta = *sync_update.beta_vec;
+    const vec<AONCoefficient> &beta = *sync_update.beta_vec;
     const long double wbeta = (
         sync_update.original_edge_size < beta.size() ?
           sync_update.edge_weight * beta[sync_update.original_edge_size] :
@@ -66,8 +66,8 @@ struct AONHypermodularityAttributedGains {
 
   static long double volumeDelta(const SynchronizedEdgeUpdate &sync_update) {
     long double dVol = 0;
-    // const vec</* long */ double> &beta = *sync_update.beta_vec;
-    const vec</* long */ double> &gamma = *sync_update.gamma_vec;
+    // const vec<AONCoefficient> &beta = *sync_update.beta_vec;
+    const vec<AONCoefficient> &gamma = *sync_update.gamma_vec;
     const long double v_from = static_cast<long double>(
         sync_update.original_volume_from_after + sync_update.original_weighted_degree); // volume *before*
     const long double v_to = static_cast<long double>(

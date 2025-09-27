@@ -911,43 +911,43 @@ private:
   inline bool hasAON() const { return false; }
 
   // Not supported for graphs
-  inline /* long */ double beta (std::size_t k) const { 
+  inline AONCoefficient beta (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "beta(k) is not supported for partitioned graph");
-    return 0.0;
+    return AONCoefficient(0.0);
   }
   // Not supported for graphs
-  inline /* long */ double gamma (std::size_t k) const { 
+  inline AONCoefficient gamma (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "gamma(k) is not supported for partitioned graph");
-    return 0.0;
+    return AONCoefficient(0.0);
   }
   // Not supported for graphs
-  inline /* long */ double omegaIn (std::size_t k) const { 
+  inline AONCoefficient omegaIn (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaIn(k) is not supported for partitioned graph");
-    return 0.0;
+    return AONCoefficient(0.0);
   }
   // Not supported for graphs
-  inline /* long */ double omegaOut (std::size_t k) const { 
+  inline AONCoefficient omegaOut (std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaOut(k) is not supported for partitioned graph");
-    return 0.0;
+    return AONCoefficient(0.0);
   }
 
   // ! _beta vector for AON-Hypermodularity
   // ! Not supported for partitioned graphs
-  inline const vec</* long */ double>& betaVector()  const { 
+  inline const vec<AONCoefficient>& betaVector()  const { 
     throw UnsupportedOperationException(
             "betaVector() is not supported for partitioned graph");
   }
   // ! _gamma vector for AON-Hypermodularity
   // ! Not supported for partitioned graphs
-  inline const vec</* long */ double>& gammaVector() const { 
+  inline const vec<AONCoefficient>& gammaVector() const { 
     throw UnsupportedOperationException(
             "gammaVector() is not supported for partitioned graph");
   }

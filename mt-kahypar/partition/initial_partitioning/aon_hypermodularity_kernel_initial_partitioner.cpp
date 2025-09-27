@@ -34,7 +34,7 @@ void AONHypermodularityKernelInitialPartitioner<TypeTraits>::partitionImpl() {
     std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,   
     1e2 /* maxNumIter */,
     1e-8 /* eps */,
-    0.0 /* clusterpPenalty */,
+    0.0 /* clusterPenalty */,
     true /* randomize */,
     false /* useOriginalEdgeSizes */,
     InitialPartitioningAlgorithm::aon_hypermodularity_kernel /* ip_name */

@@ -758,43 +758,43 @@ class StaticGraph {
   bool hasAON() const { return false; }
 
   // ! Not supported for static graphs
-  inline /* long */ double beta(std::size_t k) const { 
+  inline AONCoefficient beta(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
       "beta(k) is not supported for static graph");
-      return 0.0;
+      return AONCoefficient(0.0);
     }
     // ! Not supported for static graphs
-  inline /* long */ double gamma(std::size_t k) const { 
+  inline AONCoefficient gamma(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "gamma(k) is not supported for static graph");
-    return 0.0;
+    return AONCoefficient(0.0);
   }
   // ! Not supported for static graphs
-  inline /* long */ double omegaIn(std::size_t k) const { 
+  inline AONCoefficient omegaIn(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaIn(k) is not supported for static graph");
-    return 0.0;
+    return AONCoefficient(0.0);
   }
   // ! Not supported for static graphs
-  inline /* long */ double omegaOut(std::size_t k) const { 
+  inline AONCoefficient omegaOut(std::size_t k) const { 
     unused(k);
     throw UnsupportedOperationException(
             "omegaOut(k) is not supported for static graph");
-            return 0.0;
+            return AONCoefficient(0.0);
   }
   // ! _beta vector for AON-Hypermodularity
   // ! Not supported for static graphs
-  inline const vec</* long */ double>& betaVector()  const { 
+  inline const vec<AONCoefficient>& betaVector()  const { 
     throw UnsupportedOperationException(
       "betaVector() is not supported for static graph");
     return _dummy_double_vector;
   }
   // ! _gamma vector for AON-Hypermodularity
   // ! Not supported for static graphs
-  inline const vec</* long */ double>& gammaVector() const { 
+  inline const vec<AONCoefficient>& gammaVector() const { 
     throw UnsupportedOperationException(
       "gammaVector() is not supported for static graph");
     return _dummy_double_vector;
@@ -1103,7 +1103,7 @@ class StaticGraph {
   TmpContractionBuffer* _tmp_contraction_buffer;
 
   // ! Dummy vectors for AON-Hypermodularity
-  static const vec</* long */ double> _dummy_double_vector;
+  static const vec<AONCoefficient> _dummy_double_vector;
 };
 
 } // namespace ds

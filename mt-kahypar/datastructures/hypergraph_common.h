@@ -76,6 +76,8 @@ using PartitionID = int32_t;
 // using Gain = HyperedgeWeight; // ToDo: change to double_t
 using Gain = double;
 
+using AONCoefficient = double;
+
 using ArcWeight = double;
 
 struct Arc {
@@ -203,8 +205,8 @@ struct SynchronizedEdgeUpdate {
   //! Pointers / views to the *global* βₖ and γₖ arrays of the **current
   //! hierarchy level**.  They never change during the whole node move, so a
   //! (const) pointer is enough and avoids copying the vectors for every edge.
-  const vec</* long */ double>* beta_vec        = nullptr;    // same object for all edges
-  const vec</* long */ double>* gamma_vec       = nullptr;
+  const vec<AONCoefficient>* beta_vec        = nullptr;    // same object for all edges
+  const vec<AONCoefficient>* gamma_vec       = nullptr;
   HyperedgeID original_edge_size = 0;
   HyperedgeID hn_degree = 0;
   HypergraphVolume original_volume_from_after = 0;

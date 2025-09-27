@@ -833,7 +833,7 @@ public:
 
   // ! Get \beta for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _beta.size())
-  inline /* long */ double beta(std::size_t d) const noexcept {
+  inline AONCoefficient beta(std::size_t d) const noexcept {
     ASSERT(d < _beta.size() || d <= _max_edge_size || d <= _original_max_edge_size,
            "d = " << d << " is out of bounds for beta vector of size " << _beta.size()
            << " and max edge size " << _max_edge_size 
@@ -843,7 +843,7 @@ public:
 
   // ! Get \gamma for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _gamma.size())
-  inline /* long */ double gamma(std::size_t d) const noexcept {
+  inline AONCoefficient gamma(std::size_t d) const noexcept {
     ASSERT(d < _gamma.size() || d <= _max_edge_size || d <= _original_max_edge_size,
            "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size()
            << " and max edge size " << _max_edge_size
@@ -853,7 +853,7 @@ public:
 
   // ! Get \omega_{d0} for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
-  inline /* long */ double omegaIn(std::size_t d) const noexcept {
+  inline AONCoefficient omegaIn(std::size_t d) const noexcept {
     ASSERT(d < _omega.size(),
            "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
     return _omega[d][0];
@@ -862,7 +862,7 @@ public:
 
   // ! Get \omega_{d1} for AON HyperModularity Clustering
   // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
-  inline /* long */ double omegaOut(std::size_t d) const noexcept {
+  inline AONCoefficient omegaOut(std::size_t d) const noexcept {
     ASSERT(d < _omega.size(),
            "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
     return _omega[d][1];
@@ -871,10 +871,10 @@ public:
 
   // ! _beta vector for AON-Hypermodularity. 
   // ! Zeros at the end are omitted!
-  inline const vec</* long */ double>& betaVector()  const { return _beta;  }
+  inline const vec<AONCoefficient>& betaVector()  const { return _beta;  }
   // ! _gamma vector for AON-Hypermodularity. 
   // ! Zeros at the end are omitted!
-  inline const vec</* long */ double>& gammaVector() const { return _gamma; }
+  inline const vec<AONCoefficient>& gammaVector() const { return _gamma; }
 
   // ──────────────────────────────────────────────────────────
   /// (Re)compute β, γ, ω for the **current** community assignment
@@ -903,29 +903,29 @@ public:
       L = std::max<PartitionID>(L, communityID(v));
     ++L; // clusters are 0-based
 
-    std::vector</* long */ double> ClusVol(L, 0.0);
+    std::vector<AONCoefficient> ClusVol(L, 0.0);
     for (HypernodeID v : nodes())
-      // ClusVol[communityID(v)] += static_cast</* long */ double>(nodeDegree(v));
+      // ClusVol[communityID(v)] += static_cast<AONCoefficient>(nodeDegree(v));
       // [mariia's suggestion]:
-      ClusVol[communityID(v)] += static_cast</* long */ double>(nodeOriginalWeightedDegree(v));
+      ClusVol[communityID(v)] += static_cast<AONCoefficient>(nodeOriginalWeightedDegree(v));
 
-    // const /* long */ double vol_H = initialTotalVertexDegree();
+    // const AONCoefficient vol_H = initialTotalVertexDegree();
     // [mariia's suggestion]:
-    const /* long */ double vol_H = static_cast</* long */ double>(originalTotalVolume());
+    const AONCoefficient vol_H = static_cast<AONCoefficient>(originalTotalVolume());
 
     /* ------------------------------------------------------------
      * 2. count edges and cut edges per size k
      * ---------------------------------------------------------- */
     // m_k - sum of edge weights per size k
-    std::vector</* long */ double> m_k(dmax + 1, 0.01); // small bias avoids log(0)
+    std::vector<AONCoefficient> m_k(dmax + 1, 0.01); // small bias avoids log(0)
     // cut_k - sum of cut edge weights per size k
-    std::vector</* long */ double> cut_k(dmax + 1, 0.0);
+    std::vector<AONCoefficient> cut_k(dmax + 1, 0.0);
 
     for (HyperedgeID e : edges()) {
       const std::size_t d = static_cast<std::size_t>(originalEdgeSize(e));
       if (d < 2) // ignore single pin nets
         continue;
-      const /* long */ double w = static_cast</* long */ double>(edgeWeight(e));
+      const AONCoefficient w = static_cast<AONCoefficient>(edgeWeight(e));
 
       bool cutting = false;
       PartitionID first_c = communityID(*pins(e).begin());
@@ -950,11 +950,11 @@ public:
     std::size_t last_non_zero = 0; // to avoid _beta and _gamma being mostly filled with 0.0
     for (std::size_t d = 2; d <= dmax; ++d) {
       // sum of d-th powers of community volumes (no weights!!!)
-      /* long */ double vol_in = 0.0; 
-      for (/* long */ double vc : ClusVol)
+      AONCoefficient vol_in = 0.0; 
+      for (AONCoefficient vc : ClusVol)
         vol_in += std::pow(vc, static_cast<int>(d));
-      /* long */ double vol_out;
-      /* long */ double vol_H_d = std::pow(vol_H, static_cast<int>(d));
+      AONCoefficient vol_out;
+      AONCoefficient vol_H_d = std::pow(vol_H, static_cast<int>(d));
       if (std::isfinite(vol_in) || std::isfinite(vol_H_d)) {
         vol_out = vol_H_d - vol_in;
       } else {
@@ -963,10 +963,10 @@ public:
          *    if vol_in = +inf, vol_out should be at least near to +inf
          *    as vol_in = sum_i pow(vol(i), d), vol_H = sum_i vol(i)
         */
-        vol_out = std::numeric_limits</* long */ double>::infinity();
+        vol_out = std::numeric_limits<AONCoefficient>::infinity();
       }
-      /* long */ double omega_in = static_cast<double>( (m_k[d] - cut_k[d]) / vol_in );
-      /* long */ double omega_out = static_cast<double>( cut_k[d] / vol_out );
+      AONCoefficient omega_in = static_cast<AONCoefficient>( (m_k[d] - cut_k[d]) / vol_in );
+      AONCoefficient omega_out = static_cast<AONCoefficient>( cut_k[d] / vol_out );
       // (Normally) not NaN / +-Inf as m\_k, cut_k < total_volume. (vol_in and vol_out != NaN, 0)
 
       /// [debug] std::cout << "Volume^d sum for d=" << d << ": " << vol_in << std::endl;
@@ -1409,9 +1409,9 @@ public:
   bool _has_original_edge_sizes = false;
   
   // AON HyperModularity Clustering Coefficients
-  vec</* long */ double> _beta;                 ///< β_k
-  vec</* long */ double> _gamma;                ///< β_k * γ_k
-  vec<std::array</* long */ double, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
+  vec<AONCoefficient> _beta;                 ///< β_k
+  vec<AONCoefficient> _gamma;                ///< β_k * γ_k
+  vec<std::array<AONCoefficient, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
 };
 
 } // namespace ds
