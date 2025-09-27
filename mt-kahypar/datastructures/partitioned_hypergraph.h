@@ -274,7 +274,8 @@ class PartitionedHypergraph {
       return;
     }
     if (k < 2) { // at least 2 partitions
-      LOG << "PartitionedHypergraph::setK(k) - Warning: k = " << k << " < 2, setting k to 2";
+      LOG << RED << "PartitionedHypergraph::setK(k) - Warning: k = " << k 
+                 << " < 2, setting k to 2" << END;
       k = 2;
     }
     _k = k;

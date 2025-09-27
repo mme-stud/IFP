@@ -36,8 +36,7 @@ void AONHypermodularityKernelInitialPartitioner<TypeTraits>::partitionImpl() {
     1e-8 /* eps */,
     0.0 /* clusterPenalty */,
     true /* randomize */,
-    false /* useOriginalEdgeSizes */,
-    InitialPartitioningAlgorithm::aon_hypermodularity_kernel /* ip_name */
+    false /* useOriginalEdgeSizes */
   );
 }
 

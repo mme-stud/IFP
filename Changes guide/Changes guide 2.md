@@ -173,16 +173,18 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
       if (! useOriginalEdgeSizes || ! H.hasOriginalEdgeSizes()) {
         useOriginalEdgeSizes = false;
         if ( ! H.hasOriginalEdgeSizes() )
-          LOG << "AON IP: No snapshot of original edge size found";
+          LOG << "No snapshot of original edge size found";
         // save current edge sizes, weighted degrees and total volume
         H.snapshotOriginalEdgeSizes();
         H.snapshotOriginalWeightedDegreesAndTotalVolume();
         H.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
       }
-      if (useOriginalEdgeSizes)
-        LOG << "AON IP: Using original edge sizes.";
-      else
-        LOG << "AON IP: Using current edge sizes.";
+      if (_context.partition.verbose_output) {
+        if (useOriginalEdgeSizes)
+          LOG << "AON IP [" << V(_ipName) << V(_tag) << "]: Using original edge sizes: # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
+        else
+          LOG << "AON IP [" << V(_ipName) << V(_tag) << "]: Using current edge sizes. # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
+      }
       H.enableSinglePinNetsRemoval(); // single pin nets are never cutting
 
       //          1. Singleton initial partitioning
@@ -206,8 +208,11 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          *    long as it improves the modularity gain;
          *  - map_z is updated accordingly.
          */
-        new_gain += louvainStep(H_new, H_new_partitioned, map_z, clusterSizes,
+        AONCoefficient new_gain = louvainStep(H_new, H_new_partitioned, map_z, clusterSizes,
                                 beta, gamma, edgeSizeThreshold, maxNumIter, eps, clusterPenalty, randomize);
+        if (_context.partition.verbose_output)
+          LOG << "AON IP [" << V(_ipName) << V(_tag) << "]: step " << counter << " gain = " << new_gain;
+        total_gain += new_gain;
         z_changed = (new_gain > eps);
 
         /** --------------------- Expand: ---------------------
@@ -223,7 +228,9 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
         expand(H, H_new, H_new_partitioned, map_z, z);
       }
 
-      LOG << "AON IP finished Louvain with total gain " << total_gain;
+      if (_context.partition.verbose_output)
+        LOG << "AON IP [" << V(_ipName) << V(_tag) << "] finished Louvain with total gain " << total_gain 
+            << " and " << H_new_partitioned.k() << " clusters.";
 
       //             3. Finalize Partitioning
       //                        <...>
@@ -328,8 +335,8 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
     ASSERT(actualK <= _k);
     if (actualK < 2) {
       actualK = 2;
-      LOG << "PartitionedHypergraph::fitK() - Warning: only one cluster found: "
-             "actualK = " << actualK << ", setting it to 2";
+      LOG << RED << "PartitionedHypergraph::fitK() - Warning: only one cluster found: "
+             "actualK = " << actualK << ", setting it to 2" << END;
     }
     if (_k != actualK) {
       setK(actualK);

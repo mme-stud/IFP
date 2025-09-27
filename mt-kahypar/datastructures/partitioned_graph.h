@@ -351,8 +351,8 @@ private:
     ASSERT(actualK <= _k);
     if (actualK < 2) {
       actualK = 2;
-      LOG << "PartitionedGraph::fitK() - Warning: only one cluster found: "
-             "actualK = " << actualK << ", setting it to 2";
+      LOG << RED << "PartitionedGraph::fitK() - Warning: only one cluster found: "
+             "actualK = " << actualK << ", setting it to 2" << END;
     }
     if (_k != actualK) {
       setK(actualK);

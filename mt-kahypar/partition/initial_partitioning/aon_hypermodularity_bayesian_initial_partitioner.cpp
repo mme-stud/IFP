@@ -36,8 +36,7 @@ void AONHypermodularityBayesianInitialPartitioner<TypeTraits>::partitionImpl() {
     1e-8 /* eps */,
     _context.partition.initial_num_nodes / 100 /* clusterPenalty */,
     true /* randomize */,
-    true /* useOriginalEdgeSizes */,
-    InitialPartitioningAlgorithm::aon_hypermodularity_bayesian /* ip_name */
+    true /* useOriginalEdgeSizes */
   );
 }
 

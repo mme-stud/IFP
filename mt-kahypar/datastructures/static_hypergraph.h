@@ -1175,6 +1175,7 @@ public:
       _weighted_degrees[pin] -= edgeWeight(he);
       removeIncidentEdgeFromHypernode(he, pin);
     });
+    ++_num_removed_hyperedges;
     disableHyperedge(he);
   }
 

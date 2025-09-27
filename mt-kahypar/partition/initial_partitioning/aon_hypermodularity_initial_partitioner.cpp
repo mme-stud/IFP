@@ -36,13 +36,12 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
     const AONCoefficient eps, 
     const AONCoefficient clusterPenalty,
     const bool randomize,
-    bool useOriginalEdgeSizes,
-    const InitialPartitioningAlgorithm ipName
+    bool useOriginalEdgeSizes
     ) {
   /// [debug] std::cout << "partitionImpl()" << std::endl;
   // if num. nodes = k, assign each node to its own block
   // otherwise produce same result as random IP (maybe change later)
-  if ( _ip_data.should_initial_partitioner_run(ipName) ) {
+  if ( _ip_data.should_initial_partitioner_run(_ipName) ) {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
@@ -64,7 +63,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double>(end - start).count();
-    _ip_data.commit(ipName, _rng, _tag, time);
+    _ip_data.commit(_ipName, _rng, _tag, time);
   }
 }
 
@@ -91,11 +90,12 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::AON_HMLL(PartitionedHyper
     H_new.snapshotOriginalEdgeSizes();
     H_new.snapshotOriginalWeightedDegreesAndTotalVolume();
   }
-  if (_context.partition.verbose_output)
+  if (_context.partition.verbose_output) {
     if (useOriginalEdgeSizes)
-      LOG << "AON IP: Using original edge sizes: # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
+      LOG << "AON IP [" << V(_ipName) << V(_tag) << "]: Using original edge sizes: # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
     else
-      LOG << "AON IP: Using current edge sizes. # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
+      LOG << "AON IP [" << V(_ipName) << V(_tag) << "]: Using current edge sizes. # he " << H_new.initialNumEdges() << "# hn " << H_new.initialNumNodes();
+  }
   H_new.enableSinglePinNetsRemoval(); // single pin nets are never cutting
   H_new.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
 
@@ -143,7 +143,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::AON_HMLL(PartitionedHyper
                                              beta, gamma, edgeSizeThreshold, 
                                              maxNumIter, eps, clusterPenalty, randomize);
     if (_context.partition.verbose_output)
-      LOG << "AON IP: step " << counter << " gain = " << new_gain;
+      LOG << "AON IP [" << V(_ipName) << V(_tag) << "]: step " << counter << " gain = " << new_gain;
     total_gain += new_gain;
     z_changed = (new_gain > eps);
     /// [debug] std::cout << "Outer Iteration: louvainStep(..) finished " << counter << std::endl;
@@ -162,7 +162,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::AON_HMLL(PartitionedHyper
   } while (z_changed);
 
   if (_context.partition.verbose_output)
-    LOG << "AON IP finished Louvain with total gain " << total_gain 
+    LOG << "AON IP [" << V(_ipName) << V(_tag) << "] finished Louvain with total gain " << total_gain 
         << " and " << H_new_partitioned.k() << " clusters.";
 
   // =====================================================
@@ -311,13 +311,13 @@ AONCoefficient AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForA
     AONCoefficient gain = QAONGain(H_new_partitioned, i, A, beta, gamma, edgeSizeThreshold);
     gain += cluster_gain;
 
-    // LOG << "Louvain: node " << i << " -> " << A << " (gain: " << gain << ")";
+    // LOG << "Louvain [" << V(_ipName) << V(_tag) << "]: node " << i << " -> " << A << " (gain: " << gain << ")";
     if (gain > best_gain) {
       best_gain = gain;
       best_partition = A;
     } else if (gain != gain) { // NaN
       if (_context.partition.verbose_output)
-        LOG << "Louvain: THE GAIN IS NaN: node " << i << " -> " << A << " (gain: " << gain << ")";
+        LOG << "Louvain [" << V(_ipName) << V(_tag) << "]: THE GAIN IS NaN: node " << i << " -> " << A << " (gain: " << gain << ")";
     }
   } 
 
@@ -339,11 +339,11 @@ AONCoefficient AONHypermodularityInitialPartitioner<TypeTraits>::louvainStepForA
       }
       return best_gain;
     } else {
-      LOG << RED << "Louvain: node " << i << " -> " << best_partition << " FAILED";
+      LOG << RED << "Louvain: node " << i << " -> " << best_partition << " FAILED" << END;
     }
   } else if (! (best_gain <= 0)) {
     if (_context.partition.verbose_output)
-      LOG << "Louvain: THE GAIN IS TOO SMALL: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")";
+      LOG << "Louvain [" << V(_ipName) << V(_tag) << "]: THE GAIN IS TOO SMALL: node " << i << " -> " << best_partition << " (gain: " << best_gain << ")";
   }
   return 0.0;
 }

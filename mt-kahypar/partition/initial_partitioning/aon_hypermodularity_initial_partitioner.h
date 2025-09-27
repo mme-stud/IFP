@@ -42,22 +42,22 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   using UnderlyingHypergraph = typename PartitionedHypergraph::UnderlyingHypergraph;
 
  public:
-  AONHypermodularityInitialPartitioner(const InitialPartitioningAlgorithm,
+  AONHypermodularityInitialPartitioner(const InitialPartitioningAlgorithm _ipName,
                            ip_data_container_t* ip_data,
                            const Context& context,
                            const int seed, const int tag) :
     _ip_data(ip::to_reference<TypeTraits>(ip_data)),
     _context(context),
     _rng(seed),
-    _tag(tag) { }
+    _tag(tag),
+    _ipName(_ipName) { }
 
   void partitionImpl(const HypernodeID edgeSizeThreshold, 
                      const long long maxNumIter, 
                      const AONCoefficient eps, 
                      const AONCoefficient clusterPenalty,
                      const bool randomize,
-                     bool useOriginalEdgeSizes,
-                     const InitialPartitioningAlgorithm ipName
+                     bool useOriginalEdgeSizes
                      );
   
  private:
@@ -68,8 +68,7 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
       1e-8 /* eps */,
       0.0 /* clusterPenalty */,
       true /* randomize */,
-      true /* useOriginalEdgeSizes */,
-      InitialPartitioningAlgorithm::aon_hypermodularity /* ip_name */
+      true /* useOriginalEdgeSizes */
     );
   }
 
@@ -130,6 +129,7 @@ class AONHypermodularityInitialPartitioner : public IInitialPartitioner {
   const Context& _context;
   std::mt19937 _rng;
   const int _tag;
+  const InitialPartitioningAlgorithm _ipName;
 };
 
 } // namespace mt_kahypar
