@@ -136,15 +136,16 @@ namespace mt_kahypar {
     }
     ASSERT(delta >= 0 || _context.partition.objective == Objective::conductance_local, 
            "LP refiner worsen solution quality");
-
-    LOG << " LP Refiner: current objective value: " << V(best_metrics.quality);
-    LOG << " LP Refiner: actual objective delta: " << V(old_quality - best_metrics.quality);
+    if (_context.partition.verbose_output) {
+      LOG << " LP Refiner: current objective value: " << V(best_metrics.quality)
+          << ", actual objective delta: " << V(old_quality - best_metrics.quality);
+    }
 		utils::Utilities::instance().getStats(_context.utility_id)
 						.update_stat("lp_improvement", old_quality - best_metrics.quality);
 		
     if (delta < 0) {
-      LOG << RED << " LP Refiner: Detected negative delta." 
-          << V(delta) << V(old_quality) << V(best_metrics.quality);
+      LOG << RED << " LP Refiner: Detected negative delta: " 
+          << V(delta) << V(old_quality) << V(best_metrics.quality) << END;
     }
 		return delta > 0; /* improvement found? */
   }
@@ -251,7 +252,7 @@ namespace mt_kahypar {
                   * metrics::quality(hypergraph, _context,
                                      !_context.refinement.label_propagation.execute_sequential);
       if (delta_quality < 0) {
-        LOG << RED << "LP: negative delta quality: " << delta_quality;
+        LOG << RED << " LP: negative delta quality: " << delta_quality << END;
         return should_stop;
       }
     }

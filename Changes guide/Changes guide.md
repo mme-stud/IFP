@@ -1284,7 +1284,7 @@ Current conductance implementation supports collective `sync_update`s, but their
 			
 		if (delta < 0) {
 		  LOG << RED << >>" LP Refiner: Detected negative delta." 
-			  << V(delta) << V(old_quality) << V(best_metrics.quality);
+			  << V(delta) << V(old_quality) << V(best_metrics.quality) << END;
 		}
 		return delta > 0; /* improvement found? */
 	}
@@ -1303,7 +1303,7 @@ Current conductance implementation supports collective `sync_update`s, but their
                   * metrics::quality(hypergraph, _context,
                                      !_context.refinement.label_propagation.execute_sequential);
         if (delta_quality < 0) {
-          LOG << RED << "LP: negative delta quality: " << delta_quality;
+          LOG << RED << "LP: negative delta quality: " << delta_quality << END
           return should_stop;
         }
       }

@@ -189,15 +189,15 @@ struct SynchronizedEdgeUpdate {
   const TargetGraph* target_graph = nullptr;
   ds::Array<SpinLock>* edge_locks = nullptr;
   // (new) For conductance:
-  PartitionID k;
-  HypergraphVolume volume_from_after;
-  HypergraphVolume volume_to_after;
-  HypergraphVolume cut_weight_from_before; // for conductance_local
-  HypergraphVolume cut_weight_from_after;
-  HypergraphVolume cut_weight_to_before; // for conductance_local
-  HypergraphVolume cut_weight_to_after;
-  HypergraphVolume weighted_degree; // only the used version!!!
-  HypergraphVolume total_volume; // only the used version!!!
+  PartitionID k = kInvalidPartition; // number of blocks
+  HypergraphVolume volume_from_after = 0;
+  HypergraphVolume volume_to_after = 0;
+  HypergraphVolume cut_weight_from_before = 0; // for conductance_local
+  HypergraphVolume cut_weight_from_after = 0;
+  HypergraphVolume cut_weight_to_before = 0; // for conductance_local
+  HypergraphVolume cut_weight_to_after = 0;
+  HypergraphVolume weighted_degree = 0; // only the used version!!!
+  HypergraphVolume total_volume = 0; // only the used version!!!
   vec<ds::ConductanceInfo> top_three_conductance_info_before;
   // (new) For AON-Hypermodularity:
   //! Pointers / views to the *global* βₖ and γₖ arrays of the **current
@@ -205,11 +205,11 @@ struct SynchronizedEdgeUpdate {
   //! (const) pointer is enough and avoids copying the vectors for every edge.
   const vec</* long */ double>* beta_vec        = nullptr;    // same object for all edges
   const vec</* long */ double>* gamma_vec       = nullptr;
-  HyperedgeID original_edge_size;
-  HyperedgeID hn_degree;
-  HypergraphVolume original_volume_from_after;
-  HypergraphVolume original_volume_to_after;
-  HypergraphVolume original_weighted_degree;
+  HyperedgeID original_edge_size = 0;
+  HyperedgeID hn_degree = 0;
+  HypergraphVolume original_volume_from_after = 0;
+  HypergraphVolume original_volume_to_after = 0;
+  HypergraphVolume original_weighted_degree = 0;
   HyperedgeID max_edge_size = kInvalidHyperedge;
 };
 

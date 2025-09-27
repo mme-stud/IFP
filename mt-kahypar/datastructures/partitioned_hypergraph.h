@@ -965,7 +965,8 @@ public:
 
   void setOnlyNodePart(const HypernodeID u, PartitionID p) {
     /// [debug] std::cerr << "PartitionedHypergraph::setOnlyNodePart(u, p)" << std::endl;
-    ASSERT(p != kInvalidPartition && p < _k);
+    ASSERT(u < initialNumNodes(), "Hypernode" << u << "does not exist");
+    ASSERT(p != kInvalidPartition && p < _k && 0 <= p, "Invalid partition id" << p);
     ASSERT(_part_ids[u] == kInvalidPartition);
     _part_ids[u] = p;
   }

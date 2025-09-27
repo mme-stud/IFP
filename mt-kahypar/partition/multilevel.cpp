@@ -158,6 +158,9 @@ namespace {
         // techniques. This case runs as a base case (k = 2) within recursive bipartitioning
         // or the deep multilevel scheme.
         ip_context.partition.verbose_output = false;
+        if (context.partition.preset_type == PresetType::cluster) {
+          ip_context.partition.verbose_output = context.partition.verbose_output;
+        }
         Pool<TypeTraits>::bipartition(phg, ip_context);
       } else if ( context.initial_partitioning.mode == Mode::recursive_bipartitioning ) {
         RecursiveBipartitioning<TypeTraits>::partition(phg, ip_context, target_graph);

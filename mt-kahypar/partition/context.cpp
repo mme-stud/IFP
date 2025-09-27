@@ -307,6 +307,12 @@ namespace mt_kahypar {
       switch (partition.preset_type) {
         case PresetType::large_k: return true;
         case PresetType::cluster: return (partition.k >= 1024);
+        case PresetType::deterministic:
+        case PresetType::default_preset:
+        case PresetType::quality:
+        case PresetType::highest_quality: return false;
+        case PresetType::UNDEFINED:
+          ERR("Preset type is undefined.");
       }
     return false;
   }
