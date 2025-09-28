@@ -87,7 +87,7 @@ function main()
     conductance_hat = zeros(Float64, nreps)
 
     ###### GET RUNNING TIMES & CONDUCTANCES ######
-    filename = string(model,scenario,"mt_kahypar_results_$(nthreads)threads.results.t_c")
+    filename = string(model,scenario,"mt_kahypar_$(nthreads)threads.results.t_c")
     lines = readlines(filename)
     # times are in line "Time (sec.) = [t1, t2, ..., tn]"
     times_str = split(split(lines[1], "=")[2], "[")[2]
@@ -147,7 +147,7 @@ function main()
         Ari[i] = ari(Z_hat,Z_true)
         
         # save partial results
-        filename= string(model,scenario,"mt_kahypar_results_$(nthreads)threads.results")
+        filename= string(model,scenario,"mt_kahypar_$(nthreads)threads.results")
         open(filename, "w") do f
             write(f, "ARI=$(string(Ari))"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true\n"*"Conductance_hat = $conductance_hat")
         end
