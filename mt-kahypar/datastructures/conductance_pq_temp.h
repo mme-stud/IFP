@@ -9,7 +9,7 @@
 #include "kahypar-resources/meta/mandatory.h"
 
 #include "mt-kahypar/datastructures/partitioned_hypergraph.h"
-#include "mt-kahypar/datastructures/priority_queue.h"
+#include "mt-kahypar/datastructures/priority_queue_seq.h"
 #include "mt-kahypar/datastructures/nonnegative_fraction.h"
 
 #include "mt-kahypar/datastructures/delta_val.h"
@@ -36,9 +36,9 @@ struct ConductanceInfo {
  */
 template <typename PartitionedHypergraph = Mandatory>
 class ConductancePriorityQueue : 
-      protected ExclusiveHandleHeap<MaxHeap<ConductanceFraction, PartitionID>> {
+      protected ExclusiveHandleHeapSeq<MaxHeapSeq<ConductanceFraction, PartitionID>> {
 private:
-  using SuperPQ = ExclusiveHandleHeap<MaxHeap<ConductanceFraction, PartitionID>>;
+  using SuperPQ = ExclusiveHandleHeapSeq<MaxHeapSeq<ConductanceFraction, PartitionID>>;
   using DeltaV = DeltaValue<HypergraphVolume>;
 public:
   ConductancePriorityQueue() :

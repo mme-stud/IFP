@@ -798,7 +798,8 @@ class DynamicHypergraph {
 
   // ! Save current edge sizes as original edge sizes
   // ! not supported for dynamic hypergraphs
-  void snapshotOriginalEdgeSizes() {
+  void snapshotOriginalEdgeSizes(bool parallel = true) {
+    unused(parallel);
     throw UnsupportedOperationException(
       "snapshotOriginalEdgeSizes is not supported for dynamic hypergraph");
   }
@@ -825,9 +826,15 @@ class DynamicHypergraph {
 private:
   // ! Save the current weighted degrees as original
   // ! (private as weighted degrees should be consistent with the total volume)
-  void snapshotOriginalWeightedDegrees() {
-    for (HypernodeID u : nodes()) {
-      setNodeOriginalWeightedDegree(u, nodeWeightedDegree(u));
+  void snapshotOriginalWeightedDegrees(bool parallel = true) {
+    if (parallel) {
+      doParallelForAllNodes([&] (const HypernodeID u) {
+        setNodeOriginalWeightedDegree(u, nodeWeightedDegree(u));
+      });
+    } else {
+      for (const HypernodeID u : nodes()) {
+        setNodeOriginalWeightedDegree(u, nodeWeightedDegree(u));
+      }
     }
   }
   // ! Save the current total volume as original
@@ -838,8 +845,8 @@ private:
 public:
   // ! Save the current weighted degrees and total volume as original stats
   // ! (together for their consistency)
-  void snapshotOriginalWeightedDegreesAndTotalVolume() {
-    snapshotOriginalWeightedDegrees();
+  void snapshotOriginalWeightedDegreesAndTotalVolume(bool parallel = true) {
+    snapshotOriginalWeightedDegrees(parallel);
     snapshotOriginalTotalVolume();
   }
 

@@ -42,28 +42,41 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::partitionImpl(
   // if num. nodes = k, assign each node to its own block
   // otherwise produce same result as random IP (maybe change later)
   if ( _ip_data.should_initial_partitioner_run(_ipName) ) {
-    HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-    PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
+    /* Concurrency Problem:
+     * - IP gets a local to its thread hypergraph
+     * - if an IP used multiple threads, and there are no more threads available,
+     *   tbb can make this IP wait and start another IP in the same thread
+     *   (the same happens with blocked by a mutex IPs)
+     * => two IPs can share the same local hypergraph
+     * => they can override / merge each other's partitioning
+     * 
+     * Current solution: limit IP to one thread
+    */
+    tbb::task_arena limited_arena(1);
+    limited_arena.execute([&]{
+      HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+      PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-    if (hg.hasFixedVertices() || !hg.hasAON() || !hg.is_static_hypergraph) {
-      // fixed vertices are currently not supported in AON-Hypermodularity IP
-      randomPartition(hg);
-    } else {
-      AON_HMLL(hg, 
-               edgeSizeThreshold,
-               maxNumIter,
-               eps,
-               clusterPenalty,
-               randomize,
-               useOriginalEdgeSizes);
-    }
-    // =============== General final steps of IP =============
+      if (hg.hasFixedVertices() || !hg.hasAON() || !hg.is_static_hypergraph) {
+        // fixed vertices are currently not supported in AON-Hypermodularity IP
+        randomPartition(hg);
+      } else {
+        AON_HMLL(hg, 
+                edgeSizeThreshold,
+                maxNumIter,
+                eps,
+                clusterPenalty,
+                randomize,
+                useOriginalEdgeSizes);
+      }
+      // =============== General final steps of IP =============
 
-    hg.needsConductancePriorityQueue();
+      hg.needsConductancePriorityQueue(/* parallel = */ false);
 
-    HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-    double time = std::chrono::duration<double>(end - start).count();
-    _ip_data.commit(_ipName, _rng, _tag, time);
+      HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+      double time = std::chrono::duration<double>(end - start).count();
+      _ip_data.commit(_ipName, _rng, _tag, time);
+    });
   }
 }
 
@@ -180,7 +193,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::AON_HMLL(PartitionedHyper
         "node " << hn << " is assigned to an invalid partition: k = " << H_new_partitioned.k());
     hg.setOnlyNodePart(hn, partition);
   }
-  hg.initializePartition();
+  hg.initializePartition(/* parallel = */ false);
 }
 
 template<typename TypeTraits>

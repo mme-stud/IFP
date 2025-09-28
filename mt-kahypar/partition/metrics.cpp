@@ -458,10 +458,9 @@ double compute_double_conductance(const PartitionedHypergraph& phg) {
 
 template<typename PartitionedHypergraph>
 long double compute_double_aon_hypermodularity(const PartitionedHypergraph& phg) {
-  ASSERT( !PartitionedHypergraph::is_graph, "AON Hypermodularity objective is not supported for graphs" );
-  ASSERT(phg.hasAON());
-  ASSERT(phg.hasOriginalEdgeSizes());
-  
+  if (!phg.hasAON()) {
+    return std::numeric_limits<long double>::quiet_NaN();
+  }
   // Compute objective by iterating through all hyperedges
   auto double_edge_gain = [&](const PartitionedHypergraph& phg, const HyperedgeID he) 
     -> long double

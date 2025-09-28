@@ -512,8 +512,8 @@ private:
   }
 
   // ! Save current edge sizes as original edge sizes
-  void snapshotOriginalEdgeSizes() {
-    _hg->snapshotOriginalEdgeSizes();
+  void snapshotOriginalEdgeSizes(bool parallel = true) {
+    _hg->snapshotOriginalEdgeSizes(parallel);
   }
 
   // ! Get the edge size at the moment of the last snapshot
@@ -529,7 +529,8 @@ private:
   // ------- Snapshot volumes and weighted degrees (not supported) -------
   // ! Save the current weighted degrees and volumes as original stats
   // ! Not supported for graphs
-  void snapshotOriginalWeightedDegreesAndVolumes() {
+  void snapshotOriginalWeightedDegreesAndVolumes(bool parallel = true) {
+    unused(parallel);
     throw UnsupportedOperationException(
       "snapshotOriginalWeightedDegreesAndVolumes() is not supported for PartitionedGraph");
   }
@@ -774,7 +775,7 @@ private:
 
   // ! Initializes the partition of the hypergraph, if block ids are assigned with
   // ! setOnlyNodePart(...). In that case, block weights must be initialized explicitly here.
-  void initializePartition() {
+  void initializePartition(bool seq = false) {
     initializeBlockWeights();
   }
 
@@ -1295,7 +1296,7 @@ private:
   }
 
   // ! Get top 3 partitions with the highest conductance: not supported
-  vec<ConductanceInfo> topThreePartConductanceInfos() const {
+  std::vector<ConductanceInfo> topThreePartConductanceInfos() const {
     throw UnsupportedOperationException("Only supported for partitioned hypergraphs");
     return {};
   }
@@ -1306,7 +1307,8 @@ private:
     return nullptr;
   }
   // Interface mirroring
-  bool needsConductancePriorityQueue() const {
+  bool needsConductancePriorityQueue(bool parallel = true) const {
+    unused(parallel);
     return false;
   }
   // Interface mirroring

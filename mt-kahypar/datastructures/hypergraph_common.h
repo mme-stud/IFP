@@ -30,6 +30,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 #include "include/mtkahypartypes.h"
 
@@ -200,7 +201,7 @@ struct SynchronizedEdgeUpdate {
   HypergraphVolume cut_weight_to_after = 0;
   HypergraphVolume weighted_degree = 0; // only the used version!!!
   HypergraphVolume total_volume = 0; // only the used version!!!
-  vec<ds::ConductanceInfo> top_three_conductance_info_before;
+  std::vector<ds::ConductanceInfo> top_three_conductance_info_before;
   // (new) For AON-Hypermodularity:
   //! Pointers / views to the *global* βₖ and γₖ arrays of the **current
   //! hierarchy level**.  They never change during the whole node move, so a

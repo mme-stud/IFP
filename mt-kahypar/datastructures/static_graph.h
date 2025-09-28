@@ -725,10 +725,11 @@ class StaticGraph {
   }
 
   // ! Save current edge sizes as original edge sizes
-  void snapshotOriginalEdgeSizes() {
+  void snapshotOriginalEdgeSizes(bool parallel = true) {
     // In static graphs, edge sizes are always 2, so we do not need to do anything
     // here. This function is only provided to have a common interface with static
     // hypergraphs.
+    unused(parallel);
   }
 
   // ! Get the edge size at the moment of the last snapshot
@@ -747,7 +748,8 @@ class StaticGraph {
   // ! Save the current weighted degrees and total volume as original stats
   // ! (together for their consistency)
   // ! Not supported for graphs
-  void snapshotOriginalWeightedDegreesAndTotalVolume() {
+  void snapshotOriginalWeightedDegreesAndTotalVolume(bool parallel = true) {
+    unused(parallel);
     throw UnsupportedOperationException(
       "snapshotOriginalWeightedDegreesAndTotalVolume is not supported for static graph");
   }

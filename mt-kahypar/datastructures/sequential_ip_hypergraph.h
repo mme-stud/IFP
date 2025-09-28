@@ -27,32 +27,45 @@
 
 #pragma once
 
-
-#include <tbb/parallel_for.h>
-
 #include "include/mtkahypartypes.h"
+
+#include "mt-kahypar/datastructures/static_hypergraph.h"
+#include "mt-kahypar/datastructures/static_graph.h"
 
 #include "mt-kahypar/macros.h"
 #include "mt-kahypar/datastructures/array.h"
+#include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/datastructures/fixed_vertex_support.h"
-#include "mt-kahypar/parallel/atomic_wrapper.h"
-#include "mt-kahypar/parallel/stl/scalable_vector.h"
 #include "mt-kahypar/partition/context_enum_classes.h"
 #include "mt-kahypar/utils/memory_tree.h"
 #include "mt-kahypar/utils/range.h"
 #include "mt-kahypar/utils/exception.h"
 
+
+
+
+
 namespace mt_kahypar {
 namespace ds {
 
-// Forward
-class StaticHypergraphFactory;
-template <typename Hypergraph,
-          typename ConnectivityInformation>
-class PartitionedHypergraph;
+/*
+  A class representing a hypergraph with a partition. Its nodes have both community IDs and
+  partition IDs. Initially, each node is in its own community and partition. Collapse method
+  contracts the hypergraph based on the current partition IDs and returns a new
+  instance representing the coarser hypergraph. The community IDs of the nodes in the
+  coarser hypergraph are set to the PartitionIDs of the nodes in the finer hypergraph.
 
-class StaticHypergraph {
+  The functionality is based on the StaticHypergraph class. But no parallel calls are made.
+  And the class provides additional functionality of the PartitionedHypergraph.
+
+  Constructor: takes a movable StaticHypergraph and moves its needed data.
+  After that, each vertex is assigned to be in its own cluster (i.e., community and partition).
+
+  contract(global_communities, deterministic): contracts the hypergraph based on the current
+  PartitionIDs and translates the global community structure to the new community labels
+*/
+class SequentialIPHypergraph {
 
   static constexpr bool enable_heavy_assert = false;
 
@@ -67,8 +80,8 @@ class StaticHypergraph {
   static_assert(std::is_unsigned<HypernodeID>::value, "Hypernode ID must be unsigned");
   static_assert(std::is_unsigned<HyperedgeID>::value, "Hyperedge ID must be unsigned");
 
-  using AtomicHypernodeID = parallel::IntegralAtomicWrapper<HypernodeID>;
-  using AtomicHypernodeWeight = parallel::IntegralAtomicWrapper<HypernodeWeight>;
+  using AtomicHypernodeID = HypernodeID; // parallel::IntegralAtomicWrapper<HypernodeID>;
+  using AtomicHypernodeWeight = HypernodeWeight; // parallel::IntegralAtomicWrapper<HypernodeWeight>;
   using UncontractionFunction = std::function<void (const HypernodeID, const HypernodeID, const HyperedgeID)>;
   #define NOOP_BATCH_FUNC [] (const HypernodeID, const HypernodeID, const HyperedgeID) { }
 
@@ -98,6 +111,12 @@ class StaticHypergraph {
       _size(0),
       _weight(1),
       _valid(false) { }
+
+    Hypernode(const StaticHypergraph::Hypernode& other) :
+      _begin(other.firstEntry()),
+      _size(other.size()),
+      _weight(other.weight()),
+      _valid(!other.isDisabled()) { }
 
     bool isDisabled() const {
       return _valid == false;
@@ -181,6 +200,13 @@ class StaticHypergraph {
       _original_size(0),
       _weight(1),
       _valid(false) { }
+
+    Hyperedge(const StaticHypergraph::Hyperedge& other) :
+      _begin(other.firstEntry()),
+      _size(other.size()),
+      _original_size(other.size()), 
+      _weight(other.weight()),
+      _valid(!other.isDisabled()) { }
 
     // ! Disables the hypernode/hyperedge. Disable hypernodes/hyperedges will be skipped
     // ! when iterating over the set of all nodes/edges.
@@ -354,8 +380,8 @@ class StaticHypergraph {
   static_assert(std::is_trivially_copyable<Hypernode>::value, "Hypernode is not trivially copyable");
   static_assert(std::is_trivially_copyable<Hyperedge>::value, "Hyperedge is not trivially copyable");
 
-  using IncidenceArray = Array<HypernodeID>;
-  using IncidentNets = Array<HyperedgeID>;
+  using IncidenceArray = std::vector<HypernodeID>;
+  using IncidentNets = std::vector<HyperedgeID>;
 
   // ! Contains buffers that are needed during multilevel contractions.
   // ! Struct is allocated on top level hypergraph and passed to each contracted
@@ -364,32 +390,22 @@ class StaticHypergraph {
     explicit TmpContractionBuffer(const HypernodeID num_hypernodes,
                                   const HyperedgeID num_hyperedges,
                                   const HyperedgeID num_pins) {
-      tbb::parallel_invoke([&] {
-        mapping.resize("Coarsening", "mapping", num_hypernodes);
-      }, [&] {
-        tmp_hypernodes.resize("Coarsening", "tmp_hypernodes", num_hypernodes);
-      }, [&] {
-        tmp_incident_nets.resize("Coarsening", "tmp_incident_nets", num_pins);
-      }, [&] {
-        tmp_num_incident_nets.resize("Coarsening", "tmp_num_incident_nets", num_hypernodes);
-      }, [&] {
-        hn_weights.resize("Coarsening", "hn_weights", num_hypernodes);
-      }, [&] {
-        tmp_hyperedges.resize("Coarsening", "tmp_hyperedges", num_hyperedges);
-      }, [&] {
-        tmp_incidence_array.resize("Coarsening", "tmp_incidence_array", num_pins);
-      }, [&] {
-        he_sizes.resize("Coarsening", "he_sizes", num_hyperedges);
-      }, [&] {
-        valid_hyperedges.resize("Coarsening", "valid_hyperedges", num_hyperedges);
-      });
+      mapping.resize("Coarsening", "mapping", num_hypernodes, false, false);
+      tmp_hypernodes.resize("Coarsening", "tmp_hypernodes", num_hypernodes, false, false);
+      tmp_incident_nets.resize(num_pins);
+      tmp_num_incident_nets.resize("Coarsening", "tmp_num_incident_nets", num_hypernodes, false, false);
+      hn_weights.resize("Coarsening", "hn_weights", num_hypernodes, false, false);
+      tmp_hyperedges.resize("Coarsening", "tmp_hyperedges", num_hyperedges, false, false);
+      tmp_incidence_array.resize(num_pins);
+      he_sizes.resize("Coarsening", "he_sizes", num_hyperedges, false, false);
+      valid_hyperedges.resize("Coarsening", "valid_hyperedges", num_hyperedges, false, false);
     }
 
     Array<size_t> mapping;
     Array<Hypernode> tmp_hypernodes;
     IncidentNets tmp_incident_nets;
-    Array<parallel::IntegralAtomicWrapper<size_t>> tmp_num_incident_nets;
-    Array<parallel::IntegralAtomicWrapper<HypernodeWeight>> hn_weights;
+    Array<size_t> tmp_num_incident_nets;
+    Array<HypernodeWeight> hn_weights;
     Array<Hyperedge> tmp_hyperedges;
     IncidenceArray tmp_incidence_array;
     Array<size_t> he_sizes;
@@ -399,13 +415,14 @@ class StaticHypergraph {
  public:
   static constexpr bool is_graph = false;
   static constexpr bool is_static_hypergraph = true;
-  static constexpr bool is_partitioned = false;
+  static constexpr bool is_partitioned = true;
+  static constexpr bool uses_tbb = false;
   static constexpr size_t SIZE_OF_HYPERNODE = sizeof(Hypernode);
   static constexpr size_t SIZE_OF_HYPEREDGE = sizeof(Hyperedge);
-  static constexpr mt_kahypar_hypergraph_type_t TYPE = STATIC_HYPERGRAPH;
+  // static constexpr mt_kahypar_hypergraph_type_t TYPE = STATIC_HYPERGRAPH;
 
   // ! Factory
-  using Factory = StaticHypergraphFactory;
+  //  using Factory = SequentialIPHypergraphFactory;
   // ! Iterator to iterate over the hypernodes
   using HypernodeIterator = HypergraphElementIterator<const Hypernode>;
   // ! Iterator to iterate over the hyperedges
@@ -420,15 +437,78 @@ class StaticHypergraph {
     HyperedgeID representative;
   };
 
-  explicit StaticHypergraph() :
+  // The main constructor
+  SequentialIPHypergraph(const StaticHypergraph& static_hg) :
+    _num_hypernodes(static_hg._num_hypernodes),
+    _num_removed_hypernodes(0),
+    _removed_degree_zero_hn_weight(0),
+    _num_hyperedges(static_hg._num_hyperedges),
+    _num_removed_hyperedges(0),
+    _original_max_edge_size(static_hg._original_max_edge_size),
+    _num_pins(static_hg._num_pins),
+    _k(static_hg._num_hypernodes), // Initial singleton partition
+    _total_degree(static_hg._total_degree),
+    _total_weight(static_hg._total_weight),
+    _total_volume(static_hg._total_volume),
+    _original_total_volume(static_hg._original_total_volume),
+    // fill later
+    _hypernodes(static_hg._num_hypernodes),
+    _incident_nets(static_hg._incident_nets.size()),
+    _hyperedges(static_hg._num_hyperedges),
+    _incidence_array(static_hg._incidence_array.size()),
+    _weighted_degrees(static_hg._num_hypernodes, 0),
+    _original_weighted_degrees(static_hg._num_hypernodes),
+    _part_original_volumes(static_hg._num_hypernodes),
+    _part_sizes(static_hg._num_hypernodes, 1), // singleton partition
+    _part_ids(static_hg._num_hypernodes),
+    // fill now
+    _tmp_contraction_buffer(nullptr),
+    _disable_single_pin_nets_removal(static_hg._disable_single_pin_nets_removal),
+    _use_original_size_in_parallel_nets_detection(static_hg._use_original_size_in_parallel_nets_detection),
+    _has_original_edge_sizes(static_hg._has_original_edge_sizes),
+    _beta_ref(&static_hg._beta), _gamma_ref(&static_hg._gamma), _omega_ref(&static_hg._omega)
+  {
+    for ( HypernodeID u = 0; u < _num_hypernodes; ++u ) {
+      _hypernodes[u] = static_hg._hypernodes[u];
+      _weighted_degrees[u] = static_hg._weighted_degrees[u];
+      _original_weighted_degrees[u] = static_hg._original_weighted_degrees[u];
+      // Singleton partition
+      _part_original_volumes[u] = static_hg._original_weighted_degrees[u];
+      _part_ids[u] = u;
+    }
+    for ( HyperedgeID e = 0; e < _num_hyperedges; ++e ) {
+      _hyperedges[e] = static_hg._hyperedges[e];
+    }
+    for ( size_t i = 0; i < static_hg._incident_nets.size(); ++i ) {
+      _incident_nets[i] = static_hg._incident_nets[i];
+    }
+    for ( size_t i = 0; i < static_hg._incidence_array.size(); ++i ) {
+      _incidence_array[i] = static_hg._incidence_array[i];
+    }
+  }
+
+  //! Dummy constructor to avoid compile error in AON IP
+  SequentialIPHypergraph(const DynamicHypergraph&) {
+    throw UnsupportedOperationException("SequentialIPHypergraph: Invalid constructor call");
+  }
+  //! Dummy constructor to avoid compile error in AON IP
+  SequentialIPHypergraph(const StaticGraph&) {
+    throw UnsupportedOperationException("SequentialIPHypergraph: Invalid constructor call");
+  }
+  //! Dummy constructor to avoid compile error in AON IP
+  SequentialIPHypergraph(const DynamicGraph&) {
+    throw UnsupportedOperationException("SequentialIPHypergraph: Invalid constructor call");
+  }
+
+  explicit SequentialIPHypergraph() :
     _num_hypernodes(0),
     _num_removed_hypernodes(0),
     _removed_degree_zero_hn_weight(0),
     _num_hyperedges(0),
     _num_removed_hyperedges(0),
-    _max_edge_size(0),
     _original_max_edge_size(0),
     _num_pins(0),
+    _k(0),
     _total_degree(0),
     _total_weight(0),
     _total_volume(0),
@@ -439,24 +519,25 @@ class StaticHypergraph {
     _incidence_array(),
     _weighted_degrees(),
     _original_weighted_degrees(),
-    _community_ids(0),
-    _fixed_vertices(),
+    _part_original_volumes(),
+    _part_sizes(),
+    _part_ids(0),
     _tmp_contraction_buffer(nullptr),
-    _beta(1, 0.0), _gamma(1, 0.0), _omega(1, {0.0, 0.0})
+    _beta_ref(nullptr), _gamma_ref(nullptr), _omega_ref(nullptr)
     { }
 
-  StaticHypergraph(const StaticHypergraph&) = delete;
-  StaticHypergraph & operator= (const StaticHypergraph &) = delete;
+  SequentialIPHypergraph(const SequentialIPHypergraph&) = delete;
+  SequentialIPHypergraph & operator= (const SequentialIPHypergraph &) = delete;
 
-  StaticHypergraph(StaticHypergraph&& other) :
+  SequentialIPHypergraph(SequentialIPHypergraph&& other) :
     _num_hypernodes(other._num_hypernodes),
     _num_removed_hypernodes(other._num_removed_hypernodes),
     _removed_degree_zero_hn_weight(other._removed_degree_zero_hn_weight),
     _num_hyperedges(other._num_hyperedges),
     _num_removed_hyperedges(other._num_removed_hyperedges),
-    _max_edge_size(other._max_edge_size),
     _original_max_edge_size(other._original_max_edge_size),
     _num_pins(other._num_pins),
+    _k(other._k),
     _total_degree(other._total_degree),
     _total_weight(other._total_weight),
     _total_volume(other._total_volume),
@@ -467,29 +548,28 @@ class StaticHypergraph {
     _incidence_array(std::move(other._incidence_array)),
     _weighted_degrees(std::move(other._weighted_degrees)),
     _original_weighted_degrees(std::move(other._original_weighted_degrees)),
-    _community_ids(std::move(other._community_ids)),
-    _fixed_vertices(std::move(other._fixed_vertices)),
+    _part_original_volumes(std::move(other._part_original_volumes)),
+    _part_sizes(std::move(other._part_sizes)),
+    _part_ids(std::move(other._part_ids)),
     _tmp_contraction_buffer(std::move(other._tmp_contraction_buffer)),
-    _enable_collective_sync_update(other._enable_collective_sync_update),
     _disable_single_pin_nets_removal(other._disable_single_pin_nets_removal),
     _use_original_size_in_parallel_nets_detection(other._use_original_size_in_parallel_nets_detection),
     _has_original_edge_sizes(other._has_original_edge_sizes),
-    _beta(std::move(other._beta)), _gamma(std::move(other._gamma)),
-        _omega(std::move(other._omega)) 
+    _beta_ref(std::move(other._beta_ref)), _gamma_ref(std::move(other._gamma_ref)),
+    _omega_ref(std::move(other._omega_ref)) 
   {
-    _fixed_vertices.setHypergraph(this);
     other._tmp_contraction_buffer = nullptr;
   }
 
-  StaticHypergraph & operator= (StaticHypergraph&& other) {
+  SequentialIPHypergraph & operator= (SequentialIPHypergraph&& other) {
     _num_hypernodes = other._num_hypernodes;
     _num_removed_hypernodes = other._num_removed_hypernodes;
     _removed_degree_zero_hn_weight = other._removed_degree_zero_hn_weight;
     _num_hyperedges = other._num_hyperedges;
     _num_removed_hyperedges = other._num_removed_hyperedges;
-    _max_edge_size = other._max_edge_size;
     _original_max_edge_size = other._original_max_edge_size;
     _num_pins = other._num_pins;
+    _k = other._k;
     _total_degree = other._total_degree;
     _total_weight = other._total_weight;
     _total_volume = other._total_volume;
@@ -500,22 +580,21 @@ class StaticHypergraph {
     _incidence_array = std::move(other._incidence_array);
     _weighted_degrees = std::move(other._weighted_degrees);
     _original_weighted_degrees = std::move(other._original_weighted_degrees);
-    _community_ids = std::move(other._community_ids);
-    _fixed_vertices = std::move(other._fixed_vertices);
-    _fixed_vertices.setHypergraph(this);
+    _part_original_volumes = std::move(other._part_original_volumes);
+    _part_sizes = std::move(other._part_sizes);
+    _part_ids = std::move(other._part_ids);
     _tmp_contraction_buffer = std::move(other._tmp_contraction_buffer);
     _disable_single_pin_nets_removal = other._disable_single_pin_nets_removal;
-    _enable_collective_sync_update = other._enable_collective_sync_update;
     _use_original_size_in_parallel_nets_detection = other._use_original_size_in_parallel_nets_detection;
     _has_original_edge_sizes = other._has_original_edge_sizes;
     other._tmp_contraction_buffer = nullptr;
-    _beta = std::move(other._beta);
-    _gamma = std::move(other._gamma);
-    _omega = std::move(other._omega);
+    _beta_ref = std::move(other._beta_ref);
+    _gamma_ref = std::move(other._gamma_ref);
+    _omega_ref = std::move(other._omega_ref);
     return *this;
   }
 
-  ~StaticHypergraph() {
+  ~SequentialIPHypergraph() {
     if ( _tmp_contraction_buffer ) {
       delete(_tmp_contraction_buffer);
       _tmp_contraction_buffer = nullptr;
@@ -550,6 +629,11 @@ class StaticHypergraph {
     return _num_removed_hyperedges;
   }
 
+  // ! Number of clusters
+  PartitionID k() const {
+    return _k;
+  }
+
   // ! Set the number of removed hyperedges
   void setNumRemovedHyperedges(const HyperedgeID num_removed_hyperedges) {
     _num_removed_hyperedges = num_removed_hyperedges;
@@ -581,33 +665,31 @@ class StaticHypergraph {
   }
 
   // ! Computes the total node weight of the hypergraph
-  void computeAndSetTotalNodeWeight(parallel_tag_t);
+  void computeAndSetTotalNodeWeight();
 
-  // ! Computes the total volume of the hypergraph
-  void computeAndSetTotalVolume(parallel_tag_t);
 
   // ####################### Iterators #######################
 
-  // ! Iterates in parallel over all active nodes and calls function f
+  // ! Iterates sequentially (!) over all active nodes and calls function f
   // ! for each vertex
   template<typename F>
-  void doParallelForAllNodes(const F& f) const {
-    tbb::parallel_for(ID(0), _num_hypernodes, [&](const HypernodeID& hn) {
+  void doForAllNodes(const F& f) const {
+    for (HypernodeID hn = 0; hn < _num_hypernodes; ++hn) {
       if ( nodeIsEnabled(hn) ) {
         f(hn);
       }
-    });
+    }
   }
 
-  // ! Iterates in parallel over all active edges and calls function f
+  // ! Iterates sequentially (!) over all active edges and calls function f
   // ! for each net
   template<typename F>
-  void doParallelForAllEdges(const F& f) const {
-    tbb::parallel_for(ID(0), _num_hyperedges, [&](const HyperedgeID& he) {
+  void doForAllEdges(const F& f) const {
+    for (HyperedgeID he = 0; he < _num_hyperedges; ++he) {
       if ( edgeIsEnabled(he) ) {
         f(he);
       }
-    });
+    }
   }
 
   // ! Returns a range of the active nodes of the hypergraph
@@ -667,17 +749,8 @@ class StaticHypergraph {
     return _weighted_degrees[u];
   }
 
-  // ! Decrease weighted degree of a hypernode
-  // ! (Not supported)
-  void decreaseNodeWeightedDegree(const HypernodeID u, const HypergraphVolume w) const {
-    unused(u);
-    unused(w);
-    throw UnsupportedOperationException(
-      "decreaseNodeWeightedDegree(u, w) is not supported in static hypergraph");
-  }
-
   // ! Original weighted degree of a hypernode
-  // ! (during dontractions and single-pin nets removal)
+  // ! (during contractions and single-pin nets removal)
   HypergraphVolume nodeOriginalWeightedDegree(const HypernodeID u) const {
     ASSERT(u < _num_hypernodes, "Hypernode" << u << "does not exist");
     return _original_weighted_degrees[u];
@@ -738,11 +811,6 @@ class StaticHypergraph {
     return hyperedge(e).size();
   }
 
-  // ! Maximum size of a hyperedge
-  HypernodeID maxEdgeSize() const {
-    return _max_edge_size;
-  }
-
   // ! Returns, whether a hyperedge is enabled or not
   bool edgeIsEnabled(const HyperedgeID e) const {
     return !hyperedge(e).isDisabled();
@@ -757,15 +825,38 @@ class StaticHypergraph {
   void disableHyperedge(const HyperedgeID e) {
     hyperedge(e).disable();
   }
-
-  // ! Community id which hypernode u is assigned to
-  PartitionID communityID(const HypernodeID u) const {
-    return _community_ids[u];
+  // ! Partition id which hypernode u is assigned to
+  PartitionID partID(const HypernodeID u) const {
+    return _part_ids[u];
+  }
+  // ! Assign a partition to a hypernode
+  void setNodePart(const HypernodeID u, const PartitionID p) {
+    ASSERT(_part_ids[u] == kInvalidPartition, "Hypernode" << u << "is already assigned to a partition");
+    ASSERT(p != kInvalidPartition, "Cannot assign hypernode" << u << "to invalid partition");
+    ASSERT(p < _k, "Part ID" << p << "is out of bounds: " << V(_k));
+    _part_ids[u] = p;
+    _part_original_volumes[p] += _original_weighted_degrees[u];
+    _part_sizes[p] += 1;
+  }
+  // ! Change a hypernode's partition from old to new
+  void changeNodePart(const HypernodeID u, const PartitionID from, const PartitionID to) {
+    ASSERT(_part_ids[u] != kInvalidPartition, "Hypernode" << u << "is not assigned to a partition");
+    ASSERT(from == _part_ids[u], "Hypernode" << u << "is not in partition" << from);
+    ASSERT(to != kInvalidPartition && to < _k, "Cannot assign hypernode" << u << "to invalid partition: " << V(to) << V(_k));
+    if ( from == to ) return;
+    _part_ids[u] = to;
+    _part_original_volumes[from] -= _original_weighted_degrees[u];
+    _part_original_volumes[to] += _original_weighted_degrees[u];
+    _part_sizes[from] -= 1;
+    _part_sizes[to] += 1;
   }
 
-  // ! Assign a community to a hypernode
-  void setCommunityID(const HypernodeID u, const PartitionID community_id) {
-    _community_ids[u] = community_id;
+  HypergraphVolume partOriginalVolume(const PartitionID p) const {
+    return _part_original_volumes[p];
+  }
+
+  HypernodeID partSize(const PartitionID p) const {
+    return _part_sizes[p];
   }
 
   // ########################### Snapshots ############################
@@ -776,31 +867,13 @@ class StaticHypergraph {
     return _has_original_edge_sizes;
   }
 
-  // ! Save current edge sizes as original edge sizes (in parallel!)
-  void snapshotOriginalEdgeSizes(bool parallel = true) {
+  // ! Save current edge sizes as original edge sizes
+  void snapshotOriginalEdgeSizes() {
     _original_max_edge_size = 0;
-    if (parallel) {
-      _original_max_edge_size = tbb::parallel_reduce(
-        tbb::blocked_range<HyperedgeID>(0, _num_hyperedges),
-        HypernodeID(0),
-        [&](const tbb::blocked_range<HyperedgeID>& r, HypernodeID local_max) {
-          for (HyperedgeID e = r.begin(); e != r.end(); ++e) {
-            if (!edgeIsEnabled(e)) continue;
-            HypernodeID size_now = hyperedge(e).size();
-            hyperedge(e).setOriginalSize(size_now);
-            local_max = std::max(local_max, size_now);
-          }
-          return local_max;
-        },
-        [](const HypernodeID a, const HypernodeID b) {
-          return std::max(a, b);
-        });
-    } else {
-      for (HyperedgeID e : edges()) {
-        HypernodeID size_now = hyperedge(e).size();
-        hyperedge(e).setOriginalSize(size_now);
-        _original_max_edge_size = std::max(_original_max_edge_size, size_now);
-      }
+    for (HyperedgeID e : edges()) {
+      HypernodeID size_now = hyperedge(e).size();
+      hyperedge(e).setOriginalSize(size_now);
+      _original_max_edge_size = std::max(_original_max_edge_size, size_now);
     }
     _has_original_edge_sizes = true;
   }
@@ -822,18 +895,13 @@ class StaticHypergraph {
 private:
   // ! Save the current weighted degrees as original
   // ! (private as weighted degrees should be consistent with the total volume)
-  void snapshotOriginalWeightedDegrees(bool parallel = true) {
+  void snapshotOriginalWeightedDegrees() {
     // _original_weighted_degrees = _weighted_degrees; // Arrays have no copy semantics...
     // _original_weighted_degrees.resize(_weighted_degrees.size(), 0);
     ASSERT(_original_weighted_degrees.size() == _weighted_degrees.size());
-    if (parallel)
-      doParallelForAllNodes([&] (const HypernodeID u) {
-        _original_weighted_degrees[u] = _weighted_degrees[u];
-      });
-    else
-      for (const HypernodeID u : nodes()) {
-        _original_weighted_degrees[u] = _weighted_degrees[u];
-      }
+    for (std::size_t i = 0; i < _weighted_degrees.size(); ++i) {
+      _original_weighted_degrees[i] = _weighted_degrees[i];
+    }
   }
   // ! Save the current total volume as original
   // ! (private as total volume should be consistent with the weighted degrees)
@@ -841,260 +909,83 @@ private:
     _original_total_volume = totalVolume();
   }
 public:
-  // ! Save the current weighted degrees and total volume as original stats
+  // ! Save the current weighted degrees and total volume as original stats (sequential)
   // ! (together for their consistency)
-  void snapshotOriginalWeightedDegreesAndTotalVolume(bool parallel = true) {
-    snapshotOriginalWeightedDegrees(parallel);
+  void snapshotOriginalWeightedDegreesAndTotalVolume() {
+    snapshotOriginalWeightedDegrees();
     snapshotOriginalTotalVolume();
   }
-
   // ######################## AON-Hypermodularity #######################
   
   // ! AON HyperModularity Clustering
   // ! true once the three vectors were filled at the finest level
-  bool hasAON() const { return !_omega.empty(); }
+  bool hasAON() const { return !_omega_ref->empty(); }
 
   // ! Get \beta for AON HyperModularity Clustering
-  // ! Constant-time access by edge size d (d ≥ 0, d < _beta.size())
+  // ! Constant-time access by edge size d (d ≥ 0, d < _beta_ref.size())
   inline AONCoefficient beta(std::size_t d) const noexcept {
-    ASSERT(d < _beta.size() || d <= _max_edge_size || d <= _original_max_edge_size,
-           "d = " << d << " is out of bounds for beta vector of size " << _beta.size()
-           << " and max edge size " << _max_edge_size 
+    ASSERT(d < _beta_ref->size() || d <= _original_max_edge_size,
+           "d = " << d << " is out of bounds for beta vector of size " << _beta_ref->size()
            << " and saved original max edge size " << _original_max_edge_size);
-    return d < _beta.size() ? _beta[d] : 0.0;
+    return d < _beta_ref->size() ? (*_beta_ref)[d] : 0.0;
   }
 
   // ! Get \gamma for AON HyperModularity Clustering
-  // ! Constant-time access by edge size d (d ≥ 0, d < _gamma.size())
+  // ! Constant-time access by edge size d (d ≥ 0, d < _gamma_ref.size())
   inline AONCoefficient gamma(std::size_t d) const noexcept {
-    ASSERT(d < _gamma.size() || d <= _max_edge_size || d <= _original_max_edge_size,
-           "d = " << d << " is out of bounds for gamma vector of size " << _gamma.size()
-           << " and max edge size " << _max_edge_size
+    ASSERT(d < _gamma_ref->size() || d <= _original_max_edge_size,
+           "d = " << d << " is out of bounds for gamma vector of size " << _gamma_ref->size()
            << " and saved original max edge size " << _original_max_edge_size);
-    return d < _gamma.size() ? _gamma[d] : 0.0;
+    return d < _gamma_ref->size() ? (*_gamma_ref)[d] : 0.0;
   }
 
   // ! Get \omega_{d0} for AON HyperModularity Clustering
-  // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
+  // ! Constant-time access by edge size d (d ≥ 0, d < _omega_ref.size())
   inline AONCoefficient omegaIn(std::size_t d) const noexcept {
-    ASSERT(d < _omega.size(),
-           "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
-    return _omega[d][0];
-    // return d < _omega.size() ? _omega[d][0]   : 0.0;
+    ASSERT(d < _omega_ref->size(),
+           "d = " << d << " is out of bounds for omega vector of size " << _omega_ref->size());
+    return (*_omega_ref)[d][0];
+    // return d < _omega_ref.size() ? _omega_ref[d][0]   : 0.0;
   }
 
   // ! Get \omega_{d1} for AON HyperModularity Clustering
-  // ! Constant-time access by edge size d (d ≥ 0, d < _omega.size())
+  // ! Constant-time access by edge size d (d ≥ 0, d < _omega_ref.size())
   inline AONCoefficient omegaOut(std::size_t d) const noexcept {
-    ASSERT(d < _omega.size(),
-           "d = " << d << " is out of bounds for omega vector of size " << _omega.size());
-    return _omega[d][1];
-    // return d < _omega.size() ? _omega[d][1]   : 0.0;
+    ASSERT(d < _omega_ref->size(),
+           "d = " << d << " is out of bounds for omega vector of size " << _omega_ref->size());
+    return (*_omega_ref)[d][1];
+    // return d < _omega_ref.size() ? _omega_ref[d][1]   : 0.0;
   }
 
-  // ! _beta vector for AON-Hypermodularity. 
-  // ! Zeros at the end are omitted!
-  inline const vec<AONCoefficient>& betaVector()  const { return _beta;  }
-  // ! _gamma vector for AON-Hypermodularity. 
-  // ! Zeros at the end are omitted!
-  inline const vec<AONCoefficient>& gammaVector() const { return _gamma; }
+  // ! Size of the _beta_ref vector for AON-Hypermodularity. 
+  // ! (Zeros at the end are omitted!)
+  inline size_t betaVectorSize()  const { return _beta_ref->size();  }
+  // ! Size of the _gamma_ref vector for AON-Hypermodularity. 
+  // ! (Zeros at the end are omitted!)
+  inline size_t gammaVectorSize() const { return _gamma_ref->size(); }
+  // ! Size of the _omega_ref vector for AON-Hypermodularity. 
+  // ! (Zeros at the end are omitted!)
+  inline size_t omegaVectorSize() const { return _omega_ref->size(); }
 
-  // ──────────────────────────────────────────────────────────
-  /// (Re)compute β, γ, ω for the **current** community assignment
-  /// `_community_ids`.
-  ///
-  /// *   β[k]   = log(ω_in/ω_out)   for edge-size k (k ≥ 2)
-  /// *   γ[k]   = ω_in − ω_out
-  /// *   ω[k] = { ω_in , ω_out }
-  /// 
-  /// [Mariia: _beta = \beta, _gamma = \beta * \gamma 
-  ///           with \beta, \gamma from the Hypermodularity article]
-  ///
-  /// After the call the three member vectors `_beta`, `_gamma`, `_omega` are
-  /// filled and can be queried with beta(k), gamma(k), omegaIn/Out(k).
-  inline void computeAONParameters(double eps = 1e-12) {
-    unused(eps);
-    const std::size_t dmax = static_cast<std::size_t>(_original_max_edge_size);
-    // if (dmax < 2) { _beta.clear(); _gamma.clear(); _omega.clear(); return; }
-
-    /* ------------------------------------------------------------
-     * 1. cluster volumes  Vol_c = Σ_{v∈c} nodeVolume(v)
-     *    !!! No weights
-     * ---------------------------------------------------------- */
-    PartitionID L = 0;
-    for (HypernodeID v : nodes()) // get maximum cluster label
-      L = std::max<PartitionID>(L, communityID(v));
-    ++L; // clusters are 0-based
-
-    std::vector<AONCoefficient> ClusVol(L, 0.0);
-    for (HypernodeID v : nodes())
-      // ClusVol[communityID(v)] += static_cast<AONCoefficient>(nodeDegree(v));
-      // [mariia's suggestion]:
-      ClusVol[communityID(v)] += static_cast<AONCoefficient>(nodeOriginalWeightedDegree(v));
-
-    // const AONCoefficient vol_H = initialTotalVertexDegree();
-    // [mariia's suggestion]:
-    const AONCoefficient vol_H = static_cast<AONCoefficient>(originalTotalVolume());
-
-    /* ------------------------------------------------------------
-     * 2. count edges and cut edges per size k
-     * ---------------------------------------------------------- */
-    // m_k - sum of edge weights per size k
-    std::vector<AONCoefficient> m_k(dmax + 1, 0.01); // small bias avoids log(0)
-    // cut_k - sum of cut edge weights per size k
-    std::vector<AONCoefficient> cut_k(dmax + 1, 0.0);
-
-    for (HyperedgeID e : edges()) {
-      const std::size_t d = static_cast<std::size_t>(originalEdgeSize(e));
-      if (d < 2) // ignore single pin nets
-        continue;
-      const AONCoefficient w = static_cast<AONCoefficient>(edgeWeight(e));
-
-      bool cutting = false;
-      PartitionID first_c = communityID(*pins(e).begin());
-      for (HypernodeID pin : pins(e))
-        if (communityID(pin) != first_c) {
-          cutting = true;
-          break;
-        }
-
-      m_k[d] += w;
-      if (cutting)
-        cut_k[d] += w;
-    }
-
-    /* ------------------------------------------------------------
-     * 3. turn counts into ω, β, γ
-     * ---------------------------------------------------------- */
-    _beta.assign(dmax + 1, 0.0);
-    _gamma.assign(dmax + 1, 0.0);
-    _omega.assign(dmax + 1, {0.0, 0.0});
-
-    std::size_t last_non_zero = 0; // to avoid _beta and _gamma being mostly filled with 0.0
-    for (std::size_t d = 2; d <= dmax; ++d) {
-      // sum of d-th powers of community volumes (no weights!!!)
-      AONCoefficient vol_in = 0.0; 
-      for (AONCoefficient vc : ClusVol)
-        vol_in += std::pow(vc, static_cast<int>(d));
-      AONCoefficient vol_out;
-      AONCoefficient vol_H_d = std::pow(vol_H, static_cast<int>(d));
-      if (std::isfinite(vol_in) || std::isfinite(vol_H_d)) {
-        vol_out = vol_H_d - vol_in;
-      } else {
-        ASSERT(vol_in > 0, "vol_in is not finite, but non-positive: " << vol_in);
-        /** Rationale: avoiding inf - inf = NaN.
-         *    if vol_in = +inf, vol_out should be at least near to +inf
-         *    as vol_in = sum_i pow(vol(i), d), vol_H = sum_i vol(i)
-        */
-        vol_out = std::numeric_limits<AONCoefficient>::infinity();
-      }
-      AONCoefficient omega_in = static_cast<AONCoefficient>( (m_k[d] - cut_k[d]) / vol_in );
-      AONCoefficient omega_out = static_cast<AONCoefficient>( cut_k[d] / vol_out );
-      // (Normally) not NaN / +-Inf as m\_k, cut_k < total_volume. (vol_in and vol_out != NaN, 0)
-
-      /// [debug] std::cout << "Volume^d sum for d=" << d << ": " << vol_in << std::endl;
-      /// [debug] std::cout << "Volume^d for d=" << d << ": " << vol_H_d << std::endl;
-      /// [debug] std::cout << "d=" << d
-      /// [debug]           << ": edges=" << m_k[d] 
-      /// [debug]           << ", cuts=" << cut_k[d] 
-      /// [debug]           << ", omega_in=" << omega_in 
-      /// [debug]           << ", omega_out=" << omega_out << std::endl; 
-
-
-      _omega[d] = {omega_in, omega_out};
-      _beta[d] = std::log(omega_in) -  std::log(omega_out); // [mariia: \beta_k from (15)]
-      _gamma[d] = omega_in - omega_out; // [mariia: \beta_k * \gamma_k from (15)]
-      
-      // Adjustments for Inf, NaN
-      if (!std::isfinite(_beta[d])) {
-         if (_beta[d] != _beta[d]) { // NaN
-          _beta[d] = 0; // [hope:] both log omega-s are the same Inf => _beta[d] = 0
-          LOG << "Warning: _beta[" << d << "] is NaN, set to 0";
-        } else { // +-Inf
-          LOG << "Warning: _beta[" << d << "] is " << _beta[d] << ", changed to " 
-          << (_beta[d] > 0 ? "+1e3" : "-1e3");
-          _beta[d] = (_beta[d] > 0 ? 1e3 : -1e3);
-        }
-        // [mariia's idea -> ask!!!] 
-        // Idea: _beta[d] = NaN => both log omega-s are the same Inf => _beta[d] = 0
-      }
-      
-      if (_beta[d] != 0 || _gamma[d] != 0) {
-        last_non_zero = d;
-      }
-      LOG << "For edge size d = " << d << ": beta_d = " << _beta[d]
-          << ", gamma_d = " << _gamma[d];
-    }
-    // To avoid _beta and _gamma being mostly filled with 0.0
-    _beta.resize(last_non_zero + 1);
-    _gamma.resize(last_non_zero + 1);
-  }
   // ═══ AON MOD END ═══════════════════════════════════════════════════════
 
   // ####################### Fixed Vertex Support #######################
 
-  void addFixedVertexSupport(FixedVertexSupport<StaticHypergraph>&& fixed_vertices) {
-    _fixed_vertices = std::move(fixed_vertices);
-    _fixed_vertices.setHypergraph(this);
-  }
-
-  bool hasFixedVertices() const {
-    return _fixed_vertices.hasFixedVertices();
-  }
-
-  HypernodeWeight totalFixedVertexWeight() const {
-    return _fixed_vertices.totalFixedVertexWeight();
-  }
-
-  HypernodeWeight fixedVertexBlockWeight(const PartitionID block) const {
-    return _fixed_vertices.fixedVertexBlockWeight(block);
-  }
-
-  bool isFixed(const HypernodeID hn) const {
-    return _fixed_vertices.isFixed(hn);
-  }
-
-  PartitionID fixedVertexBlock(const HypernodeID hn) const {
-    return _fixed_vertices.fixedVertexBlock(hn);
-  }
-
-  void setMaxFixedVertexBlockWeight(const std::vector<HypernodeWeight> max_block_weights) {
-    _fixed_vertices.setMaxBlockWeight(max_block_weights);
-  }
-
-  const FixedVertexSupport<StaticHypergraph>& fixedVertexSupport() const {
-    return _fixed_vertices;
-  }
-
-  FixedVertexSupport<StaticHypergraph> copyOfFixedVertexSupport() const {
-    return _fixed_vertices.copy();
-  }
-
   // #################### Flags for PHG (here for now) #####################
-
-  // ! To enable collective sync updates in phg
-  void enableCollectiveSyncUpdates() {
-    /// [debug] std::cerr << "StaticHypergraph::enableCollectiveSyncUpdates()" << std::endl;
-    _enable_collective_sync_update = true;
-  }
-  bool areCollectiveSyncUpdatesEnabled() const {
-    /// [debug] std::cerr << "StaticHypergraph::areCollectiveSyncUpdatesEnabled()" << std::endl;
-    return _enable_collective_sync_update;
-  }
 
   // ####################### Single-Pin Nets Removal #######################
 
   // ! Disable single-pin nets removal before first contraction
   // ! Needed for both Objective::conductance_local ans Objective::conductance_global
   void disableSinglePinNetsRemoval() {
-    /// [debug] std::cerr << "StaticHypergraph::disableSinglePinNetsRemoval()" << std::endl;
+    /// [debug] std::cerr << "SequentialIPHypergraph::disableSinglePinNetsRemoval()" << std::endl;
     _disable_single_pin_nets_removal = true;
   }
 
   // ! Enable single-pin nets removal
   // ! Needed for AON-Hypermodularity IP
   void enableSinglePinNetsRemoval() {
-    /// [debug] std::cerr << "StaticHypergraph::enableSinglePinNetsRemoval()" << std::endl;
+    /// [debug] std::cerr << "SequentialIPHypergraph::enableSinglePinNetsRemoval()" << std::endl;
     _disable_single_pin_nets_removal = false;
   }
 
@@ -1120,20 +1011,20 @@ public:
   // ####################### Contract / Uncontract #######################
 
   /*!
-   * Contracts a given community structure. All vertices with the same label
-   * are collapsed into the same vertex. The resulting single-pin (if single-pin 
-   * nets removal isn't disabled) and parallel hyperedges are removed from the 
-   * contracted graph. The function returns the contracted hypergraph and a 
-   * mapping which specifies a mapping from community label (given in 'communities') 
-   * to a vertex in the coarse hypergraph.
+   * Contracts the community structure given in `_part_ids`. All vertices with
+   * the same label are collapsed into the same vertex. The resulting single-pin
+   * (if single-pin nets removal isn't disabled) and parallel hyperedges are
+   * removed from the contracted graph. The function maps the passed community
+   * structure to the new community labels in the coarse hypergraph.
    *
-   * \param communities Community structure that should be contracted
+   * \param global_communities Community structure that should be mapped to the
+   *                           new community labels in the coarse hypergraph.
    */
-  StaticHypergraph contract(parallel::scalable_vector<HypernodeID>& communities, bool deterministic = false);
+  void contract(std::vector<PartitionID>& global_communities, bool deterministic = false);
 
   bool registerContraction(const HypernodeID, const HypernodeID) {
     throw UnsupportedOperationException(
-      "registerContraction(u, v) is not supported in static hypergraph");
+      "registerContraction(u, v) is not supported in SequentialIPHypergraph");
     return false;
   }
 
@@ -1141,7 +1032,7 @@ public:
                   const HypernodeWeight max_node_weight = std::numeric_limits<HypernodeWeight>::max()) {
     unused(max_node_weight);
     throw UnsupportedOperationException(
-      "contract(v, max_node_weight) is not supported in static hypergraph");
+      "contract(v, max_node_weight) is not supported in SequentialIPHypergraph");
     return 0;
   }
 
@@ -1151,109 +1042,59 @@ public:
     unused(case_one_func);
     unused(case_two_func);
     throw UnsupportedOperationException(
-      "uncontract(batch) is not supported in static hypergraph");
+      "uncontract(batch) is not supported in SequentialIPHypergraph");
   }
 
   VersionedBatchVector createBatchUncontractionHierarchy(const size_t) {
     throw UnsupportedOperationException(
-      "createBatchUncontractionHierarchy(batch_size) is not supported in static hypergraph");
+      "createBatchUncontractionHierarchy(batch_size) is not supported in SequentialIPHypergraph");
     return { };
   }
 
   // ####################### Remove / Restore Hyperedges #######################
-
-  /*!
-  * Removes a hyperedge from the hypergraph. This includes the removal of he from all
-  * of its pins and to disable the hyperedge.
-  *
-  * NOTE, this function is not thread-safe and should only be called in a single-threaded
-  * setting.
-  */
-  void removeEdge(const HyperedgeID he) {
-    ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
-    _total_volume -= edgeWeight(he) * edgeSize(he);
-    for ( const HypernodeID& pin : pins(he) ) {
-      _weighted_degrees[pin] -= edgeWeight(he);
-      removeIncidentEdgeFromHypernode(he, pin);
-    }
-    ++_num_removed_hyperedges;
-    disableHyperedge(he);
-  }
-
-  /*!
-  * Removes a hyperedge from the hypergraph. This includes the removal of he from all
-  * of its pins and to disable the hyperedge. Noze, in contrast to removeEdge, this function
-  * removes hyperedge from all its pins in parallel.
-  *
-  * NOTE, this function is not thread-safe and should only be called in a single-threaded
-  * setting.
-  */
-  void removeLargeEdge(const HyperedgeID he) {
-    ASSERT(edgeIsEnabled(he), "Hyperedge" << he << "is disabled");
-    const size_t incidence_array_start = hyperedge(he).firstEntry();
-    const size_t incidence_array_end = hyperedge(he).firstInvalidEntry();
-    _total_volume -= edgeWeight(he) * edgeSize(he);
-    tbb::parallel_for(incidence_array_start, incidence_array_end, [&](const size_t pos) {
-      const HypernodeID pin = _incidence_array[pos];
-      _weighted_degrees[pin] -= edgeWeight(he);
-      removeIncidentEdgeFromHypernode(he, pin);
-    });
-    ++_num_removed_hyperedges;
-    disableHyperedge(he);
-  }
-
-  /*!
-   * Restores a large hyperedge previously removed from the hypergraph.
-   */
-  void restoreLargeEdge(const HyperedgeID& he) {
-    ASSERT(!edgeIsEnabled(he), "Hyperedge" << he << "is enabled");
-    enableHyperedge(he);
-    const size_t incidence_array_start = hyperedge(he).firstEntry();
-    const size_t incidence_array_end = hyperedge(he).firstInvalidEntry();
-    _total_volume += edgeWeight(he) * edgeSize(he);
-    tbb::parallel_for(incidence_array_start, incidence_array_end, [&](const size_t pos) {
-      const HypernodeID pin = _incidence_array[pos];
-      _weighted_degrees[pin] += edgeWeight(he);
-      insertIncidentEdgeToHypernode(he, pin);
-    });
-  }
-
-  parallel::scalable_vector<ParallelHyperedge> removeSinglePinAndParallelHyperedges() {
-    throw UnsupportedOperationException(
-      "removeSinglePinAndParallelHyperedges() is not supported in static hypergraph");
-    return { };
-  }
-
-  void restoreSinglePinAndParallelNets(const parallel::scalable_vector<ParallelHyperedge>&) {
-    throw UnsupportedOperationException(
-      "restoreSinglePinAndParallelNets(hes_to_restore) is not supported in static hypergraph");
-  }
-
   // ####################### Initialization / Reset Functions #######################
 
-  // ! Reset internal community information
-  void copyCommunityIDs(const parallel::scalable_vector<PartitionID>& community_ids) {
-    ASSERT(community_ids.size() == UI64(_num_hypernodes));
-    doParallelForAllNodes([&](const HypernodeID& hn) {
-      _community_ids[hn] = community_ids[hn];
+  void singletonPartition() {
+    _k = _num_hypernodes; 
+    doForAllNodes([&](const HypernodeID& hn) {
+      _part_ids[hn] = hn;
     });
   }
 
-  void setCommunityIDs(ds::Clustering&& communities) {
-    ASSERT(communities.size() == initialNumNodes());
-    _community_ids = std::move(communities);
+  // ! Reset internal partition information
+  void copyPartitionIDs(const std::vector<PartitionID>& part_ids) {
+    ASSERT(part_ids.size() == UI64(_num_hypernodes));
+    _k = 0;
+    doForAllNodes([&, this](const HypernodeID& hn) {
+      _part_ids[hn] = part_ids[hn];
+      _k = std::max(_k, part_ids[hn] + 1);
+    });
   }
 
-  // ! Copy static hypergraph in parallel
-  StaticHypergraph copy(parallel_tag_t) const;
+  void setPartitionIDs(std::vector<PartitionID>&& part_ids) {
+    ASSERT(part_ids.size() == initialNumNodes());
+    _part_ids = std::move(part_ids);
+    // _k = max in _part_ids + 1 use std::max_element
+    if ( !_part_ids.empty() ) {
+      PartitionID max = *std::max_element(_part_ids.cbegin(), _part_ids.cend());
+      _k = max + 1;
+    } else {
+      _k = 0;
+    }
+  }
 
   // ! Copy static hypergraph sequential
-  StaticHypergraph copy() const;
+  SequentialIPHypergraph copy(parallel_tag_t) const {
+    return copy(); 
+  }
+
+  // ! Copy static hypergraph sequential
+  SequentialIPHypergraph copy() const;
 
   // ! Reset internal data structure
   void reset() { }
 
-  // ! Free internal data in parallel
+  // ! Free internal data sequentially
   void freeInternalData() {
     if ( _num_hypernodes > 0 || _num_hyperedges > 0 ) {
       freeTmpContractionBuffer();
@@ -1279,12 +1120,9 @@ public:
   }
 
  private:
-  friend class StaticHypergraphFactory;
+  friend class SequentialIPHypergraphFactory;
   template<typename Hypergraph>
   friend class CommunitySupport;
-  template <typename Hypergraph,
-            typename ConnectivityInformation>
-  friend class PartitionedHypergraph;
 
   // ####################### Hypernode Information #######################
 
@@ -1296,7 +1134,7 @@ public:
 
   // ! To avoid code duplication we implement non-const version in terms of const version
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Hypernode& hypernode(const HypernodeID u) {
-    return const_cast<Hypernode&>(static_cast<const StaticHypergraph&>(*this).hypernode(u));
+    return const_cast<Hypernode&>(static_cast<const SequentialIPHypergraph&>(*this).hypernode(u));
   }
 
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE IteratorRange<IncidentNetsIterator> incident_nets_of(const HypernodeID u,
@@ -1318,7 +1156,7 @@ public:
 
   // ! To avoid code duplication we implement non-const version in terms of const version
   MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE Hyperedge& hyperedge(const HyperedgeID e) {
-    return const_cast<Hyperedge&>(static_cast<const StaticHypergraph&>(*this).hyperedge(e));
+    return const_cast<Hyperedge&>(static_cast<const SequentialIPHypergraph&>(*this).hyperedge(e));
   }
 
   // ####################### Remove / Restore Hyperedges #######################
@@ -1381,12 +1219,12 @@ public:
   HyperedgeID _num_hyperedges;
   // ! Number of removed hyperedges
   HyperedgeID _num_removed_hyperedges;
-  // ! Maximum size of a hyperedge
-  HypernodeID _max_edge_size;
   // ! Maximum size of a hyperedge at the moment of the last snapshot
   HypernodeID _original_max_edge_size;
   // ! Number of pins
   HypernodeID _num_pins;
+  // ! Number of partitions
+  PartitionID _k;
   // ! Total degree of all vertices
   HypernodeID _total_degree;
   // ! Total weight of hypergraph
@@ -1397,31 +1235,29 @@ public:
   HypergraphVolume _original_total_volume;
 
   // ! Hypernodes
-  Array<Hypernode> _hypernodes;
+  std::vector<Hypernode> _hypernodes;
   // ! Pins of hyperedges
   IncidentNets _incident_nets;
   // ! Hyperedges
-  Array<Hyperedge> _hyperedges;
+  std::vector<Hyperedge> _hyperedges;
   // ! Incident nets of hypernodes
   IncidenceArray _incidence_array;
   // ! Weighted degrees of hypernodes
-  Array<HypergraphVolume> _weighted_degrees;
+  std::vector<HypergraphVolume> _weighted_degrees;
   // ! Original Weighted degrees of hypernodes
   // ! (are lost during contractions, removal of single-pin nets)
-  Array<HypergraphVolume> _original_weighted_degrees;
+  std::vector<HypergraphVolume> _original_weighted_degrees;
+  // ! Original volume of each partition
+  std::vector<HypergraphVolume> _part_original_volumes;
+  // ! Size of each partition
+  std::vector<HypernodeID> _part_sizes;
+  // ! Partition ids
+  std::vector<PartitionID> _part_ids;
 
-  // ! Communities
-  ds::Clustering _community_ids;
-
-  // ! Fixed Vertex Support
-  FixedVertexSupport<StaticHypergraph> _fixed_vertices;
 
   // ! Data that is reused throughout the multilevel hierarchy
   // ! to contract the hypergraph and to prevent expensive allocations
   TmpContractionBuffer* _tmp_contraction_buffer;
-
-  // ! Option for enabling sync_updates in phg
-  bool _enable_collective_sync_update = false;
 
   // ! Option for disabling the removal of single-pin nets
   bool _disable_single_pin_nets_removal = false;
@@ -1433,9 +1269,9 @@ public:
   bool _has_original_edge_sizes = false;
   
   // AON HyperModularity Clustering Coefficients
-  vec<AONCoefficient> _beta;                 ///< β_k
-  vec<AONCoefficient> _gamma;                ///< β_k * γ_k
-  vec<std::array<AONCoefficient, 2>> _omega; ///< {ω_k0, ω_k1} (ω_in, ω_out)
+  const vec<AONCoefficient>* _beta_ref;                 ///< β_k
+  const vec<AONCoefficient>* _gamma_ref;                ///< β_k * γ_k
+  const vec<std::array<AONCoefficient, 2>>* _omega_ref; ///< {ω_k0, ω_k1} (ω_in, ω_out)
 };
 
 } // namespace ds

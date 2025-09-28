@@ -366,7 +366,7 @@ class PartitionedHypergraph {
 
   // ! Enables the conductance priority queue
   // ! Sets up usage of original / current HG stats as set in _conductance_pq_uses_original_stats
-  void enableConductancePriorityQueue() {
+  void enableConductancePriorityQueue(bool parallel = true) {
     /// [debug] std::cerr << "PartitionedHypergraph::enableConductancePriorityQueue()" << std::endl;
     ASSERT(_needs_conductance_pq);
     if (_has_conductance_pq) {
@@ -377,7 +377,7 @@ class PartitionedHypergraph {
     } else {
       _conductance_pq.disableUsageOfOriginalHGStats();
     }
-    _conductance_pq.initialize(*this, false /* not synchronized */);
+    _conductance_pq.initialize(*this, false /* not synchronized */, parallel /* parallel */);
     _has_conductance_pq = true;
   }
 
@@ -395,14 +395,14 @@ class PartitionedHypergraph {
 
   // ! Initializes the conductance priority queue if not yet (and should be)
   // ! Could be called concurrently => uses locks !!!
-  bool needsConductancePriorityQueue() {
+  bool needsConductancePriorityQueue(bool parallel = true) {
     /// [debug] std::cerr << "PartitionedHypergraph::hasConductancePriorityQueue()" << std::endl;
     if (!_needs_conductance_pq) {
       return false;
     }
     _conductance_pq.lock(true /* synchronized */);
     if (!_conductance_pq.initialized()) {
-      enableConductancePriorityQueue();
+      enableConductancePriorityQueue(parallel);
     }
     _has_conductance_pq = true;    
     _conductance_pq.unlock(true /* synchronized */);
@@ -447,10 +447,10 @@ class PartitionedHypergraph {
     ASSERT(conductancePriorityQueueUsesOriginalStats());
   }
 
-  // ! Resets the conductance priority queue
-  void resetConductancePriorityQueue() {  
+  // ! Resets the conductance priority queue (sequentially)
+  void resetConductancePriorityQueue() {
       _conductance_pq.reset();
-      _has_conductance_pq = false; // !!! always reset _has_conductance_pq after resetting the pq 
+      _has_conductance_pq = false; // !!! always reset _has_conductance_pq after resetting the pq
   }
 
   // ! Get the ConductanceInfo of the partition with the hightes conductance
@@ -468,7 +468,7 @@ class PartitionedHypergraph {
   }
 
   // ! Get top 3 partitions with the highest conductance
-  vec<ConductanceInfo> topThreePartConductanceInfos() const {
+  std::vector<ConductanceInfo> topThreePartConductanceInfos() const {
     /// [debug] std::cerr << "PartitionedHypergraph::topThreePartConductanceInfos()" << std::endl;
     ASSERT(hasConductancePriorityQueue(), "Conductance priority queue is not initialized");
     ASSERT(collectiveSyncUpdatesEnabled(), "Collective sync_updates are not enabled");
@@ -702,8 +702,8 @@ class PartitionedHypergraph {
   }
 
   // ! Save current edge sizes as original edge sizes
-  void snapshotOriginalEdgeSizes() {
-    _hg->snapshotOriginalEdgeSizes();
+  void snapshotOriginalEdgeSizes(bool parallel = true) {
+    _hg->snapshotOriginalEdgeSizes(parallel);
   }
 
   // ! Get the edge size at the moment of the last snapshot
@@ -720,8 +720,8 @@ class PartitionedHypergraph {
 private:
   // ! Save the current weighted degrees as original
   // ! (private as weighted degrees should be consistent with the volumes)
-  void snapshotOriginalWeightedDegrees() {
-    _hg->snapshotOriginalWeightedDegrees();
+  void snapshotOriginalWeightedDegrees(bool parallel = true) {
+    _hg->snapshotOriginalWeightedDegrees(parallel);
   }
   // ! Save the current total volume as original
   // ! (private as total volume should be consistent with the weighted degrees)
@@ -736,8 +736,8 @@ public:
   // ! Save the current weighted degrees and volumes as original stats
   // ! Updates the conductance pq if needed (and uses original stats)
   // ! (together for their consistency)
-  void snapshotOriginalWeightedDegreesAndVolumes() {
-    snapshotOriginalWeightedDegrees();
+  void snapshotOriginalWeightedDegreesAndVolumes(bool parallel = true) {
+    snapshotOriginalWeightedDegrees(parallel);
     snapshotOriginalTotalVolume();
     snapshotOriginalPartVolumes();
     if (needsConductancePriorityQueue() && conductancePriorityQueueUsesOriginalStats()) {
@@ -1255,22 +1255,33 @@ public:
   // ! Initializes the partition of the hypergraph, if block ids are assigned with
   // ! setOnlyNodePart(...). In that case, block weights and pin counts in part for
   // ! each hyperedge must be initialized explicitly here.
-  void initializePartition() {
+  void initializePartition(bool parallel = true) {
     /// [debug] std::cerr << "PartitionedHypergraph::initializePartition()" << std::endl;
-    tbb::parallel_invoke(
-            [&] { initializeBlockWeights(); },
-            [&] { initializeBlockVolumes(); },
-            [&] { initializeBlockOriginalVolumes(); },
-            [&] { 
-              initializePinCountInPart();
-              initializeBlockCutWeights(); // must be called after initializePinCountInPart()
-            },
-            [&] { resetConductancePriorityQueue(); }
-    );
-    needsConductancePriorityQueue(); // initializes pq only if needed
+    if (!parallel) {
+      initializeBlockWeights();
+      initializeBlockVolumes();
+      initializeBlockOriginalVolumes();
+      initializePinCountInPart();
+      initializeBlockCutWeights(); // must be called after initializePinCountInPart()
+      resetConductancePriorityQueue(); // allways sequential
+      needsConductancePriorityQueue(parallel); // initializes pq only if needed
+    } else {
+      tbb::parallel_invoke(
+              [&] { initializeBlockWeights(); },
+              [&] { initializeBlockVolumes(); },
+              [&] { initializeBlockOriginalVolumes(); },
+              [&] { 
+                initializePinCountInPart();
+                initializeBlockCutWeights(); // must be called after initializePinCountInPart()
+              },
+              [&] { resetConductancePriorityQueue(); }
+      );
+      needsConductancePriorityQueue(parallel); // initializes pq only if needed
+    }
   }
 
   // ! Reset partition (not thread-safe)
+  // ! Does everything sequentially!
   void resetPartition() {
     /// [debug] std::cerr << "PartitionedHypergraph::resetPartition()" << std::endl;
     _part_ids.assign(_part_ids.size(), kInvalidPartition, false);
@@ -1278,7 +1289,7 @@ public:
     for (auto& x : _part_volumes) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_original_volumes) x.store(0, std::memory_order_relaxed);
     for (auto& x : _part_cut_weights) x.store(0, std::memory_order_relaxed);
-    resetConductancePriorityQueue();
+    resetConductancePriorityQueue(); // allways sequential
 
     // Reset pin count in part and connectivity set
     _con_info.reset(false);

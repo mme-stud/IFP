@@ -139,6 +139,87 @@ If the original edge sizes are too big, the `_beta` and `_gamma` vectors are als
 
 (new!) `aon_hypermodularity` IP uses the original edge sizes if available, `aon_hypermodularity_kernel` uses the edge sizes in the kernel.
 
+#### Problem with shared between IPs local_hg 
+##### Problem:
+Sometimes one instance of IP gets the same local hypergraph as another IP. Because of that, partitionings could be (and sometimes are!) overwritten and even worse - merged. Happens with IPs using multiple threads (rand: in initializePertition(), AON IP: everywhere...)
+
+To verify, I added local variable `_current_tag = -1`to `_ip_data` to store the `_tag` of the IP, which uses the local hg (analogously to the local hg itself). And made Random IP output, if `_current_tag != -1` at the start of IP or if `_current_tag != _tag` at its end.
+
+With this modifications + `-t 10 -i-runs=100 --i-enabled-ip-algo=0 0 0 0 0 0 0 0 1 0 0 0 0` [only Rand IP], I've caught several wrong `_tag`s.
+
+##### Reason:
+1. `pool_initial_partitioner.cpp` realizes IP runs as tasks in a `tbb::task_group tg`
+2. in a “global” `InitialPartitioningDataContainer ip_data` shared by all the tasks, there is a `ThreadLocalHypergraph`  (`tbb::enumerable_thread_specific<ThreadLocalHypergraph>` with a member `PartitionedHypergraph _partitioned_hypergraph`) 
+3. each IP begins with getting it's thread-local hypergraph and ends by commiting the result to the global `InitialPartitioningDataContainer`
+```cpp
+PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
+...
+
+[AON IP:] hg.initializePartition();
+_ip_data.commit(/* ipName */, _rng, _tag, time);
+```
+4. `initializePartition()` called in parallel many things (e.g. initializes `_conductance_pq`, which uses ` vec = std::vector<T, tbb::scalable_allocator<T> >`...)
+5. &rArr; an IP can be pushed from its thread into an idle state (e.g. when it waits for free threads for `parallel_for` OR for a `_pop_lock` in `commit(..)`, if `--deterministic=true` was set...)
+6. &rArr; later IP potentially resumes on some other thread (or a new IP starts on a thread of an idle IP)
+7. &rArr; two IPs have references to the same `_local_hg`
+8. &rArr; their partitionings can be merged / rewritten :(
+
+##### Current solution
+Use a `tbb::task_arena` limited to 1 thread, to run IP on a single thread:
+
+```cpp
+ if ( _ip_data.should_initial_partitioner_run(_ipName) ) {
+    /* Concurrency Problem:
+     * - IP gets a local to its thread hypergraph
+     * - if an IP used multiple threads, and there are no more threads available,
+     *   tbb can make this IP wait and start another IP in the same thread
+     *   (the same happens with blocked by a mutex IPs)
+     * => two IPs can share the same local hypergraph
+     * => they can override / merge each other's partitioning
+     * 
+     * Current solution: limit IP to one thread
+    */
+    tbb::task_arena limited_arena(1);
+    limited_arena.execute([&]{
+        [AON IP]
+    });
+ }
+``` 
+##### Another tried solution [Reverted]
+1. I've defined `SequentialIPHypergraph`:
+- sceletone: `StaticHypergraph` (`SequentialIPHypergraph` is a `friend` of `StaticHypergraph`)
+- differences:
+    - no multithreading, `vec`, parallel initializations of `Array`s
+    - `_part_ids` instead of `_community_ids`
+    - `_part_sizes`, `_part_original_volumes`
+    - initializes from `StaticHypergraph` with a singleton partitioning
+    - in `contract(global_communities)`:
+        - contracts all clusters in the hypergraph itself &rarr; no returned hypergraph
+        - translates values in `global_communities` to the new IDs
+
+2. For that, an additional class was needed: `SequentialBuchetMap` (analog to `ConcurrentBuchetMap`).
+
+3. I've rewritten AON IP to use only `SequentialIPHypergraph`. As it doesn't have `_pin_count_in_part` ($O(k \cdot #he) = O(#hn \cdot #he)$...), I've used the Hypermodularity.jl approach with `notsame`.
+4. Also, to remove concurrenct form the IP, I've changed `conductance_pq.h` to use `priority_queue_sec.h` - an analogon of `priority_queue.h`, but with `std::vector` instead of `vec`.
+
+Sadly, this only reduced the frequency of wrong tags, but didb't solve the problem &rArr; **these changes are reverted**
+
+**Saved files:**
+- in `mt-kahypar/partition/initial_partitioning`
+    - `aon_ip_temp.h, .cc`
+- in `mt-kahypar/datastructures`
+    - `priority_queue_seq.h`
+    - `sequential_ip_hypergraph.h, .cpp`
+    - `sequential_bucket_map.h`
+    - `conductance_pq_temp.h`
+**Reverted:** 
+- `CmakeLists.txt` (added the new `.cpp` files)
+- `StaticHypergraph`:
+```cpp
+class SequentialIPHypergraph;
+class StaticHypergraph { ... friend SequentialIPHypergraph; ... }
+```
+
 ### Implement AON-Hypermodularity IP
 Original Algorithm: [Generative hypergraph clustering: from blockmodels to modularity](https://arxiv.org/pdf/2101.09611)
 
