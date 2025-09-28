@@ -568,20 +568,20 @@ std::vector<option> load_clustering_preset() {
             "0",    // greedy_sequential_max_net
             "0",    // singleton
             "1",    // aon_hypermodularity
-            "1",    // aon_hypermodularity_kernel
+            "0",    // aon_hypermodularity_kernel
             "1",    // aon_hypermodularity_bayesian
     } },
     create_option("i-use-adaptive-ip-runs", "false"),
     create_option("i-min-adaptive-ip-runs", "1"),
-    create_option("i-perform-refinement-on-best-partitions", "true"),
+    create_option("i-perform-refinement-on-best-partitions", "false"),
     create_option("i-fm-refinement-rounds", "0"),
     create_option("i-lp-maximum-iterations", "0"),
     create_option("i-lp-initial-block-size", "0"),
     // main -> initial_partitioning -> refinement
     create_option("i-r-refine-until-no-improvement", "false"),
     // main -> initial_partitioning -> refinement -> label_propagation
-    create_option("i-r-lp-type", "label_propagation"), // do_nothing
-    create_option("i-r-lp-maximum-iterations", "5"),
+    create_option("i-r-lp-type", "do_nothing"), // label_propagation
+    create_option("i-r-lp-maximum-iterations", "0"),
     create_option("i-r-lp-rebalancing", "false"),
     create_option("i-r-lp-he-size-activation-threshold", "100"),
     // main -> initial_partitioning -> refinement -> fm

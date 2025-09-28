@@ -34,7 +34,7 @@ void AONHypermodularityBayesianInitialPartitioner<TypeTraits>::partitionImpl() {
     std::max<HypernodeID>(_context.partition.large_hyperedge_size_threshold / 10, 100) /* edgeSizeThreshold */,   
     1e2 /* maxNumIter */,
     1e-8 /* eps */,
-    _context.partition.initial_num_nodes / 100 /* clusterPenalty */,
+    _context.partition.initial_num_nodes /* clusterPenalty */,
     true /* randomize */,
     true /* useOriginalEdgeSizes */
   );
