@@ -31,6 +31,7 @@
 #include <boost/range/irange.hpp>
 
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_scan.h>
 
 #include "include/mtkahypartypes.h"
 
@@ -40,6 +41,7 @@
 #include "mt-kahypar/datastructures/fixed_vertex_support.h"
 #include "mt-kahypar/parallel/atomic_wrapper.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
+#include "mt-kahypar/parallel/parallel_prefix_sum.h"
 #include "mt-kahypar/partition/context_enum_classes.h"
 #include "mt-kahypar/utils/memory_tree.h"
 #include "mt-kahypar/utils/range.h"
@@ -714,6 +716,23 @@ class StaticGraph {
   // ! Assign a community to a hypernode
   void setCommunityID(const HypernodeID u, const PartitionID community_id) {
     _community_ids[u] = community_id;
+  }
+
+  // ! Fit community ids to be consecutive numbers
+  PartitionID fitCommunityIDs() {
+    Array<size_t> mapping(_num_nodes, 0);
+    doParallelForAllNodes([&] (const HypernodeID u) {
+      mapping[communityID(u)] = 1;
+    });
+    parallel::TBBPrefixSum<size_t, Array> mapping_prefix_sum(mapping);
+    tbb::parallel_scan(tbb::blocked_range<size_t>(UL(0), _num_nodes), mapping_prefix_sum);
+    PartitionID k = mapping_prefix_sum.total_sum();
+
+    // Remap community ids
+    doParallelForAllNodes([&] (const HypernodeID hn) {
+      _community_ids[hn] = mapping_prefix_sum[_community_ids[hn]];
+    });
+    return k;
   }
 
   // ############################ Snapshots ###########################

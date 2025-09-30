@@ -13,7 +13,7 @@
 - run both original sized and reduced sized versions of AON IP + a couple of random IP's [no need, as AON IP with original sizes is ~always better]
 - [done] run lp-refiner in the kernel after IP [**ToDo:** Check, if  works as intended]
 - [done] for edgeSizeThreshold, use `max(100, large_hyperedge_size_threshold / 10)`
-
+- use V-cycles in multilevel (for clustering) &rarr; done
 
 ## Questions
 - singleton &rarr; conductance = 1. Why?
@@ -924,6 +924,71 @@ All other places [that I've found] are `switch`-es or skipped `MemoryPool`-regis
         context.partition.epsilon = 10000.0; // effectively disables imbalance checks
     }
     ```
+
+## V-Cycles
+Per default, IP is skipped in V-cycles and instead the partition from the previous cycle is used as initial partition for the next cycle.
+
+**We want to run IP in each V-cycle, when looking for clusters &rArr; we resompute coefficients of hypermodularity and partitioner again as if we start from scratch with the previous partition as community detection.**
+
+To save memory, we fit the new communities s.t. they use consecutive IDs from `0` to `new_k - 1`. This is done in `fitCommunityIDs()` in time $O(#hn)$ (worst case of one thread). The technic is the same as used in `StaticHypergraph::contract(..)` to renumber the nodes of the contracted hypergraph.
+
+`mt-kahypar/partition/multilevel.cpp`:
+- in `multilevel_partitioning(..)`:
+```cpp
+    ////////////// The k value can be changed here 
+    // Only with clustering, singleton sets k = num_nodes !!!
+    PartitionID new_k = context.partition.k; 
+
+    if (is_vcycle && context.partition.clustering) {
+      timer.start_timer("preprocessing", "Preprocessing");
+      new_k = hypergraph.fitCommunityIDs();
+      if (context.usesHypermodularityIP()) {
+        hypergraph.computeAONParameters();
+      }
+      timer.stop_timer("preprocessing");
+      std::cout << "V-Cycle: fit k to " << new_k << std::endl;
+    }
+
+    //////////////////////////////// Change k (1/4)
+    if (new_k != context.partition.k && new_k > 1) {
+      context.partition.k = new_k;
+      timer.start_timer("preprocessing", "Preprocessing");
+      context.setupPartWeights(hypergraph.totalWeight());
+      context.setupContractionLimit(hypergraph.totalWeight());
+      context.setupThreadsPerFlowSearch();
+      timer.stop_timer("preprocessing");
+    }
+    /////////////////////////// End of changing k (1/4)
+    
+    ...
+    /////////////////////////// End of changing k (2/4)
+
+    if ( !is_vcycle || context.partition.clustering) {
+        /// Run Initial Partitioning
+    } else {
+        /// Use partition from previous cycle
+    }
+```
+- in all `PartitionID UnderlyingHypergraph::fitCommunityIDs()` [with slightly different variable names]:
+```cpp
+  // ! Fit community ids to be consecutive numbers
+  PartitionID fitCommunityIDs() {
+    Array<size_t> mapping(_num_hypernodes, 0);
+    doParallelForAllNodes([&] (const HypernodeID u) {
+      mapping[communityID(u)] = 1;
+    });
+    parallel::TBBPrefixSum<size_t, Array> mapping_prefix_sum(mapping);
+    tbb::parallel_scan(tbb::blocked_range<size_t>(UL(0), _num_hypernodes), mapping_prefix_sum);
+    PartitionID k = mapping_prefix_sum.total_sum();
+
+    // Remap community ids
+    doParallelForAllNodes([&] (const HypernodeID hn) {
+      _community_ids[hn] = mapping_prefix_sum[_community_ids[hn]];
+    });
+    return k;
+  }
+```
+
 
 ## Scripts for experiments
 Folder: `_experimental_results/`

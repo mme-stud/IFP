@@ -32,6 +32,8 @@
 #include <queue>
 
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_scan.h>
+#include <tbb/blocked_range.h>
 
 #include "include/mtkahypartypes.h"
 
@@ -45,6 +47,7 @@
 #include "mt-kahypar/datastructures/contraction_tree.h"
 #include "mt-kahypar/datastructures/thread_safe_fast_reset_flag_array.h"
 #include "mt-kahypar/parallel/stl/scalable_vector.h"
+#include "mt-kahypar/parallel/parallel_prefix_sum.h"
 #include "mt-kahypar/utils/memory_tree.h"
 #include "mt-kahypar/utils/exception.h"
 
@@ -676,6 +679,26 @@ class DynamicGraph {
       hypernode(hn).setCommunityID(community_ids[hn]);
     });
   }
+
+  
+  // ! Fit community ids to be consecutive numbers
+  PartitionID fitCommunityIDs() {
+    HypernodeID num_nodes = numNodes();
+    Array<size_t> mapping(num_nodes, 0);
+    doParallelForAllNodes([&] (const HypernodeID u) {
+      mapping[communityID(u)] = 1;
+    });
+    parallel::TBBPrefixSum<size_t, Array> mapping_prefix_sum(mapping);
+    tbb::parallel_scan(tbb::blocked_range<size_t>(UL(0), num_nodes), mapping_prefix_sum);
+    PartitionID k = mapping_prefix_sum.total_sum();
+
+    // Remap community ids
+    doParallelForAllNodes([&] (const HypernodeID hn) {
+      setCommunityID(hn, mapping_prefix_sum[communityID(hn)]);
+    });
+    return k;
+  }
+
 
   // ###################### AON-Hypermodularity (not supported) #########
 

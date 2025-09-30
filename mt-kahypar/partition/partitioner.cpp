@@ -57,9 +57,13 @@ namespace mt_kahypar {
     if ( target_graph ) {
       context.partition.k = target_graph->numBlocks();
     } else if (context.partition.preset_type == PresetType::cluster) {
-      context.partition.epsilon = std::numeric_limits<double>::max();
+      if (context.partition.k < 2) {
+        context.partition.k = 32; // adil set default k = 2 for clustering manually here
+      }
+      if (context.partition.epsilon <= 0) {
+        context.partition.epsilon = std::numeric_limits<double>::max();
+      }
       // (to be able to run the clustering algorithm with initial k)
-      context.partition.k = 32; // adil set default k = 2 for clustering manually here
       // this determines how the part weights and contraction limits are defined
       // [mariia] adil changed k to 32
     }
@@ -463,10 +467,12 @@ namespace mt_kahypar {
                                                 Context& context,
                                                 TargetGraph* target_graph) {
     Hypergraph& hypergraph = partitioned_hg.hypergraph();
+    
+    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
+
     configurePreprocessing(hypergraph, context);
     setupContext(hypergraph, context, target_graph);
 
-    utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.start_timer("preprocessing", "Preprocessing");
     precomputeSteinerTrees(hypergraph, target_graph, context);
     partitioned_hg.setTargetGraph(target_graph);

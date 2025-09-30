@@ -856,7 +856,7 @@ namespace mt_kahypar {
         && !cmd_vm.count("blocks")) {
       throw po::error("The --blocks option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
     } else {
-        context.partition.k = 2;
+        context.partition.k = 32;
     }
     // Validate that Epsilon is specified
     if ( (context.partition.preset_type != PresetType::cluster &&
@@ -864,7 +864,8 @@ namespace mt_kahypar {
         && !cmd_vm.count("epsilon")) {
       throw po::error("The --epsilon option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
     } else {
-        context.partition.epsilon = 10000.0; // effectively disables imbalance checks
+        // effectively disable imbalance checks
+        context.partition.epsilon = std::numeric_limits<double>::max(); 
     }
 
     po::options_description ini_line_options;

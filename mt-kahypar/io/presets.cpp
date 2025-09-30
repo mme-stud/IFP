@@ -530,7 +530,7 @@ std::vector<option> load_clustering_preset() {
     create_option("maxnet-removal-factor", "0.01"),
     create_option("smallest-maxnet-threshold", "50000"),
     create_option("maxnet-ignore", "1000"),
-    create_option("num-vcycles", "0"),
+    create_option("num-vcycles", "1"),
     // main -> shared_memory
     create_option("s-use-localized-random-shuffle", "false"),
     create_option("s-static-balancing-work-packages", "128"),
