@@ -24,7 +24,7 @@ end
 ############
 
 
-function read_hypergraph_edges(dataname::String, maxsize::Int64=25, minsize::Int64=2)
+function read_hypergraph_edges(dataname::String, maxsize::Int64=1000, minsize::Int64=2)
     E = Dict{Integer, Dict}()
     open(string(dataname,"_he.txt")) do f
         for line in eachline(f)
