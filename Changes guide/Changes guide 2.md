@@ -932,6 +932,8 @@ Per default, IP is skipped in V-cycles and instead the partition from the previo
 
 To save memory, we fit the new communities s.t. they use consecutive IDs from `0` to `new_k - 1`. This is done in `fitCommunityIDs()` in time $O(#hn)$ (worst case of one thread). The technic is the same as used in `StaticHypergraph::contract(..)` to renumber the nodes of the contracted hypergraph.
 
+The initial `k` value is set to the number of detected communities. `c-t = 20` (for now)
+
 `mt-kahypar/partition/multilevel.cpp`:
 - in `multilevel_partitioning(..)`:
 ```cpp
