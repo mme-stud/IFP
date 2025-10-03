@@ -56,7 +56,7 @@ namespace mt_kahypar {
     context.partition.initial_num_nodes = hypergraph.initialNumNodes(); // needed in AON IP for clusterpenalty
     if ( target_graph ) {
       context.partition.k = target_graph->numBlocks();
-    } else if (context.partition.preset_type == PresetType::cluster) {
+    } else if (context.partition.clustering) {
       if (context.partition.k < 2) {
         context.partition.k = 32; // adil set default k = 2 for clustering manually here
       }
@@ -322,8 +322,8 @@ namespace mt_kahypar {
         io::printCommunityInformation(hypergraph);
       }
 
-      /* Set k = number of communities, if cluster preset is used
-      if (context.partition.preset_type == PresetType::cluster) {
+      // Set k = number of communities, if clustering is used
+      if (context.partition.clustering) {
         // code from printCommunityInformation
         PartitionID num_communities = tbb::parallel_reduce(
                 tbb::blocked_range<HypernodeID>(ID(0), hypergraph.initialNumNodes()),
@@ -341,7 +341,7 @@ namespace mt_kahypar {
         });
         num_communities = std::max(num_communities, 1);
         context.partition.k = num_communities;
-      } */
+      }
     }
 
     precomputeHyperModularityParameters(hypergraph, context);

@@ -44,6 +44,7 @@ namespace mt_kahypar {
       str << "  Partition File:                     " << params.graph_partition_filename << std::endl;
     }
     str << "  Mode:                               " << params.mode << std::endl;
+    str << "  Looking for a clustering:          " << std::boolalpha << params.clustering << std::endl;
     str << "  Objective:                          " << params.objective << std::endl;
     str << "  Gain Policy:                        " << params.gain_policy << std::endl;
     str << "  Input File Format:                  " << params.file_format << std::endl;
@@ -304,16 +305,10 @@ namespace mt_kahypar {
   // ! \brief Returns true if we should account for large k in the algorithms
   // ! If true, we will skip memory intensive parts
   bool Context::accountForLargeK() const {
-      switch (partition.preset_type) {
-        case PresetType::large_k: return true;
-        case PresetType::cluster: return (partition.k >= 1024);
-        case PresetType::deterministic:
-        case PresetType::default_preset:
-        case PresetType::quality:
-        case PresetType::highest_quality: return false;
-        case PresetType::UNDEFINED:
-          ERR("Preset type is undefined.");
-      }
+    if ( partition.preset_type == PresetType::large_k )
+      return true;
+    if ( partition.clustering )
+      return true;
     return false;
   }
 
@@ -359,7 +354,7 @@ namespace mt_kahypar {
       }
     } else {
       partition.perfect_balance_part_weights.clear();
-      if (partition.preset_type == PresetType::cluster) {
+      if (partition.clustering) {
         partition.perfect_balance_part_weights.push_back(ceil(
                 total_hypergraph_weight
                 / 1.0));
@@ -373,7 +368,7 @@ namespace mt_kahypar {
                 partition.perfect_balance_part_weights[0]);
       }
       partition.max_part_weights.clear();
-      if (partition.preset_type == PresetType::cluster) {
+      if (partition.clustering) {
         partition.max_part_weights.push_back((1 + 0)
                                              * partition.perfect_balance_part_weights[0]);
       } else {
@@ -397,7 +392,7 @@ namespace mt_kahypar {
               coarsening.contraction_limit_multiplier * partition.k;
     }
 
-    if(partition.preset_type == PresetType::cluster) {
+    if (partition.clustering) {
       coarsening.contraction_limit = coarsening.contraction_limit_multiplier * 32;
     }
 
@@ -526,10 +521,17 @@ namespace mt_kahypar {
       }
     }
 
-    if (partition.preset_type == PresetType::cluster) {
+    if (partition.clustering) {
+      if (coarsening.algorithm != CoarseningAlgorithm::multilevel_coarsener) {
+        ALGO_SWITCH("Clustering requires multilevel coarsening. Do you want to use "
+                    << CoarseningAlgorithm::multilevel_coarsener << " instead (Y/N)?",
+                    "Clustering requires multilevel coarsening!",
+                    coarsening.algorithm,
+                    CoarseningAlgorithm::multilevel_coarsener);
+      }
       if ( initial_partitioning.remove_degree_zero_hns_before_ip ) {
         initial_partitioning.remove_degree_zero_hns_before_ip = false;
-        LOG << "Cluster preset does not support removal of "
+        LOG << "Clustering setup does not support removal of "
                "degree-zero hypernodes. Setting option "
                "--i-remove-degree-zero-hns-before-ip to false";
       }

@@ -989,6 +989,10 @@ To save memory, we fit the new communities s.t. they use consecutive IDs from `0
   }
 ```
 
+## Clustering
+Instead of checking if the clustering preset is used via `context.partition.preset_type == PresetType::cluster` (in `partitioner.cpp`, `multilevel.cpp`, `metrics.cpp`), I introduced `context.partition.clustering` boolean variable.
+
+This way, we can make new presets that use clustering.
 
 ## Scripts for experiments
 Folder: `_experimental_results/`

@@ -181,7 +181,9 @@ namespace mt_kahypar {
                      [&](auto) {
                              context.partition.use_individual_part_weights = true;
                      }),
-             "Use the specified individual part weights instead of epsilon.");
+             "Use the specified individual part weights instead of epsilon.")
+             ("clustering", po::value<bool>(&context.partition.clustering)->value_name("<bool>")->default_value(true),
+              "If true, search for a clustering instead of a partitioning.");
     return options;
   }
 
@@ -851,18 +853,16 @@ namespace mt_kahypar {
     po::notify(cmd_vm);
 
     // Validate that blocks is specified
-    if ( (context.partition.preset_type != PresetType::cluster &&
-          context.partition.objective != Objective::aon_hypermodularity) 
+    if ( !context.partition.clustering
         && !cmd_vm.count("blocks")) {
-      throw po::error("The --blocks option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
+      throw po::error("The --blocks option is required when clustering is disabled");
     } else {
         context.partition.k = 32;
     }
     // Validate that Epsilon is specified
-    if ( (context.partition.preset_type != PresetType::cluster &&
-          context.partition.objective != Objective::aon_hypermodularity) 
+    if ( !context.partition.clustering
         && !cmd_vm.count("epsilon")) {
-      throw po::error("The --epsilon option is required when the preset is not 'cluster' and objective is not 'aon_hypermodularity'");
+      throw po::error("The --epsilon option is required when clustering is disabled");
     } else {
         // effectively disable imbalance checks
         context.partition.epsilon = std::numeric_limits<double>::max(); 

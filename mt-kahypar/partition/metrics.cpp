@@ -377,8 +377,7 @@ bool isBalanced(const PartitionedHypergraph& phg, const Context& context) {
   }
   return (acceptable_part_weights && context.partition.preset_type == PresetType::large_k) ||
     (acceptable_part_weights && num_empty_parts <= phg.numRemovedHypernodes()) ||
-    (context.partition.preset_type == PresetType::cluster
-     && (phg.k() - num_empty_parts > 1));
+    (context.partition.clustering && (phg.k() - num_empty_parts > 1));
 }
 
 template<typename PartitionedHypergraph>

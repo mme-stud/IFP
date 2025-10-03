@@ -138,7 +138,7 @@ namespace {
     timer.start_timer("initial_partitioning", "Initial Partitioning");
     PartitionedHypergraph& phg = uncoarseningData.coarsestPartitionedHypergraph();
 
-    if (context.partition.preset_type == PresetType::cluster) {
+    if (context.partition.clustering) {
       // k was set to 32 in setupContext() of partitioner.cpp
       // ~~to make weight constraints as large as possible~~ [Adil changed k from 2 to 32]
       new_k = context.partition.initial_k;
@@ -168,7 +168,7 @@ namespace {
     }
     /////////////////////////// End of changing k (2/4)
 
-    if ( !is_vcycle || context.partition.preset_type == PresetType::cluster) {
+    if ( !is_vcycle || context.partition.clustering) {
       DegreeZeroHypernodeRemover<TypeTraits> degree_zero_hn_remover(context);
       if ( context.initial_partitioning.remove_degree_zero_hns_before_ip ) {
         degree_zero_hn_remover.removeDegreeZeroHypernodes(phg.hypergraph());
@@ -183,7 +183,7 @@ namespace {
         // techniques. This case runs as a base case (k = 2) within recursive bipartitioning
         // or the deep multilevel scheme.
         ip_context.partition.verbose_output = false;
-        if (context.partition.preset_type == PresetType::cluster) {
+        if (context.partition.clustering) { /// debug
           ip_context.partition.verbose_output = context.partition.verbose_output;
         }
         Pool<TypeTraits>::bipartition(phg, ip_context);

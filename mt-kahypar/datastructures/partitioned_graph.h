@@ -775,7 +775,8 @@ private:
 
   // ! Initializes the partition of the hypergraph, if block ids are assigned with
   // ! setOnlyNodePart(...). In that case, block weights must be initialized explicitly here.
-  void initializePartition(bool seq = false) {
+  void initializePartition(bool parallel = true) {
+    unused(parallel);
     initializeBlockWeights();
   }
 

@@ -667,7 +667,7 @@ class InitialPartitioningDataContainer {
     }
     
     // decrease k as much as quickly possible
-    if (_context.partition.preset_type == PresetType::cluster) {
+    if (_context.partition.clustering) {
       // _context.partition.k is changed later, as const _context
       _partitioned_hg.fitK();
     }

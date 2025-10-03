@@ -531,6 +531,7 @@ std::vector<option> load_clustering_preset() {
     create_option("smallest-maxnet-threshold", "50000"),
     create_option("maxnet-ignore", "1000"),
     create_option("num-vcycles", "1"),
+    create_option("clustering", "true"),
     // main -> shared_memory
     create_option("s-use-localized-random-shuffle", "false"),
     create_option("s-static-balancing-work-packages", "128"),
@@ -547,7 +548,7 @@ std::vector<option> load_clustering_preset() {
     create_option("c-min-shrink-factor", "1.01"),
     create_option("c-max-shrink-factor", "2.5"),
     create_option("c-s", "1"),
-    create_option("c-t", "160"),
+    create_option("c-t", "20"),
     create_option("c-vertex-degree-sampling-threshold", "200000"),
     // main -> coarsening -> rating
     create_option("c-rating-score", "heavy_edge"),
