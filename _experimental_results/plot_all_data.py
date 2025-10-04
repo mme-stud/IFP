@@ -1,6 +1,14 @@
 import os
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
+
+
+# global color vector.
+colors = ["blue", "orange", "violet", "purple", "yellow",
+           "cyan", "brown", "pink", "gray", "black", "red"]
+# green is reserved for ground truth
+
 
 def read_scenario_data(file_path, letter, number, data_dict):
     ignore_metrics = ["Version", "Instances"]
@@ -22,51 +30,98 @@ def read_scenario_data(file_path, letter, number, data_dict):
                     data_dict[letter][metric_name] = dict()
                 data_dict[letter][metric_name][number] = values
 
-def plot_data(data_for_letter, data_for_letter_compare, dir_name, scenario_letter, version, version_compare):
-    metrics = list(data_for_letter.keys())
+def get_points_and_means(data, metric):
+    x_values = []
+    y_values = []
+    colors = []
+    blue = (0.2, 0.4, 0.8)
+    orange = (1.0, 0.5, 0.0)
+    mean_points = []
+    
+    for number, values in data.items():
+        x_values.extend([number] * len(values))
+        y_values.extend(values)
+        # add mean point
+        mean = np.mean(values)
+        mean_points.append((number, mean))
+    return x_values, y_values, mean_points
+
+
+
+def plot_data(version_to_data, versions, dir_name, scenario_letter, fout_name, colors = colors):
+    gt_for_metric = {
+        "K": "GT_K",
+        "Modularity": "GT_Mod",
+        "Conductance": "GT_Conductance",
+    }
+    skip_metrics = gt_for_metric.values()
+    
+    metrics_set = set()
+    for version in versions:
+        metrics_set.update(version_to_data[version][scenario_letter].keys())
+    metrics = [m for m in sorted(metrics_set) if m not in skip_metrics]
     num_metrics = len(metrics)
+    has_gt = False
 
     plt.figure(figsize=(15, 5 * ((num_metrics + 2) // 3)))
-    compare = (data_for_letter_compare is not None)
-    if compare:
-        plt.suptitle(f'{dir_name}/{scenario_letter} - Version {version} vs {version_compare}', fontsize=16)
-    else:
-        plt.suptitle(f'{dir_name}/{scenario_letter} - Version {version}', fontsize=16)
-    for i, metric in enumerate(metrics):
-        data = data_for_letter[metric]
-        plt.subplot((num_metrics + 2) // 3, 3, i + 1)
-        x_values = []
-        y_values = []
-        colors = []
-        blue = (0.2, 0.4, 0.8, 0.6)
-        orange = (1.0, 0.5, 0.0, 0.6)
-        black = (0.0, 0.0, 0.0, 0.6)
-        
-        for number, values in data.items():
-            x_values.extend([number] * len(values))
-            y_values.extend(values)
-            colors.extend([blue] * len(values))
-        if compare and metric in data_for_letter_compare:
-            data_compare = data_for_letter_compare[metric]
-            for number, values in data_compare.items():
-                x_values.extend([number] * len(values))
-                y_values.extend(values)
-                colors.extend([orange] * len(values))
-        # display the scattered points in the subplot
-        plt.scatter(x_values, y_values, alpha=0.7, c=colors)
-        plt.xlabel('Scenario index')
-        plt.ylabel(metric)
-        plt.title(f'{metric}')
+    plt.suptitle(f'{dir_name}/{scenario_letter} - Versions: {", ".join(versions)}', fontsize=16)
+    for j, version in enumerate(versions):
+        letter_to_data = version_to_data[version]
+        print(f"Processing version: {version} number {j} with data for letters: {list(letter_to_data.keys())}")
+        version_color = colors[j]
+        metric_to_data = letter_to_data.get(scenario_letter, {})
+        for i, metric in enumerate(metrics):
+            if metric in skip_metrics:
+                continue
+            if metric not in metric_to_data:
+                continue
+            data = metric_to_data[metric]
+            plt.subplot((num_metrics + 2) // 3, 3, i + 1)
 
-    # add a legende for blue and orange colors
-    if compare:
-        plt.figlegend([plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=blue, markersize=10, label=f'Version {version}'),
-                        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=orange, markersize=10, label=f'Version {version_compare}')],
-                       loc='upper right', fontsize=12)
-    # Save the plot to a file
-    plot_filename = f'plots/{version}/{dir_name}_{scenario_letter}.png'
-    plt.savefig(plot_filename)
-    print(f"Plot saved to {plot_filename}")
+            
+            # plot ground truth if available
+            if metric in gt_for_metric.keys():
+                print(f"Found ground truth for metric {metric}")
+                gt_metric = gt_for_metric[metric]
+                if gt_metric in metric_to_data:
+                    gt_data = metric_to_data[gt_metric]
+                    # plot the mean ground truth line
+                    _, _, gt_mean_points = get_points_and_means(gt_data, gt_metric)
+                    if gt_mean_points:
+                        has_gt = True
+                        gt_mean_points.sort(key=lambda x: x[0])
+                        mean_x, mean_y = zip(*gt_mean_points)
+                        plt.plot(mean_x, mean_y, color='green', linewidth=2, label=f'Mean {gt_metric}', linestyle='--', marker='o', alpha=0.3)
+
+            # plot version data
+            x_values, y_values, mean_points = get_points_and_means(data, metric)
+            plt.scatter(x_values, y_values, c=version_color, alpha=0.4, edgecolors='gray')
+            if mean_points:
+                mean_points.sort(key=lambda x: x[0])
+                mean_x, mean_y = zip(*mean_points)
+                plt.plot(mean_x, mean_y, color=version_color, linewidth=2, label=f'Mean {version}', linestyle='--', marker='_', alpha=0.5)
+            
+
+            plt.xlabel('Scenario index')
+            plt.ylabel(metric)
+            plt.title(f'{metric}')
+
+        # add a legende
+        patch_handles = []
+        for version in versions:
+            version_color = colors[versions.index(version)]
+            patch = mpatches.Patch(color=version_color, label=version, linewidth=2)
+            patch_handles.append(patch)
+        if has_gt:
+            green_patch = mpatches.Patch(color='green', label=f'Ground Truth (Mean)', linewidth=2)
+            patch_handles.append(green_patch)
+
+        plt.figlegend(handles=patch_handles, loc='upper right', fontsize=12)
+        # Save the plot to a file
+        # plot_filename = f'plots/{dir_name}_{scenario_letter}_{",".join(versions)}.png'
+        plot_filename = f'plots/{fout_name}/{dir_name}_{scenario_letter}.png'
+        plt.savefig(plot_filename)
+        print(f"Plot saved to {plot_filename}")
 
 # Function to process a mode directory
 def process_mode_directory(root_dir, dir_name, version):
@@ -96,37 +151,40 @@ def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description="Plot clustering metrics from experimental results.")
     parser.add_argument("--data_root_dir", type=str, help="Root directory containing the mode subdirectories")
-    parser.add_argument("--version", type=str, default="default", help="Version used for the experimental results")
-    parser.add_argument("--compare_with_version", type=str, default="none", help="Version to compare with (e.g., AON_HMLL_clique)")
+    parser.add_argument("--versions", type=str, default="default", help="Comma-separated versions to be used for plotting")
+    parser.add_argument("--output", type=str, default="plot", help="Base name for output plot files")
     return parser.parse_args()
 
 # Main function to process all directories and create the plots
 def main():
     args = parse_args()
     root_dir = args.data_root_dir
-    version = args.version
-    compare_with_version = args.compare_with_version
+    versions = args.versions.split(",")
+    fout_name = args.output
     os.makedirs('plots', exist_ok=True)
-    os.makedirs(f"plots/{version}", exist_ok=True)
-    
+    if fout_name != "":
+        os.makedirs(f'plots/{fout_name}', exist_ok=True)
+
+    if len(versions) > len(colors):
+        print(f"Error: Number of versions ({len(versions)}) exceeds number of available colors ({len(colors)}).)")
+        print("Please add more colors to the colors list in the script plot_all_data.py.")
+        return
+
     # Iterate over the directories (DCHSBM, hABCD, HyperSBM)
     for dir_name in os.listdir(root_dir):
         dir_path = os.path.join(root_dir, dir_name)
+
+        letters = set()
         
         if os.path.isdir(dir_path):  # Only process directories
-            data = process_mode_directory(root_dir, dir_name, version)
-            data_compare = dict()
-            if compare_with_version != "none":
-                data_compare = process_mode_directory(root_dir, dir_name, compare_with_version)
+            version_to_data = dict()
+            for version in versions:
+                version_to_data[version] = process_mode_directory(root_dir, dir_name, version)
+                letters.update(version_to_data[version].keys())
 
-        
-        for scenario_letter, data in data.items():
-            if scenario_letter in data_compare:
-                plot_data(data, data_compare[scenario_letter],
-                            dir_name, scenario_letter, version, compare_with_version)
-            else:
-                plot_data(data, None,
-                            dir_name, scenario_letter, version, compare_with_version)
+        for scenario_letter in letters:
+            plot_data(version_to_data, versions,
+                        dir_name, scenario_letter, fout_name)
 
     print("All plots have been generated!")
 

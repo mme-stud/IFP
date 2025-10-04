@@ -9,8 +9,9 @@ import mtkahypar
 import time
 
 scaling_factor = 2147483647 / 1000
-default_path = "/home/mmeshchaninova/mt-kahypar/iap_mt_kahypar/tests/interface/test_instances/ibm01.hgr"
-# default_path = "/home/graph_collection/henrik/data/hypergraphs/talg_heuer/medium/ibm01.hgr"
+# get home directory
+HOME = os.path.expanduser("~")
+default_path = os.path.join(HOME, "mt-kahypar/iap_mt_kahypar/tests/interface/test_instances/ibm01.hgr")
 
 def getNumBlocks():
   if input("Do you want to use a custom number of blocks? (y/n): ").lower() == 'y':

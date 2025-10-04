@@ -153,7 +153,7 @@ public:
     bool correct = true;
     if (_total_volume != getHGTotalVolume(hg)) {
       correct = false;
-      LOG << "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << getHGTotalVolume(hg);
+      LOG << RED << "Total volume in ConductancePriorityQueue is" << _total_volume << ", but should be" << getHGTotalVolume(hg) << END;
     }
     for (PartitionID p = 0; p < _size; ++p) {
       ConductanceFraction f = SuperPQ::getKey(p);
@@ -167,16 +167,16 @@ public:
       ASSERT(cut_weight <= part_volume);
       if (part_volume != getHGPartVolume(hg, p)) {
         correct = false;
-        LOG << "Volume of partition in ConductancePriorityQueue" << V(p) << "is" << V(part_volume) << ", but should be" << getHGPartVolume(hg, p);
+        LOG << RED << "Volume of partition in ConductancePriorityQueue" << V(p) << "is" << V(part_volume) << ", but should be" << getHGPartVolume(hg, p) << END;
       }
       if (cut_weight != getHGPartCutWeight(hg, p)) {
         correct = false;
-        LOG << "Cut weight of partition in ConductancePriorityQueue" << V(p) << "is" << V(cut_weight) << ", but should be" << getHGPartCutWeight(hg, p);
+        LOG << RED << "Cut weight of partition in ConductancePriorityQueue" << V(p) << "is" << V(cut_weight) << ", but should be" << getHGPartCutWeight(hg, p) << END;
       }
       // Deltas should be empty after changeNodePart-stage is empty. And check is called only then
       if (_delta_part_volumes[p] != 0 || _delta_cut_weights[p] != 0) {
         correct = false;
-        LOG << "Deltas should be always empty, when changeNodePart-stage is finished: " << V(_delta_part_volumes[p]) << ", " << V(_delta_cut_weights[p]);
+        LOG << RED << "Deltas should be always empty, when changeNodePart-stage is finished: " << V(_delta_part_volumes[p]) << ", " << V(_delta_cut_weights[p]) << END;
       }
     }
     correct = correct && SuperPQ::isHeap() && SuperPQ::positionsMatch();

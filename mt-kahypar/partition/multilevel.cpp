@@ -88,14 +88,24 @@ namespace {
     // Only with clustering, singleton sets k = num_nodes !!!
     PartitionID new_k = context.partition.k; 
 
-    if (is_vcycle && context.partition.clustering) {
+    if (context.partition.clustering) {
       timer.start_timer("preprocessing", "Preprocessing");
       new_k = hypergraph.fitCommunityIDs();
       if (context.usesHypermodularityIP()) {
-        hypergraph.computeAONParameters();
+        if (is_vcycle || ! hypergraph.hasAON()) {
+          hypergraph.computeAONParameters();
+          if (context.partition.verbose_output) {
+            for (size_t d = 1; d < hypergraph.maxEdgeSize(); ++d) {
+              LOG << "For edge size d = " << d << ": beta_d = " << hypergraph.beta(d)
+                  << ", gamma_d = " << hypergraph.gamma(d);
+            }
+          }
+        }
       }
       timer.stop_timer("preprocessing");
-      std::cout << "V-Cycle: fit k to " << new_k << std::endl;
+      if (context.partition.verbose_output) {
+        LOG << "Community detection: fit k to " << new_k;
+      }
     }
 
     //////////////////////////////// Change k (1/4)

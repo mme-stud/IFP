@@ -206,8 +206,9 @@ void mt_kahypar_set_partitioning_parameters(mt_kahypar_context_t* context,
                                             const double epsilon,
                                             const mt_kahypar_objective_t objective) {
   Context& c = *reinterpret_cast<Context*>(context);
-  c.partition.k = num_blocks;
-  c.partition.epsilon = epsilon;
+  c.partition.k = num_blocks > 1 ? num_blocks : 32;
+  c.partition.epsilon = epsilon >= 0.0 ? epsilon : std::numeric_limits<double>::max();
+  
   switch ( objective ) {
     case CUT:
       c.partition.objective = Objective::cut; break;
@@ -230,6 +231,10 @@ mt_kahypar_preset_type_t mt_kahypar_get_preset(const mt_kahypar_context_t* conte
 
 mt_kahypar_partition_id_t mt_kahypar_get_num_blocks(const mt_kahypar_context_t* context) {
   return reinterpret_cast<const Context*>(context)->partition.k;
+}
+
+size_t mt_kahypar_get_num_vcycles(const mt_kahypar_context_t* context) {
+  return reinterpret_cast<const Context*>(context)->partition.num_vcycles;
 }
 
 double mt_kahypar_get_epsilon(const mt_kahypar_context_t* context) {

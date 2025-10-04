@@ -136,14 +136,14 @@ function main()
     K_true = zeros(Int64, nreps)
     K_hat = zeros(Int64, nreps)
     relative_K_error = zeros(Float64, nreps)
-    conductance_hat = zeros(Float64, nreps)
+    # conductance_hat = zeros(Float64, nreps)
     relative_mod_error = zeros(Float64, nreps)
 
     ###### GET RUNNING TIMES & CONDUCTANCES ######
     filename = string(model,scenario,"$(version).results.t_c")
     lines = readlines(filename)
     times = String[]
-    conductances = String[]
+    # conductances = String[]
     for line in lines
         metric = split(line, "=")[1]
         if metric == "Time (sec.) "
@@ -151,15 +151,15 @@ function main()
             times_str = split(split(line, "=")[2], "[")[2]
             times_str = split(times_str, "]")[1]
             times = split(times_str, ",")
-        elseif metric == "Conductance "
+        # elseif metric == "Conductance "
             # conductance_hat are in line "Conductance = [c1, c2, ..., cn]"
-            conductance_str = split(split(line, "=")[2], "[")[2]
-            conductance_str = split(conductance_str, "]")[1]
-            conductances = split(conductance_str, ",")
+        #    conductance_str = split(split(line, "=")[2], "[")[2]
+        #    conductance_str = split(conductance_str, "]")[1]
+        #    conductances = split(conductance_str, ",")
         end
     end
     runtimes = parse.(Float64, times)
-    conductance_hat = parse.(Float64, conductances)
+    # conductance_hat = parse.(Float64, conductances)
 
     ###### LOOP OVER DATASETS ######
     for i in 1:nreps
@@ -175,7 +175,7 @@ function main()
         relative_K_error[i] = (K_true[i] - K_hat[i])/(K_true[i])
 
         # read data
-        filename = string(model,scenario,"rep",i)
+        filename = string(model,scenario,"rep",instance)
         E = read_hypergraph_edges(filename) # possible to add min and max hyperedge size
         n = maximum([maximum(e) for k in keys(E) for e in keys(E[k])])
         D = zeros(Int64, n)
@@ -207,20 +207,24 @@ function main()
         relative_mod_error[i] = (Q_true[i] - Q[i])/(Q_true[i])
        
         ######### Compute ARI #######
-        # Ari[i] = ari(Z_hat,Z_true)
+        #Ari[i] = ari(Z_hat,Z_true)
         
         # save partial results
         filename= string(model,scenario,"$(version).partial_results")
         
         open(filename, "w") do f
-            write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat"*"\n"*"Instances = $(instances)")
+            write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Modularity = $Q_true"*"\n"*"Relative Modularity error = $relative_mod_error"*"\n"*"K = $K_hat"*"\n"*"GT_K = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)"*"\n")
+            # write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat"*"\n"*"Instances = $(instances)")
+            # write(f, "ARI = $Ari"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat"*"\n"*"Instances = $(instances)")
             # write(f, "Instances = $(instances)"*"\n"*"ARI = $(string(Ari))"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"REL_Q_ERR = $relative_mod_error"*"K_hat = $K_hat"*"\n"*"K_true = $K_true\n"*"REL_K_ERR = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat")
         end
     end
     # save final results
     filename= string(model,scenario,"$(version).results")
     open(filename, "a") do f
-        write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat"*"\n"*"Instances = $(instances)")
+        write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Modularity = $Q_true"*"\n"*"Relative Modularity error = $relative_mod_error"*"\n"*"K = $K_hat"*"\n"*"GT_K = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)"*"\n")
+        # write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat"*"\n"*"Instances = $(instances)")
+        # write(f, "ARI = $Ari"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Conductance_hat = $conductance_hat"*"\n"*"Instances = $(instances)")
         # write(f, "Instances = $(instances)"*"\n"*"ARI = $(string(Ari))"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"REL_Q_ERR = $relative_mod_error"*"K_hat = $K_hat"*"\n"*"K_true = $K_true\n"*"Conductance_hat = $conductance_hat")
     end
 end

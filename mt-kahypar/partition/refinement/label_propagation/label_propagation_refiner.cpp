@@ -47,7 +47,7 @@ namespace mt_kahypar {
                                                            const F& objective_delta) {
     bool is_moved = false;
     ASSERT(hn != kInvalidHypernode);
-    if ( hypergraph.isBorderNode(hn) && !hypergraph.isFixed(hn) ) {
+    if ( ((hypergraph.isBorderNode(hn) || _context.partition.clustering)) && !hypergraph.isFixed(hn) ) {
       ASSERT(hypergraph.nodeIsEnabled(hn));
 
       Move best_move = _gain.computeMaxGainMove(hypergraph, hn, false, false, unconstrained);

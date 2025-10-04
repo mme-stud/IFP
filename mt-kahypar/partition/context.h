@@ -233,7 +233,12 @@ std::ostream & operator<< (std::ostream& str, const RefinementParameters& params
 struct InitialPartitioningParameters {
   InitialPartitioningParameters() :
     // Enable all initial partitioner per default
-    enabled_ip_algos(static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED), true) { }
+    enabled_ip_algos(static_cast<size_t>(InitialPartitioningAlgorithm::UNDEFINED), true) { 
+      enabled_ip_algos[static_cast<size_t>(InitialPartitioningAlgorithm::singleton)] = false;
+      enabled_ip_algos[static_cast<size_t>(InitialPartitioningAlgorithm::aon_hypermodularity)] = false;
+      enabled_ip_algos[static_cast<size_t>(InitialPartitioningAlgorithm::aon_hypermodularity_kernel)] = false;
+      enabled_ip_algos[static_cast<size_t>(InitialPartitioningAlgorithm::aon_hypermodularity_bayesian)] = false;
+    }
 
   Mode mode = Mode::UNDEFINED;
   RefinementParameters refinement = { };

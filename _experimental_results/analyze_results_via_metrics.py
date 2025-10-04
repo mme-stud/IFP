@@ -49,12 +49,15 @@ results = dict()
 for graph_id in graphs.split(","):
     predicted_file = f"{data_root_dir}/{mode}/{scenario}/{version}/rep{graph_id}_he.hgr.part"
     ground_truth_file = f"{data_root_dir}/{mode}/{scenario}/rep{graph_id}_assign.txt"
+    print("Predicted file:", predicted_file)
+    print("Ground truth file:", ground_truth_file)
     print(f"\nAnalyzing graph {graph_id} in mode {mode}, scenario {scenario}")
     scores = get_scores(predicted_file, ground_truth_file)
     add_results(results, graph_id, scores)
 
 # Write results to output file
-metrics = ["ARI", "NMI (custom)", "Purity", "F1 Score (Pairwise)"]
+metrics = [
+    "ARI", "NMI (custom)", "Purity", "F1 Score (Pairwise)"]
 
 # append results, if the file already exists
 # if the file does not exist, create it

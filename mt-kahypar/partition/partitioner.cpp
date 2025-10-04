@@ -281,6 +281,12 @@ namespace mt_kahypar {
       hypergraph.snapshotOriginalEdgeSizes();
       hypergraph.snapshotOriginalWeightedDegreesAndTotalVolume();
       hypergraph.computeAONParameters();
+      if (context.partition.verbose_output) {
+        for (size_t d = 1; d < hypergraph.maxEdgeSize(); ++d) {
+          LOG << "For edge size d = " << d << ": beta_d = " << hypergraph.beta(d)
+              << ", gamma_d = " << hypergraph.gamma(d);
+        }
+      }
       hypergraph.useOriginalSizeInParallelNetsDetection(true); // otherwise gain is incorrect
     }
   }

@@ -272,6 +272,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
       //                         <...>
       //          2. AllOrNothingHMLL: Louvain Cycle   
       double total_gain = 0.0;
+      long long counter = 1;
       while (z_changed) {
         /** -------------------- Collapse: --------------------
          *  - The community structure on H_new is collapsed by 
@@ -307,7 +308,7 @@ Original Algorithm: [Generative hypergraph clustering: from blockmodels to modul
          */
         
         expand(H, H_new, H_new_partitioned, map_z, z);
-      }
+      } while (z_changed && counter++ < 10 && H_new_partitioned.k() > 2); // max. 10 iterations
 
       if (_context.partition.verbose_output)
         LOG << "AON IP [" << V(_ipName) << V(_tag) << "] finished Louvain with total gain " << total_gain 
@@ -693,8 +694,13 @@ Reference: Adil's commit [ab9be07](https://github.com/adilchhabra/mt-kahypar/com
     - set in `partitioned_hypergraph.h`, `changeNodePart(..)`
 
 - snapshot original edge sizes for AON Hypermodularity: in `partitioner.cpp`, `precomputeHyperModularityParameters()`
-- disable error of missing `-k / --blocks`, `-e / --epsilon` parameter for `aon_hypermodularity` (and `conductance_local`, `conductance_global`):
+- disable error of missing `-k / --blocks`, `-e / --epsilon` parameter, if `clustering` is used 
     - `mt-kahypar/io/command_line_options.cpp`: `processCommandLineInput(...)`
+    - `lib/mtkahypar.cpp`: `mt_kahypar_set_partitioning_parameters(...)`:
+    ```cpp
+      c.partition.k = num_blocks > 1 ? num_blocks : 32;
+      c.partition.epsilon = epsilon >= 0.0 ? epsilon : std::numeric_limits<double>::max();
+    ```
 - help functions in `gain_computation_base.h`:
     + \+ `aonVolume(sync_update)` calling `AttributedGains::volumeDelta()`
     + \+ `setLocalDelta(moveGain)` (**ToDo: check, where / if used**)
@@ -760,8 +766,9 @@ i-r-lp-maximum-iterations=5
               && (phg.k() - num_empty_parts > 1));
     ```
 - no gain cache for conductance &rarr; we use `CutGainCache`, which allocates an array of the size `original_num_nodes * k` &rArr; `segfault` on big hypergraphs (`circuit5M`):
-    - **ToDo**: implement a (dummy?) gain cache
-
+    - **ToDo**: implement a (dummy?) gain cache [done]
+- if only one cluster is left, modes aren't moved out as they are not border nodes \
+ &rarr; changed `LabelPropagationRefiner<GraphAndGainTypes>::moveVertex(..)` to allow moving non-border nodes if `clustering` os used
 
 ## Side trip: GMP
 We planned to use GMP to avoid `Inf` and `NaN` problems in AON Hypermodularity. But for now, we decided to use `double` and avoid too long running times (as even `long double` increased running time drastically and `GMP` seems to be even slower).
@@ -932,7 +939,9 @@ Per default, IP is skipped in V-cycles and instead the partition from the previo
 
 To save memory, we fit the new communities s.t. they use consecutive IDs from `0` to `new_k - 1`. This is done in `fitCommunityIDs()` in time $O(#hn)$ (worst case of one thread). The technic is the same as used in `StaticHypergraph::contract(..)` to renumber the nodes of the contracted hypergraph.
 
-The initial `k` value is set to the number of detected communities. `c-t = 20` (for now)
+The initial `k` value is set to the number of detected communities. `c-t = 20` (for now) &rarr; 1, 2, 5 return less clusters.
+
+**!!!** In the library interface, `mt_kahypar_partition(..)` sets `num_vcycles = 0`. To use V-Cycles, `mt_kahypar_improve_partition(..)` must be called with `num_vcycles > 1`.
 
 `mt-kahypar/partition/multilevel.cpp`:
 - in `multilevel_partitioning(..)`:
@@ -999,43 +1008,99 @@ This way, we can make new presets that use clustering.
 ## Scripts for experiments
 Folder: `_experimental_results/`
 - `survey_benchmark/` - all benchmarks from the survey paper [Comparison of modularity-based approaches for nodes clustering in hypergraphs](https://arxiv.org/pdf/2401.14028)
-- `run_experiments_write_clusters_times_conductances.cc`:
-    - command line arguments:
-        + `-m` - name of the mode (`DCHSBM / HyperSBM / HyperSBM`)
-        + `-s` - scenario name (`scenA1 / ...`)
-        + `-t` - number of threads for the experiment
-        + `-n` - optional number of instances to run (default: all instances in the scenario: 25)
-    - output files:
-        + `survey_benchmark/<mode>/<scenario>/mt_kahyper_<hgrname.hgr>_<num_threads>threads.part` - resulting clusters
-        + `survey_benchmark/<mode>/<scenario>/mt_kahyper_<num_threads>threads.results.t_c` - running times and conductances:\
-            ```
-                Time (sec.) = [t1, t2, ..., tn]
-                Conductance = [c1, c2, ..., cn]
-            ```
-- `analyze_results_script.jl`: - runs analysis of the results and writes a summary file:
-    - reference: `AON_HMLL_sript.jl` from [the survey repository](https://github.com/veronicapoda/modularity/), uses `AON_HMLL_axuliary.jl`
-    - command line arguments:
-        + `-d` - data root directory (`survey_benchmark/`)
-        + `-m` - name of the generating model (`"DCHSBM/" / "HyperSBM/" / "HyperSBM/"`)
-        + `-s` - scenario name (`scenA1 / ...`)
-        + `-n` - optional number of instances to analyze (default: all instances in the scenario: 25)
-        + `-t` - number of threads for the experiment
-    - output files:
-        + `survey_benchmark/<mode>/<scenario>/mt_kahyper_results_<num_threads>threads.results` - summary of all stats + previously saved of running times and conductances: \
-            ```
-                ARI=[i_1, i_2, ..., i_n]                  # adjusted rand indices (see [wikipedia](https://en.wikipedia.org/wiki/Rand_index))
-                CPU time = [t_1, t_2, ..., t_n]
-                Modularity = [m_1, m_2, ..., m_n]
-                GT_Mod = [gtm_1, gtm_2, ..., gtm_m]       # ground truth modularities
-                K_hat = [k'_1, k'_2, ..., k'_n]
-                K_true = [k_1, k_2, ..., k_m]             # ground truth number of clusters
-                Conductance_hat = [c'_1, c'_2, ..., c'_n]
-            ```
-- `build_exp.sh`, `run_exp.sh`, `analyze_exp.sh` - scripts to build, run and analyze the experiments
 
+
+- `build_exp.sh`, `run_exp.sh`, `analyze_exp.sh` - scripts to build, run and analyze the experiments
+- `experiments.sh` - uses all 3 scripts above to run many experiments
+- `run_full_experiments.sh` - runs `experiments.sh` for many presets, modes and scenarios, plots the results. Uses one of prompts from `prompts/` to interact with `experiments.sh`
+
+### Build
 To build and use the library:
 - build the library after building the project via: `make install-mtkahypar` after normal `cmake` call
 - the `.so` file should be in `LD_LIBRARY_PATH` (e.g. `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/mt-kahypar/lib`)
 - in `.cc`: `#include "<mtkahypar.h>` 
 - link:  \
     ```g++ -DNDEBUG -o exp -O3 -std=c++20 run_experiments_write_clusters_times_conductances.cc $LIB_DIR/libmtkahypar.so -I .../IFP/include -lpthread```
+
+### Running experiments:
+- `run_experiments_write_clusters_times_conductances.cc` [partiton.out] - runs the experiments and writes the resulting clusters, running times and conductances:
+    - command line arguments:
+        + `-p` - preset (e.g. `dummy` for the preset `dummy_preset.ini` in `config/`)
+        + `-v` - version, to save the result in a version subdirectory (`test / ...`)
+        + `-m` - name of the mode (`DCHSBM / HyperSBM / HyperSBM`)
+        + `-s` - scenario name (`scenA1 / ...`)
+        + `-t` - number of threads for the experiment
+        + `-instances` - optional: comma-separated list of instance ids to run (default: all instances in the scenario: `1,...,25`)
+    - output files:
+        + `survey_benchmark/<mode>/<scenario>/<version>/<hgrname>.part` - resulting clusters
+        + `survey_benchmark/<mode>/<scenario>/<version>.results.t_c` - running times and conductances:\
+            ```
+                Version = <version>
+                Instances = [i_1, i_2, ..., i_n]          # instance ids
+                Time (sec.) = [t1, t2, ..., tn]
+                Conductance = [c1, c2, ..., cn]
+            ```
+- `AON_HMLL_exp.jl` - analog to `analyze_results_via_modularity.jl` (see later)
+
+### Analyzing results:
+- `analyze_results_via_modularity.jl` - computes AON-Modularity of the results (and generates results in the case of `AON_HMLL_exp.jl`) and the ground truth clusters and writes a summary file:
+    - reference: `AON_HMLL_sript.jl` from [the survey repository](https://github.com/veronicapoda/modularity/)
+    - command line arguments:
+        + `-d` - data root directory (`survey_benchmark/`)
+        + `-m` - name of the generating model (`"DCHSBM/" / "HyperSBM/" / "HyperSBM/"`)
+        + `-s` - scenario name (`scenA1 / ...`)
+        + `-n` - optional number of instances to analyze (default: all instances in the scenario: 25)
+        + `-t` - number of threads for the experiment
+        + `-i` - optional: comma-separated list of instance ids to analyze (default: all instances in the scenario)
+        + `-v` - version, to read the results from a version subdirectory (`test / ...`)
+    - output files:
+        + `survey_benchmark/<mode>/<scenario>/<version>.results` (and `<..>.partial_results`) - summary of all stats + previously saved of running times and conductances: \
+            ```
+                CPU time = [t_1, t_2, ..., t_n]
+                Modularity = [m_1, m_2, ..., m_n]
+                GT_Modularity = [gtm_1, gtm_2, ..., gtm_m]       
+                Relative Modularity Error = [rm_1, rm_2, ..., rm_n] # (GT_Modularity - Modularity) / |GT_Modularity|
+                K = [k'_1, k'_2, ..., k'_n]
+                GT_K = [k_1, k_2, ..., k_m]             # ground truth number of clusters
+                Relative k Error = [rk_1, rk_2, ..., rk_n]       # (GT_K - K) / GT_K
+                Instances = [i_1, i_2, ..., i_n]          # instance ids
+            ```
+- `analyze_results_via_metrics.py` - computes various metrics [ARI, NMI, Purity, F1 Score (Pairwise)] of the ground truth clusters and the given partition and writes a summary file:
+    - command line arguments:
+        + `--version` - version, to save the result in a version subdirectory (`test / ...`)
+        + `--data_root_dir` - data root directory (`survey_benchmark`)
+        + `--mode` - name of the generating model (`"DCHSBM/" / "HyperSBM/" / "HyperSBM/"`)
+        + `--scenario` - scenario name (`scenA1 / ...`)
+        + `--graphs` - optional comma-separated list of instances to analyze
+    - output files [APPENDS, if exists!]:
+        + `survey_benchmark/<mode>/<scenario>/<version>.results` - summary of all stats : \
+            ```
+            NMI = [n_1, n_2, ..., n_n]                  # normalized mutual information (see [wikipedia](https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants))
+            Purity = [p_1, p_2, ..., p_n]               # purity (see [wikipedia](https://en.wikipedia.org/wiki/Purity_(clustering)))
+            ...
+            ```
+- `analyze_results_via_conductance.cc` [`conductance.out`]- computes conductance of the ground truth clusters and the given partition and writes a summary file:
+    - command line arguments:
+        + `-p` - preset (e.g. `dummy` for the preset `dummy_preset.ini` in `config/`)
+        + `-v` - version, to save the result in a version subdirectory (`test / ...`)
+        + `-m` - name of the generating model (`"DCHSBM/" / "HyperSBM/" / "HyperSBM/"`)
+        + `-s` - scenario name (`scenA1 / ...`)
+        + `-instances` - optional comma-separated list of instances to analyze (default: all instances in the scenario)
+    - output files [APPENDS!]:
+        + `survey_benchmark/<mode>/<scenario>/<version>.results` - summary of all stats : \
+            ```
+            ...           
+            Conductance = [c'_1, c'_2, ..., c'_n]
+            GT_Conductance = [c1, c2, ..., cn]       # ground truth conductances
+            ```
+### Create new experiment presets
+- `_experimental_results/config/` - folder with experiment presets:
+    - `dummy_preset.ini` - a dummy preset to create new from
+    - `generate_presets.sh` - script to generate new presets from `dummy_preset.ini`
+
+### Plotting results
+- `plot_all_results.py` - plots all results from given versions (e.g. `test,AON_HMLL_clique`):
+    - command line arguments:
+        + `--data_root_dir` - data root directory (`survey_benchmark`)
+        + `--versions` - comma-separated list of versions, which results should be plotted (e.g. `test,AON_HMLL_clique`)
+        + `--output` - directory to save the plots (e.g. with `--output=AON` the script will generate plots in `plots/AON/`)

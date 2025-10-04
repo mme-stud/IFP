@@ -298,6 +298,9 @@ namespace mt_kahypar {
     } else if (initial_partitioning.enabled_ip_algos[
       static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity_kernel)]) {
       return true;
+    } else if (initial_partitioning.enabled_ip_algos[
+      static_cast<uint8_t>(InitialPartitioningAlgorithm::aon_hypermodularity_bayesian)]) {
+      return true;
     }
     return false;
   }
@@ -320,7 +323,9 @@ namespace mt_kahypar {
       case Objective::conductance_local:
       case Objective::conductance_global:
         partition.enable_collective_sync_updates = true;
-        LOG << "Collective sync updates in PHG are enabled.";
+        if (partition.verbose_output) {
+          LOG << "Collective sync updates in PHG are enabled because of conductance objective.";
+        }
         break;
       default:
         partition.enable_collective_sync_updates = false;
@@ -390,10 +395,6 @@ namespace mt_kahypar {
     } else {
       coarsening.contraction_limit =
               coarsening.contraction_limit_multiplier * partition.k;
-    }
-
-    if (partition.clustering) {
-      coarsening.contraction_limit = coarsening.contraction_limit_multiplier * 32;
     }
 
     // Setup maximum allowed vertex and high-degree vertex weight

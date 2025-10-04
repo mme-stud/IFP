@@ -131,9 +131,8 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::AON_HMLL(PartitionedHyper
   vec<HypernodeID> map_z(H_new.initialNumNodes(), kInvalidPartition);
   bool z_changed = false;
   AONCoefficient total_gain = 0.0;
-  long long counter = 0;
+  long long counter = 1;
   do {
-    counter++;
     /// [debug] std::cout << "Outer Iteration: " << counter << std::endl;
     /** -------------------- Collapse: --------------------
      *  - The community structure on H_new is collapsed by 
@@ -172,7 +171,7 @@ void AONHypermodularityInitialPartitioner<TypeTraits>::AON_HMLL(PartitionedHyper
      */
     expand(hg, H_new, H_new_partitioned, map_z, z);
     /// [debug] std::cout << "Outer Iteration: expand(..) finished " << counter << std::endl;
-  } while (z_changed);
+  } while (z_changed && (counter++ < 10) && (H_new_partitioned.k() > 2)); // max. 10 iterations
 
   if (_context.partition.verbose_output)
     LOG << "AON IP [" << V(_ipName) << V(_tag) << "] finished Louvain with total gain " << total_gain 
@@ -259,10 +258,12 @@ AONCoefficient AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(
     }
     std::shuffle(nodes.begin(), nodes.end(), _rng);
     while (improving && (iter++ < maxNumIter)) {
+      if ( k_now == 2 ) break; // cannot improve anymore
       AONCoefficient gain = 0.0;
       improving = false;
       for (const HypernodeID &i : nodes) {
         if ( ! H_new_partitioned.nodeIsEnabled(i) ) continue;
+        if ( k_now == 2 ) break; // cannot improve anymore
         gain += louvainStepForANode(i, neighbors[i], visited, 
                                        k_now /* reference! */, clusterSizes,
                                        H_new, H_new_partitioned, map_z, 
@@ -274,10 +275,12 @@ AONCoefficient AONHypermodularityInitialPartitioner<TypeTraits>::louvainStep(
     }
   } else {
     while (improving && (iter++ < maxNumIter)) {
+      if ( k_now == 2 ) break; // cannot improve anymore
       AONCoefficient gain = 0.0;
       improving = false;
       /// [debug]   std::cout << "Louvain: round " << iter << std::endl;
       for (const HypernodeID &i : H_new_partitioned.nodes()) {
+        if ( k_now == 2 ) break; // cannot improve anymore
         gain += louvainStepForANode(i, neighbors[i], visited, 
                                     k_now /* reference! */, clusterSizes,
                                     H_new, H_new_partitioned, map_z, 

@@ -91,7 +91,7 @@ end
 function writePartition(filename::String, partition::Vector{Int})
     open(filename, "w") do f
         for v in partition
-            write(f, string(v-1)*"\n") # -1 to have clusters numbered from 0
+            write(f, string(v)*"\n")
         end
     end
 end
@@ -119,7 +119,7 @@ function main()
 
     
     ###### INITIALIZATIONS OF VARIABLES ######
-    # Ari = zeros(Float64, nreps)
+    Ari = zeros(Float64, nreps)
     runtimes = zeros(Float64, nreps)
     Q = zeros(Float64, nreps)
     Q_true = zeros(Float64, nreps)
@@ -131,16 +131,16 @@ function main()
     ###### LOOP OVER DATASETS ######
     for i in 1:nreps
         instance = instances[i]
-        # print("\n Instance: $instance \n")
+        # print("\n Instance: $i \n")
                 
         # read true label vector
-        filename = string(model,scenario,"rep",i,"_assign.txt")
+        filename = string(model,scenario,"rep",instance,"_assign.txt")
         Z_true = vec(readdlm(filename, Int))
         K_true[i] = length(unique(Z_true)) # true number of clusters
         
         runtimes[i] = @elapsed begin
             # read data
-            filename = string(model,scenario,"rep",i)
+            filename = string(model,scenario,"rep",instance)
             E = read_hypergraph_edges(filename) # possible to add min and max hyperedge size
             n = maximum([maximum(e) for k in keys(E) for e in keys(E[k])])
             D = zeros(Int64, n)
@@ -165,7 +165,8 @@ function main()
 
         # performance measures
         K_hat[i]= length(unique(Z_hat)) # estimated number of clusters
-        
+        relative_K_error[i] = (K_true[i] - K_hat[i]) / K_true[i]
+
         ######## Extract omega parameters to compute modularity ######
         # compute initialisation corresponding to startclusters = "cliquelouvain"
         Z0 = HyperModularity.CliqueExpansionModularity(H,1.0) # default value gamma=1.0
@@ -173,29 +174,31 @@ function main()
         e2n = incidence2elist(He2n)
         d = 1.0*H.D # degree vector - coercion to float for compatibility with AON_louvain
         β, γ,omega = learn_omega_aon(e2n,weights,Z0,maxedges,d,n)
-        
+
         Q[i] = modularity_aon(H,Z_hat,omega)
         Q_true[i] = modularity_aon(H,Z_true,omega)
+        relative_mod_error[i] = (Q_true[i] - Q[i])/(Q_true[i])
 
         writePartition(string(model,scenario,version,"/rep",instance,"_he.hgr.part"), Z_hat)
        
         ######### Compute ARI #######
-        # Ari[i] = ari(Z_hat,Z_true)
+        Ari[i] = ari(Z_hat,Z_true)
         
         # save partial results
         filename= string(model,scenario,"$(version).partial_results")
         open(filename, "w") do f
-            write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)")
+            write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Modularity = $Q_true"*"\n"*"Relative Modularity error = $relative_mod_error"*"\n"*"K = $K_hat"*"\n"*"GT_K = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)"*"\n")
+            # write(f, "ARI = $Ari"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)")
             # write(f, "ARI=$(string(Ari))"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true")
         end
     end
     
     ##########
     # Correct the first computing time
-    i=instances[1]
-    runtimes[i] = @elapsed begin
+    instance = instances[1]
+    runtimes[1] = @elapsed begin
         # read data
-        filename = string(model,scenario,"rep",i)
+        filename = string(model,scenario,"rep",instance)
         E = read_hypergraph_edges(filename) # possible to add min and max hyperedge size
         n = maximum([maximum(e) for k in keys(E) for e in keys(E[k])])
         D = zeros(Int64, n)
@@ -223,7 +226,8 @@ function main()
     ###### OUTPUT FILES #######
     filename= string(model,scenario,"$(version).results")
     open(filename, "w") do f
-        write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)")
+        write(f, "CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Modularity = $Q_true"*"\n"*"Relative Modularity error = $relative_mod_error"*"\n"*"K = $K_hat"*"\n"*"GT_K = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)"*"\n")
+        # write(f, "ARI = $Ari"*"\n"*"CPU time = $runtimes"*"\n"*"Modularity = $Q"*"\n"*"GT_Mod = $Q_true"*"\n"*"Relative Mod. error = $relative_mod_error"*"\n"*"K_hat = $K_hat"*"\n"*"K_true = $K_true"*"\n"*"Relative k error = $relative_K_error"*"\n"*"Instances = $(instances)")
     end
 
 end

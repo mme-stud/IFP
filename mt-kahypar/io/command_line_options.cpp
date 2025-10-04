@@ -853,19 +853,21 @@ namespace mt_kahypar {
     po::notify(cmd_vm);
 
     // Validate that blocks is specified
-    if ( !context.partition.clustering
-        && !cmd_vm.count("blocks")) {
-      throw po::error("The --blocks option is required when clustering is disabled");
-    } else {
+    if (!cmd_vm.count("blocks")) {
+      if (!context.partition.clustering) {
+        throw po::error("The --blocks option is required when clustering is disabled");
+      } else {
         context.partition.k = 32;
+      }
     }
     // Validate that Epsilon is specified
-    if ( !context.partition.clustering
-        && !cmd_vm.count("epsilon")) {
-      throw po::error("The --epsilon option is required when clustering is disabled");
-    } else {
+    if (!cmd_vm.count("epsilon")) {
+      if (!context.partition.clustering) {
+        throw po::error("The --epsilon option is required when clustering is disabled");
+      } else {
         // effectively disable imbalance checks
         context.partition.epsilon = std::numeric_limits<double>::max(); 
+      }
     }
 
     po::options_description ini_line_options;

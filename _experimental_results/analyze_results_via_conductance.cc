@@ -14,7 +14,7 @@
 std::string survey_root_dir = "survey_benchmark";
 std::string preset_dir = "config/";
 
-std::tuple<std::string, std::string, std::string, std::string, int, std::vector<int>>
+std::tuple<std::string, std::string, std::string, std::string, std::vector<int>>
 parse_commandline_args(int argc, char* argv[]) {
   std::string version = "default"; // code version / configuration
   std::string preset = "cluster"; // mt-kahypar preset
@@ -24,8 +24,8 @@ parse_commandline_args(int argc, char* argv[]) {
   std::vector<int> instances; // parsed from graphs
 
   int num_threads = -1;
-  if (argc != 1 + 10 && argc != 1 + 12) {
-    std::cout << "Usage: p <preset> -v <version> -m HyperSBM -s scenA1 -t <num_threads> [-instances \"1,22\"]" << std::endl;
+  if (argc != 1 + 10 && argc != 1 + 8) {
+    std::cout << "[Analyze conductance] Usage: -p <preset> -v <version> -m HyperSBM -s scenA1  [-instances \"1,22\"]" << std::endl;
     std::exit(1);
   }
   for (int i = 1; i < argc; i+=2) {
@@ -38,8 +38,6 @@ parse_commandline_args(int argc, char* argv[]) {
       mode = argv[i+1];
     } else if (arg == "-s") {
       scenario = argv[i+1];
-    } else if (arg == "-t") {
-      num_threads = std::stoi(argv[i+1]);
     } else if (arg == "-instances") {
       // comma-separated list of graph ids
       graphs = argv[i+1];
@@ -70,34 +68,32 @@ parse_commandline_args(int argc, char* argv[]) {
   std::cout << "Version: " << version << std::endl;
   std::cout << "Mode: " << mode << std::endl;
   std::cout << "Scenario: " << scenario << std::endl;
-  std::cout << "Number of Threads: " << num_threads << std::endl;
   std::cout << "Instances: ";
   for (const auto& inst : instances) {
     std::cout << inst << " ";
   }
   std::cout << std::endl;
 
-  assert(num_threads > 0);
-  assert(num_threads <= std::thread::hardware_concurrency());
-  return {preset, version, mode, scenario, num_threads, instances};
+  return {preset, version, mode, scenario, instances};
 }
 
 
-std::tuple<double, double> 
-run_partitioning(const std::string& hgr_path, const std::string& hgr_name, mt_kahypar_error_t& error, int num_threads, std::string version, std::string preset) {
+double 
+compute_conductance(
+        const std::string& hgr_path, const std::string& hgr_name, 
+        const std::string& partition_file,  
+        mt_kahypar_error_t& error, std::string preset) {
   std::cout << "Hypergraph: " << hgr_path << "/" << hgr_name << std::endl;
-  mt_kahypar_initialize(num_threads, true /* activate interleaved NUMA allocation policy */);
+  mt_kahypar_initialize(1, true /* activate interleaved NUMA allocation policy */);
   // Setup partitioning context from preset
   mt_kahypar_context_t* context = mt_kahypar_context_from_file((preset_dir + preset + "_preset.ini").c_str(), &error);
   if (context == nullptr) {
     std::cout << error.msg << std::endl; std::exit(1);
   }
   mt_kahypar_set_partitioning_parameters(context,
-    -1 /* dummy number of blocks */, -1 /* dummy imbalance parameter */,
+    2 /* dummy number of blocks */, 0.03 /* dummy imbalance parameter */,
     CONDUCTANCE_LOCAL /* objective function */);
   mt_kahypar_set_seed(42 /* seed */);
-  size_t num_vcycles = mt_kahypar_get_num_vcycles(context);
-  std::cout << "Using preset: " << preset << " with " << num_vcycles << " V-cycles." << std::endl;
 
   // Disable logging
   mt_kahypar_status_t status =
@@ -121,11 +117,29 @@ run_partitioning(const std::string& hgr_path, const std::string& hgr_name, mt_ka
   std::cout << "Input: end" << std::endl;
 
   // Partition Hypergraph
-  std::cout << "Partition: start" << std::endl;
+  std::cout << "Partition construction: start" << std::endl;
   // time partition
   startTime = std::chrono::high_resolution_clock::now();
+  // read number of blocks from the partition file
+  std::ifstream pf(partition_file);
+  if (!pf) {
+    std::cout << "Partition file " << partition_file << " not found." << std::endl; std::exit(1);
+  }
+  int num_blocks = 0;
+  std::string line;
+  while (std::getline(pf, line)) {
+    int block = std::stoi(line);
+    if (block + 1 > num_blocks) {
+      num_blocks = block + 1;
+    }
+  }
+  // read partition from file
   mt_kahypar_partitioned_hypergraph_t partitioned_hg =
-    mt_kahypar_partition(hypergraph, context, &error);
+    mt_kahypar_read_partition_from_file(hypergraph,
+                                        context,
+                                        num_blocks,
+                                        partition_file.c_str(),
+                                        &error);
   endTime = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration<double>(endTime - startTime);
   std::cout << "Time:  " << duration.count() << " seconds.\n";
@@ -133,63 +147,13 @@ run_partitioning(const std::string& hgr_path, const std::string& hgr_name, mt_ka
   if (partitioned_hg.partitioned_hg == nullptr) {
     std::cout << error.msg << std::endl; std::exit(1);
   }
-
-  // Run V-cycles
-  if (num_vcycles > 0) {
-    std::cout << num_vcycles << " V-cycles: start" << std::endl;
-    startTime = std::chrono::high_resolution_clock::now();
-    mt_kahypar_status_t status = mt_kahypar_improve_partition(
-      partitioned_hg, context, num_vcycles, &error);
-    endTime = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration<double>(endTime - startTime);
-    std::cout << "Time:  " << duration.count() << " seconds.\n";
-    std::cout << "V-cycles: end" << std::endl;
-    if (status != SUCCESS) {
-      std::cout << error.msg << std::endl; std::exit(1);
-    }
-  }
  
-  // Output some info about the partition
-  { 
-    // Extract Partition
-    auto partition = std::make_unique<mt_kahypar_partition_id_t[]>(
-      mt_kahypar_num_hypernodes(hypergraph));
-    mt_kahypar_get_partition(partitioned_hg, partition.get());
-    // k - not from context [context is copied internaly to mt-kahypar and not updated]
-    int k = mt_kahypar_num_blocks(partitioned_hg);
-    // Extract Block Weights
-    auto block_weights = std::make_unique<mt_kahypar_hypernode_weight_t[]>(k);
-    mt_kahypar_get_block_weights(partitioned_hg, block_weights.get());
-
-    // Get the number of nonempty blocks
-    mt_kahypar_partition_id_t num_nonempty_blocks = 0;
-    for (int i = 0; i < k; ++i) {
-      if (block_weights[i] > 0) {
-        ++num_nonempty_blocks;
-      }
-    }
-    std::cout << "Number of clusters: " << num_nonempty_blocks << std::endl;
-    std::cout << "Number of blocks: " << k << std::endl;
-    std::cout << "Computed conductance: " << mt_kahypar_conductance_local(partitioned_hg) << std::endl;
-    std::cout << "Computed AON hypermodularity: " << mt_kahypar_aon_hypermodularity(partitioned_hg) << std::endl;
-  }
-
-  // Write the partition to a file
-  const std::string partition_file = hgr_path + "/" + version + "/" + hgr_name + ".part";
-  mt_kahypar_write_partition_to_file(
-        partitioned_hg, 
-        partition_file.c_str(),
-        &error);
-  std::cout << "Wrote partition to file: " << partition_file << std::endl;
-
-  double time = duration.count();
   double conductance = mt_kahypar_conductance_local(partitioned_hg);
-
+  std::cout << "Computed conductance: " << conductance << std::endl;
   mt_kahypar_free_context(context);
   mt_kahypar_free_hypergraph(hypergraph);
   mt_kahypar_free_partitioned_hypergraph(partitioned_hg);
-
-  return {time, conductance};
+  return conductance;
 }
 
 // args: mode, scenario, num_threads, [num_graphs]
@@ -202,57 +166,49 @@ int main(int argc, char* argv[]) {
   std::string version = std::get<1>(parsed_args);
   std::string mode = std::get<2>(parsed_args);
   std::string scenario = std::get<3>(parsed_args);
-  int num_threads = std::get<4>(parsed_args);
-  std::vector<int> instances = std::get<5>(parsed_args);
+  std::vector<int> instances = std::get<4>(parsed_args);
   int num_graphs = instances.size();
 
-  std::vector<double> times(num_graphs + 1, 0);
-  std::vector<double> conductances(num_graphs + 1, 0);
+  std::vector<double> conductances_hat(num_graphs + 1, 0);
+  std::vector<double> conductances_true(num_graphs + 1, 0);
+
   
   // Loop through the graphs in the scenario
   std::string graph_path = survey_root_dir + "/" + mode + "/" + scenario;
   for (int i = 1; i <= num_graphs; ++i) {
     int graph_id = instances[i - 1];
     std::string graph_name = std::string("rep") + (std::to_string(graph_id)) + ("_he.hgr");
+    std::string partition_file = graph_path + ("/") + version + ("/") + graph_name + ".part";
+    std::string gt_file = graph_path + ("/rep") + (std::to_string(graph_id)) + ("_assign.txt");
     // write the partition to the file mt_kahypar_<graph_filename>_<num_threads>threads.part
-    auto time_conductance = run_partitioning(graph_path, graph_name, error, num_threads, version, preset);
-    times[i] = std::get<0>(time_conductance);
-    conductances[i] = std::get<1>(time_conductance);
+    conductances_hat[i] = compute_conductance(graph_path, graph_name, partition_file, error, preset);
+    conductances_true[i] = compute_conductance(graph_path, graph_name, gt_file, error, preset);
   }
   // Write all times and conductances to a file
   std::string results_filename = 
         survey_root_dir + ("/") + mode + ("/") 
-      + scenario + ("/") + version + (".results.t_c");
-  // Create or overwrite existing file
-  std::ofstream results_file(results_filename);
+      + scenario + ("/") + version + (".results");
+  // APPEND to existing file
+  std::ofstream results_file(results_filename, std::ios_base::app);
 
-  results_file << "Version = " << version << "\n";
-  
-  results_file << "Instances = [";
-  for (int i = 1; i <= num_graphs; ++i) {
-    results_file << instances[i - 1];
-    if (i < num_graphs) {
-      results_file << ", ";
-    }
-  }
-  results_file << "]\n";
-  
-  results_file << "Time (sec.) = [";
-  for (int i = 1; i <= num_graphs; ++i) {
-    results_file << times[i];
-    if (i < num_graphs) {
-      results_file << ", ";
-    }
-  }
-  results_file << "]\n";
   results_file << "Conductance = [";
   for (int i = 1; i <= num_graphs; ++i) {
-    results_file << conductances[i];
+    results_file << conductances_hat[i];
     if (i < num_graphs) {
       results_file << ", ";
     }
   }
   results_file << "]\n";
+
+  results_file << "GT_Conductance = [";
+  for (int i = 1; i <= num_graphs; ++i) {
+    results_file << conductances_true[i];
+    if (i < num_graphs) {
+      results_file << ", ";
+    }
+  }
+  results_file << "]\n";
+
   results_file.close();
   std::cout << "Wrote times and conductances to file: " << results_filename << std::endl;
   return 0;

@@ -216,8 +216,9 @@ Gain compute_conductance_objective(const PartitionedHypergraph& phg) {
   const HypergraphVolume top_part_cut_weight = top_conductance_info.fraction.getNumerator();
   const HypergraphVolume top_part_min_volume = top_conductance_info.fraction.getDenominator();
 
-  if (top_part_min_volume == 0) {
+  if (top_part_min_volume < 1 || phg.k() < 2) {
     // only one block => bad partition
+    LOG << "Top part min volume is too small: " << V(top_part_min_volume);
     return mt_kahypar::scaling_factor * 10;
   }
   // const HypergraphVolume total_volume_version = phg.conductancePriorityQueueUsesOriginalStats() ?

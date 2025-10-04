@@ -310,9 +310,9 @@ class PartitionedHypergraph {
     PartitionID actualK = 1 + maxUsedPartID;
     ASSERT(actualK <= _k);
     if (actualK < 2) {
-      actualK = 2;
       LOG << "PartitionedHypergraph::fitK() - Warning: only one cluster found: "
              "actualK = " << actualK << ", setting it to 2";
+      actualK = 2;
     }
     if (_k != actualK) {
       setK(actualK);

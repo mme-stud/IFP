@@ -444,7 +444,7 @@ class StaticHypergraph {
     _community_ids(0),
     _fixed_vertices(),
     _tmp_contraction_buffer(nullptr),
-    _beta(1, 0.0), _gamma(1, 0.0), _omega(1, {0.0, 0.0})
+    _beta(), _gamma(), _omega()
     { }
 
   StaticHypergraph(const StaticHypergraph&) = delete;
@@ -1041,8 +1041,6 @@ public:
       if (_beta[d] != 0 || _gamma[d] != 0) {
         last_non_zero = d;
       }
-      LOG << "For edge size d = " << d << ": beta_d = " << _beta[d]
-          << ", gamma_d = " << _gamma[d];
     }
     // To avoid _beta and _gamma being mostly filled with 0.0
     _beta.resize(last_non_zero + 1);

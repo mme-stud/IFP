@@ -41,15 +41,13 @@ python/tests/unittest
 python/tests/*.so
 python/examples/*.so
 compile_commands.json
-*.sh
 test_results*.txt
 result_*.txt
 result4run_example_random_test_hg.txt
 _experimental_results/large_hg.txt
 _experimental_results/medium_hg.txt
 _try*
-*.sh
-build*
+build*/
 _debug*
 instances/*
 MtKaHyPar_*_pimod*
@@ -66,3 +64,5 @@ AON_HMLL_results.txt
 *.partial_results
 *.results.t_c
 .nfs*
+*.png
+_experimental_results/config/IP*.ini

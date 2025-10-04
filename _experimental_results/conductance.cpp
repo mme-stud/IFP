@@ -5,10 +5,12 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <cstdlib>  // For getenv()
 
 
-std::string path_to_file = "/home/mmeshchaninova/mt-kahypar/IFP/_try/ISPD98/hgr/";
-std::string path_to_parts = "/home/mmeshchaninova/mt-kahypar/IFP/_try/ISPD98/hgr/";
+std::string HOME = std::getenv("HOME");
+std::string path_to_file = HOME + "/mt-kahypar/IFP/_try/ISPD98/hgr/";
+std::string path_to_parts = HOME + "/mt-kahypar/IFP/_try/ISPD98/hgr/";
 std::string ibm = "ibm";
 std::string part = ".hgr.part100.epsilon0.02.seed0.KaHyPar";
 std::string hgr = ".hgr";

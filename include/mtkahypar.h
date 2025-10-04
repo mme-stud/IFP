@@ -92,6 +92,14 @@ MT_KAHYPAR_API mt_kahypar_preset_type_t mt_kahypar_get_preset(const mt_kahypar_c
 MT_KAHYPAR_API mt_kahypar_partition_id_t mt_kahypar_get_num_blocks(const mt_kahypar_context_t* context);
 
 /**
+ * Get number of V-cycles. Result is unspecified if not previously initialized.
+ * \note Number of V-cycles is set to 0 when mt_kahypar_partition(..) is called.
+ *       To use V-cycles, call mt_kahypar_improve_partition(phg, context, num_vcycles, error)
+ *       after partitioning.
+ */
+MT_KAHYPAR_API size_t mt_kahypar_get_num_vcycles(const mt_kahypar_context_t* context);
+
+/**
  * Get imbalance parameter epsilon. Result is unspecified if not previously initialized.
  */
 MT_KAHYPAR_API double mt_kahypar_get_epsilon(const mt_kahypar_context_t* context);
@@ -369,6 +377,9 @@ MT_KAHYPAR_API bool mt_kahypar_check_compatibility(mt_kahypar_hypergraph_t hyper
  * \note Before partitioning, the number of blocks, imbalance parameter and objective function must be
  *       set in the partitioning context. This can be done either via mt_kahypar_set_context_parameter(...)
  *       or mt_kahypar_set_partitioning_parameters(...).
+ * \note Number of V-cycles is set to 0 when this function is called.
+ *       To use V-cycles, call mt_kahypar_improve_partition(phg, context, num_vcycles, error)
+ *       after partitioning.
  */
 MT_KAHYPAR_API mt_kahypar_partitioned_hypergraph_t mt_kahypar_partition(mt_kahypar_hypergraph_t hypergraph,
                                                                         const mt_kahypar_context_t* context,
