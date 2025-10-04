@@ -379,24 +379,24 @@ HyperedgeWeight soed(mt_kahypar_partitioned_hypergraph_t p) {
 
 // [my]
 template<bool Throwing>
-HyperedgeWeight conductance_local(mt_kahypar_partitioned_hypergraph_t p) {
-  return switch_phg<HyperedgeWeight, Throwing>(p, [&](const auto& phg) {
+Gain conductance_local(mt_kahypar_partitioned_hypergraph_t p) {
+  return switch_phg<Gain, Throwing>(p, [&](const auto& phg) {
     return metrics::quality(phg, Objective::conductance_local);
   });
 }
 
 // [my]
 template<bool Throwing>
-HyperedgeWeight conductance_global(mt_kahypar_partitioned_hypergraph_t p) {
-  return switch_phg<HyperedgeWeight, Throwing>(p, [&](const auto& phg) {
+Gain conductance_global(mt_kahypar_partitioned_hypergraph_t p) {
+  return switch_phg<Gain, Throwing>(p, [&](const auto& phg) {
     return metrics::quality(phg, Objective::conductance_global);
   });
 }
 
 // [my]
 template<bool Throwing>
-HyperedgeWeight aon_hypermodularity(mt_kahypar_partitioned_hypergraph_t p) {
-  return switch_phg<HyperedgeWeight, Throwing>(p, [&](const auto& phg) {
+Gain aon_hypermodularity(mt_kahypar_partitioned_hypergraph_t p) {
+  return switch_phg<Gain, Throwing>(p, [&](const auto& phg) {
     return metrics::quality(phg, Objective::aon_hypermodularity);
   });
 }

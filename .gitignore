@@ -9,6 +9,7 @@ clang-debug/*
 *.cc~
 *.h~
 *.py~
+*/__pycache__/*
 *.cfg~
 rel2/
 external_tools/*
@@ -60,4 +61,8 @@ MtKaHyPar_results_partial.txt
 MtKaHyPar_results.txt
 AON_HMLL_results_partial.txt
 AON_HMLL_results.txt
+*.results
+*.part
+*.partial_results
+*.results.t_c
 .nfs*

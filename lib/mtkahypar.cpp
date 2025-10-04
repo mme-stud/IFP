@@ -685,17 +685,17 @@ mt_kahypar_hyperedge_weight_t mt_kahypar_soed(const mt_kahypar_partitioned_hyper
 }
 
 // [my]
-mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_local(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
+double mt_kahypar_conductance_local(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
   return lib::conductance_local<true>(partitioned_hg);
 }
 
 // [my]
-mt_kahypar_hyperedge_weight_t mt_kahypar_conductance_global(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
+double mt_kahypar_conductance_global(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
   return lib::conductance_global<true>(partitioned_hg);
 }
 
 // [Adil]
-mt_kahypar_hyperedge_weight_t mt_kahypar_aon_hypermodularity(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
+double mt_kahypar_aon_hypermodularity(const mt_kahypar_partitioned_hypergraph_t partitioned_hg) {
   return lib::aon_hypermodularity<true>(partitioned_hg);
 }
 
