@@ -26,7 +26,7 @@
 
 #include "pool_initial_partitioner.h"
 
-#include <tbb/task_group.h>
+#include <tbb/parallel_for.h>
 
 #include "mt-kahypar/definitions.h"
 #include "mt-kahypar/partition/factories.h"
@@ -56,6 +56,7 @@ void Pool<TypeTraits>::bipartition(PartitionedHypergraph& hypergraph,
   int tag = 0;
   std::mt19937 rng(context.partition.seed);
   vec<IPTask> _ip_task_lists;
+  int num_runs = 0;
   // Push the runs of the different initial partitioning algorithms into a task list
   for ( uint8_t i = 0; i < static_cast<uint8_t>(InitialPartitioningAlgorithm::UNDEFINED); ++i ) {
     if ( context.initial_partitioning.enabled_ip_algos[i] ) {
@@ -71,34 +72,37 @@ void Pool<TypeTraits>::bipartition(PartitionedHypergraph& hypergraph,
         // for deterministic behavior when partitioning in deterministic mode.
         _ip_task_lists.emplace_back(algorithm, rng(), tag++);
       }
+      num_runs += runs;
     }
   }
   // Random shuffle task list to evenly schedule the initial
   // partitioning algorithms to the threads
   std::shuffle(_ip_task_lists.begin(), _ip_task_lists.end(), rng);
 
-  tbb::task_group tg;
   InitialPartitioningDataContainer<TypeTraits> ip_data(hypergraph, context);
   ip_data_container_t* ip_data_ptr = ip::to_pointer(ip_data);
-  for ( const auto& ip_task : _ip_task_lists ) {
-    const InitialPartitioningAlgorithm algorithm = std::get<0>(ip_task);
-    const int seed = std::get<1>(ip_task);
-    const int tag = std::get<2>(ip_task);
-    if ( run_parallel ) {
-      tg.run([&, algorithm, seed, tag] {
-        std::unique_ptr<IInitialPartitioner> initial_partitioner =
-          InitialPartitionerFactory::getInstance().createObject(
-            algorithm, algorithm, ip_data_ptr, context, seed, tag);
-        initial_partitioner->partition();
-      });
-    } else {
+  if ( run_parallel ) {
+    tbb::parallel_for(0, num_runs, [&](const int& i) {
+      auto& ip_task = _ip_task_lists[i];
+      const InitialPartitioningAlgorithm algorithm = std::get<0>(ip_task);
+      const int seed = std::get<1>(ip_task);
+      const int tag = std::get<2>(ip_task);
+      std::unique_ptr<IInitialPartitioner> initial_partitioner =
+            InitialPartitionerFactory::getInstance().createObject(
+              algorithm, algorithm, ip_data_ptr, context, seed, tag);
+      initial_partitioner->partition();
+    });
+  } else {
+    for ( const auto& ip_task : _ip_task_lists ) {
+      const InitialPartitioningAlgorithm algorithm = std::get<0>(ip_task);
+      const int seed = std::get<1>(ip_task);
+      const int tag = std::get<2>(ip_task);
       std::unique_ptr<IInitialPartitioner> initial_partitioner =
         InitialPartitionerFactory::getInstance().createObject(
           algorithm, algorithm, ip_data_ptr, context, seed, tag);
       initial_partitioner->partition();
     }
   }
-  tg.wait();
   ip_data.apply();
 }
 

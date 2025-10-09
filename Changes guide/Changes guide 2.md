@@ -165,7 +165,8 @@ _ip_data.commit(/* ipName */, _rng, _tag, time);
 8. &rArr; their partitionings can be merged / rewritten :(
 
 ##### Current solution
-Use a `tbb::task_arena` limited to 1 thread, to run IP on a single thread:
+- In `pool_initial_partitioner.cpp` instead of `tbb::task_group tg`, use `tbb::parallel_for` to run IPs in parallel (as `tbb::task_group` can switch tasks between threads, but `tbb::parallel_invoke` doesn't) [Potentially overkill, none the less it works]
+- Use a `tbb::task_arena` limited to 1 thread, to run IP on a single thread:
 
 ```cpp
  if ( _ip_data.should_initial_partitioner_run(_ipName) ) {
