@@ -2,7 +2,7 @@
 
 This repository contains a modified version of MtKaHyPar partitioner. The resulting algorithm supports conductance-based clustering of a hypergraph.
 
-*This repository is a part of a beginner's programming project.*
+*This repository is a part of an advances's programming practical.* The report on this project can be found at [https://github.com/mme-stud/ifp_report/blob/main/main.pdf](https://github.com/mme-stud/ifp_report/blob/main/main.pdf)
 
 ## Running details
 
@@ -13,11 +13,13 @@ Input:
 
 To cluster a hypergraph:
 1. build the modified version of MtKaHyPar (the same way as described below)
-2. run it on a given hypergraph with the preset-type `cluster`, objective `conductance_local` or `conductance_global` and parameter `k`:
+2. run it on a given hypergraph with the preset-type `cluster` / a new preset with the `clustering` option set to true, objective `conductance_local` or `conductance_global` and parameter `k`:
 `-h <path-to-graph> --preset-type=cluster -o <objective> -k <approximation of cluster number>`
-3. optionally, the number of threads `t` can be specified:
-`-h <path-to-graph> --preset-type=cluster -o <objective> -k <approximation of cluster number> -t <# threads>`
+3. optionally, the number of threads `t` can be specified, as well as the number of V-cylces `num-vcycles` and the coarsening intensity `c-t` parameter:
+`-h <path-to-graph> --preset-type=cluster -o <objective> -k <approximation of cluster number> -t <# threads> --num-vcycles=5 --c-t=5`
 
+
+## Description of the Mt-KaHyPar framework
 
 <h1 align="center">Mt-KaHyPar - Multi-Threaded Karlsruhe Graph and Hypergraph Partitioner</h1>
 
